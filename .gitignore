@@ -1,0 +1,20 @@
+# dependencies (jsdom is only for the tests; see HANDOFF.md)
+node_modules/
+package-lock.json
+
+# local tooling, logs, editor and OS junk
+.claude/
+.vscode/
+.idea/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# scratch output and secrets
+tmp/
+captures/
+shots/
+*.local.*
+.env
