@@ -319,8 +319,9 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 .guide ul,.guide ol{padding-left:20px}
 
 /* toast */
-.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);opacity:0;z-index:90;background:var(--ink);color:#fff;border-radius:999px;padding:9px 18px;font-size:13.5px;transition:all .25s;max-width:calc(100vw - 30px);text-align:center}
-.toast.show{opacity:1;transform:translate(-50%,0)}
+#toasts{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;width:max-content;max-width:calc(100vw - 30px)}
+.toast{background:var(--ink);color:#fff;border-radius:999px;padding:9px 18px;font-size:13.5px;transition:all .25s;text-align:center;opacity:0;transform:translateY(16px)}
+.toast.show{opacity:1;transform:translateY(0)}
 .toast.bad{background:var(--bad)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -1952,7 +1953,7 @@ const B = "black", R = "red", U = "blue", GR = "green";
 const rowsOf = list => list.map((colors, i) => ({ y: i + 1, colors }));
 const rep = (n, c) => Array.from({ length: n }, () => c);
 libAgent({
-  typeId: "row-judge", name: "Row Judge", emoji: "⚖️", gate: true, note: "gate · challenge: a row of 4",
+  typeId: "row-judge", name: "Row Judge", emoji: "⚖️", gate: true, note: "gate · checks one row and how many dots are in it",
   pseudo: [
     "if there is {1} row and it has {4} dots",
     "  pass, and say \"done\"",
@@ -1982,7 +1983,7 @@ libAgent({
   ]
 });
 libAgent({
-  typeId: "grid-judge", name: "Grid Judge", emoji: "⚖️", gate: true, note: "gate · challenge: a 3 by 5 grid",
+  typeId: "grid-judge", name: "Grid Judge", emoji: "⚖️", gate: true, note: "gate · checks how many rows and columns",
   pseudo: [
     "if rows is {3} and columns is {5}",
     "  pass, and say \"done\"",
@@ -2011,7 +2012,7 @@ libAgent({
   ]
 });
 libAgent({
-  typeId: "triangle-judge", name: "Triangle Judge", emoji: "⚖️", gate: true, note: "gate · challenge: rows of 1, 2, 3, 4",
+  typeId: "triangle-judge", name: "Triangle Judge", emoji: "⚖️", gate: true, note: "gate · checks how many dots each row has, top to bottom",
   pseudo: [
     "sort the rows from top to bottom",
     "if the rows have {1, 2, 3, 4} dots in that order",
@@ -2042,7 +2043,7 @@ libAgent({
   ]
 });
 libAgent({
-  typeId: "checker-judge", name: "Checkerboard Judge", emoji: "⚖️", gate: true, note: "gate · challenge: 4 by 4, two colors alternating",
+  typeId: "checker-judge", name: "Checkerboard Judge", emoji: "⚖️", gate: true, note: "gate · checks the size and that no neighbors match",
   pseudo: [
     "if rows is {4} and columns is {4}",
     "  and no two side-by-side dots share a color",
@@ -2092,7 +2093,7 @@ libAgent({
   ]
 });
 libAgent({
-  typeId: "color-judge", name: "Color Count Judge", emoji: "⚖️", gate: true, note: "gate · challenge: exactly 7 red and 3 blue",
+  typeId: "color-judge", name: "Color Count Judge", emoji: "⚖️", gate: true, note: "gate · counts the dots of each color",
   pseudo: [
     "count the dots of each color",
     "if red is {7} and blue is {3} and there are no other dots",
@@ -3333,11 +3334,13 @@ async function paintInto(canvas, render, run) {
 
 /* ===== SECTION: SMALL UI PIECES (toasts, modals, files) ===== */
 function toast(msg, kind) {
+  let host = document.getElementById("toasts");
+  if (!host) { host = document.createElement("div"); host.id = "toasts"; document.body.appendChild(host); }
   const t = document.createElement("div");
   t.className = "toast" + (kind ? " " + kind : "");
   t.setAttribute("role", "status");
   t.textContent = msg;
-  document.body.appendChild(t);
+  host.appendChild(t);
   setTimeout(() => t.classList.add("show"), 10);
   setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3400);
 }
