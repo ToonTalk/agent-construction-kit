@@ -46,6 +46,11 @@ export default function (T, { modelWindow, same }) {
     const r = await run(s, { to: "artist", text: "a red house" });
     return t.rules[0].from === "*" && texts(r, "tally").some(x => /^After 5 rounds/.test(x));
   });
+  T.test("Telephone: pretend mode has its own questions, since every pretend run is the same", ["Seeds"], () => { const s = Seeds.makeTelephone(); return s.pretendQuestions.length === 4 && /always gives the same run/.test(s.pretendQuestions[0]) && !/same start twice/.test(s.pretendQuestions.join(" ")); });
+  T.test("the Renderer counts shapes, not the little lines inside a circle", ["Engine"], async () => {
+    const r = await tel("a red circle next to a blue square");
+    return r.trace.find(e => e.agentId === "renderer").response.text === "I drew 2 shapes and 0 dots.";
+  });
   T.test("Telephone: a drawing start goes straight to the Renderer", ["Seeds", "Engine"], async () => {
     const s = Seeds.makeTelephone();
     const r = await run(s, { to: "renderer", text: s.starts[1].value });
@@ -60,24 +65,62 @@ export default function (T, { modelWindow, same }) {
       return r.stopReason === "done" && v[v.length - 1] === "done" && !r.trace.some(e => e.error);
     });
   }
-  T.test("Pebble: the challenges run from easy to hard, starting on Mystery rows", ["Seeds"], () => { const s = pebbles(); return same(s.challenges.map(c => c.level), [1, 1, 2, 2, 2, 3, 3]) && s.challenge === "mystery" && s.roundLimit === 4; });
+  T.test("Pebble: the challenges run from easy to hard, starting on Mystery rows", ["Seeds"], () => { const s = pebbles(); return same(s.challenges.map(c => c.level), [1, 1, 2, 2, 2, 3, 3]) && s.challenge === "mystery" && s.roundLimit === 5; });
+  T.test("Pebble: one Judge, whose program changes with the challenge, so the rules never move", ["Society", "Seeds"], () => {
+    const s = pebbles();
+    const judges = s.agents.filter(a => a.gate);
+    const rules = JSON.stringify(s.rules);
+    Society.applyChallenge(s, "triangle10");
+    const j = Society.agentById(s, "judge");
+    return judges.length === 1 && j.typeId === "triangle-judge" && /1, 2, 3, 4/.test(j.pseudocode) && JSON.stringify(s.rules) === rules && same(Society.agentById(s, "eyes").outputFields.map(f => f.name), ["rowList"]) && s.agents.length === 6;
+  });
+  T.test("Pebble: changes to the Judge stay with the challenge they were made for", ["Society"], () => {
+    const s = pebbles("grid3x5");
+    Society.setParams(Society.agentById(s, "judge"), { rowsNeeded: 4 });
+    Society.applyChallenge(s, "mystery");
+    const inMystery = Society.agentById(s, "judge").typeId;
+    Society.applyChallenge(s, "grid3x5");
+    const j = Society.agentById(s, "judge");
+    return inMystery === "mystery-judge" && j.typeId === "grid-judge" && j.params.rowsNeeded === 4 && /rows is \{4\}/.test(j.pseudocode);
+  });
+  T.test("Pebble: without the Critic, the Judge's words go straight to the Designer", ["Society", "Engine", "Pretend"], async () => {
+    const s = pebbles();
+    Society.applyVariant(s, "no-critic", true);
+    const r = await run(s, { to: "designer", text: task(s) });
+    const v = texts(r, "judge");
+    return texts(r, "critic").length === 0 && v[v.length - 1] === "done" && r.trace.some(e => e.agentId === "designer" && /^The judge said: Not yet/.test(e.message.text));
+  });
+  T.test("Pebble: a learner can play the Designer, and the Judge answers them", ["Engine"], async () => {
+    const s = pebbles();
+    const r = Engine.createRun(s, { adapter: pretend, runtime: Runtime, playAs: "designer" });
+    r.start({ to: "designer", text: task(s) });
+    await r.play();
+    const waited = r.run.status === "waiting" && r.run.waiting.agent.id === "designer";
+    r.answer(s.playTemplate);
+    await r.play();
+    const first = texts(r.run, "judge");
+    r.answer("TO ROW :N\n  REPEAT :N [DOT 20 FORWARD 40]\nEND\nPENUP SETHEADING 90\nSETXY -140 60 ROW 5\nSETXY -140 0 ROW 2\nSETXY -140 -60 ROW 7");
+    await r.play();
+    const v = texts(r.run, "judge");
+    return waited && /row 1 needs more/.test(first[0]) && v[v.length - 1] === "done" && r.run.status === "done" && r.run.trace.filter(e => e.byYou).length === 2;
+  });
   T.test("Pebble: the pretend Designer finds the secret rows by halving its guesses", ["Pretend", "Engine", "Library"], async () => {
     const s = pebbles();
     const r = await run(s, { to: "designer", text: task(s) });
     const rows = r.trace.filter(e => e.kind === "activation" && e.agentId === "eyes").map(e => e.response.data.rowList.map(x => x.colors.length).join(","));
-    const v = texts(r, "mystery-judge");
+    const v = texts(r, "judge");
     return same(rows, ["4,4,4", "6,2,6", "5,2,7"]) && v.length === 3 && v[2] === "done" && v[0] === "Not yet: row 1 needs more, row 2 needs fewer, row 3 needs more." && texts(r, "critic").length === 2;
   });
   T.test("Pebble: a Designer that remembers nothing can't find the secret", ["Pretend", "Engine"], async () => {
     const s = pebbles();
     Society.agentById(s, "designer").history = "stateless";
     const r = await run(s, { to: "designer", text: task(s) });
-    return r.stopReason === "round-limit" && texts(r, "mystery-judge").every(t => t !== "done");
+    return r.stopReason === "round-limit" && texts(r, "judge").every(t => t !== "done");
   });
   T.test("Pebble: the Critic's note reaches the Designer, who fixes the drawing", ["Pretend", "Engine"], async () => {
     const s = pebbles("grid3x5");
     const r = await run(s, { to: "designer", text: task(s) });
-    const v = texts(r, "grid-judge");
+    const v = texts(r, "judge");
     return v.length === 2 && /You drew 5 by 3/.test(v[0]) && v[1] === "done" && texts(r, "critic").length === 1;
   });
   T.test("Pebble: one click swaps Eyes for Dot Counter", ["Society", "Engine"], async () => {
@@ -100,7 +143,7 @@ export default function (T, { modelWindow, same }) {
     if (dotCounter) Society.applyVariant(s, "dot-counter", true);
     Society.agentById(s, "designer").instructions += " " + instr;
     const r = await run(s, { to: "designer", text: task(s) });
-    return { r, v: texts(r, "grid-judge") };
+    return { r, v: texts(r, "judge") };
   };
   T.test("Pebble: little circles defeat Dot Counter but not Eyes", ["Pretend", "Engine"], async () => {
     const dc = await tryDesigner("Draw the pebbles as little circles.", true), eyes = await tryDesigner("Draw the pebbles as little circles.", false);
@@ -119,12 +162,14 @@ export default function (T, { modelWindow, same }) {
     const s = pebbles("grid3x5");
     Society.agentById(s, "designer").history = "stateless";
     const r = await run(s, { to: "designer", text: task(s) });
-    return r.stopReason === "round-limit" && texts(r, "grid-judge").every(t => /5 by 3/.test(t));
+    return r.stopReason === "round-limit" && texts(r, "judge").every(t => /5 by 3/.test(t));
   });
-  T.test("Pebble: choosing a challenge rewires the judge and sets its numbers", ["Society"], () => {
+  T.test("Pebble: an older society with a judge per challenge is still rewired", ["Society"], () => {
     const s = pebbles();
-    Society.applyChallenge(s, "triangle10");
-    return s.rules.find(r => r.id === "p5").to === "triangle-judge" && s.rules.find(r => r.id === "p7").from === "triangle-judge" && same(Society.agentById(s, "eyes").outputFields.map(f => f.name), ["rowList"]);
+    s.agents.push(Object.assign({}, Society.agentById(s, "judge"), { id: "tri" }));
+    s.challenges.push({ id: "old", title: "Old style", task: "x", judge: "tri", params: {}, eyesFields: [] });
+    Society.applyChallenge(s, "old");
+    return s.rules.find(r => r.id === "p5").to === "tri" && s.rules.find(r => r.id === "p7").from === "tri";
   });
   T.test("the pretend Describer names what the pretend Artist drew", ["Pretend", "Geometry"], async () => {
     const r = await Runtime.runTurtle(Pretend.artistProgram("a red circle", ""), {});

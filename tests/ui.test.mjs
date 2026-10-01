@@ -38,7 +38,7 @@ export default function (T, { pageWindow }) {
     const { w } = await page();
     entry(w, /Describer/).click();
     let body = w.document.querySelector(".tbody");
-    const plain = /Response/.test(body.textContent) && /Rules/.test(body.textContent) && /Artist gets text/.test(body.textContent) && !/System prompt/.test(body.textContent) && !/Message in/.test(body.textContent);
+    const plain = /Response/.test(body.textContent) && /Rules/.test(body.textContent) && /Artist gets the words, always/.test(body.textContent) && !/System prompt/.test(body.textContent) && !/Message in/.test(body.textContent);
     click(w, '.tbody [data-act="tech-toggle"]');
     body = w.document.querySelector(".tbody");
     return plain && /System prompt/.test(body.textContent) && /Agent Kit/.test(body.textContent) && /Message in/.test(body.textContent) && /Hide the technical details/.test(body.textContent);
@@ -75,7 +75,7 @@ export default function (T, { pageWindow }) {
     const { w } = await page();
     w.__ak.app.settings.speed = "instant";
     await w.__ak.runNow();
-    const body = open(w, /Mystery Judge/).querySelector(".tbody");
+    const body = open(w, /Judge ← Eyes/).querySelector(".tbody");
     return /the secret is/.test(body.textContent) && !/function run/.test(body.textContent) && /block: the work stops here/.test(body.textContent) && /row 1 needs more/.test(body.textContent);
   });
   T.test("when a live model passes on its first try, the stage suggests a harder challenge", ["Engine"], async () => {
@@ -98,15 +98,22 @@ export default function (T, { pageWindow }) {
     w.__ak.setReplay(null);
     return ok;
   });
+  T.test("choosing a challenge gives the one Judge its program, and says so", ["Society"], async () => {
+    const { w } = await page();
+    click(w, '[data-act="challenge"][data-id="grid3x5"]');
+    const j = w.__ak.soc().agents.find(a => a.id === "judge");
+    return j.typeId === "grid-judge" && /runs the Grid Judge program/.test(w.document.querySelector(".stage").textContent) && /the Judge now runs the Grid Judge program/.test(w.document.querySelector("#toasts").textContent) && w.document.querySelectorAll(".achip").length === 6;
+  });
   T.test("a programmed agent opens with its pseudocode slots and scenarios", ["Library"], async () => {
     const { w } = await page();
-    w.__ak.openAgent("grid-judge");
+    await sleep(50);   // the Judge's scenarios run again after a challenge change
+    w.__ak.openAgent("judge");
     const m = w.document.querySelector(".modal-body");
     return !!m && m.querySelectorAll("input.slot").length === 4 && m.querySelectorAll(".scn.ok").length === 4;
   });
   T.test("peek under the hood lights up matching lines both ways", ["Engine"], async () => {
     const { w } = await page();
-    w.__ak.openAgent("grid-judge");
+    w.__ak.openAgent("judge");
     click(w, '[data-act="peek"]');
     const hover = el => el.dispatchEvent(new w.MouseEvent("mouseover", { bubbles: true }));
     const lit = () => Array.from(w.document.querySelectorAll(".cl.hl")).map(x => x.dataset.side + x.dataset.line);
@@ -118,21 +125,21 @@ export default function (T, { pageWindow }) {
   });
   T.test("changing a slot changes params without translating, and reruns scenarios", ["Slots", "Scenarios"], async () => {
     const { w } = await page();
-    const a = w.__ak.soc().agents.find(x => x.id === "grid-judge");
+    const a = w.__ak.soc().agents.find(x => x.id === "judge");
     const js = a.code.js;
     await w.__ak.applyParamChange(a, { rowsNeeded: 4 });
     return a.params.rowsNeeded === 4 && /rows is \{4\}/.test(a.pseudocode) && a.code.js === js && a.results.some(r => !r.ok);
   });
   T.test("editing pseudocode in pretend mode reruns the scenarios and says it needs translation", ["Translator", "Scenarios"], async () => {
     const { w } = await page();
-    w.__ak.openAgent("row-judge");
+    w.__ak.openAgent("judge");
     const ed = w.__ak.app.ui.editor;
-    const a = w.__ak.soc().agents.find(x => x.id === "row-judge");
+    const a = w.__ak.soc().agents.find(x => x.id === "judge");
     ed.mode = "edit";
     ed.draft = a.pseudocode.replace("pass, and say", "pass, then say");
     a.results = null;
     await w.__ak.savePseudo();
-    return a.status === "needs-translation" && Array.isArray(a.results) && a.results.length === 5 && /pass, then say/.test(a.pseudocode) && /Needs translation/.test(w.document.querySelector(".modal-body").textContent);
+    return a.status === "needs-translation" && Array.isArray(a.results) && a.results.length === 4 && /pass, then say/.test(a.pseudocode) && /Needs translation/.test(w.document.querySelector(".modal-body").textContent);
   });
   T.test("+ Add an agent brings in a library agent, with a rule so it hears the right agent", ["Society", "Library"], async () => {
     const { w } = await page();
@@ -171,8 +178,8 @@ export default function (T, { pageWindow }) {
     inp.value = "my-model-9";
     inp.dispatchEvent(new w.Event("change", { bubbles: true }));
     const typed = w.__ak.app.settings.models.openai === "my-model-9" && !/Or type a model id/.test(body().textContent) && body().querySelectorAll("#modelIn").length === 1;
-    Array.from(body().querySelectorAll('[data-act="pick-model"]')).find(b => b.dataset.model === "gpt-5.4").click();
-    const picked = w.__ak.app.settings.models.openai === "gpt-5.4" && body().querySelector("#modelIn").value === "gpt-5.4";
+    Array.from(body().querySelectorAll('[data-act="pick-model"]')).find(b => b.dataset.model === "gpt-6.1-sol").click();
+    const picked = w.__ak.app.settings.models.openai === "gpt-6.1-sol" && body().querySelector("#modelIn").value === "gpt-6.1-sol";
     w.__ak.app.settings.connection = "pretend";
     w.__ak.app.ui.settingsModal.close();
     return typed && picked;
@@ -183,6 +190,45 @@ export default function (T, { pageWindow }) {
     const t = w.__ak.app.ui.settingsModal.body.textContent;
     w.__ak.app.ui.settingsModal.close();
     return /aged 10 to 16/.test(t) && /step counter/.test(t) && /Drawings are Logo/.test(t);
+  });
+  T.test("a learner can play the Designer: the run waits for them, and the Judge answers", ["Engine"], async () => {
+    const { w } = await pageWindow();
+    click(w, '[data-act="world"][data-id="pebbles"]');
+    const box = w.document.querySelector('[data-bind="play-as"]');
+    box.checked = true;
+    box.dispatchEvent(new w.Event("change", { bubbles: true }));
+    w.__ak.app.settings.speed = "instant";
+    await w.__ak.runNow();
+    const panel = w.document.querySelector(".yourturn");
+    const waiting = !!panel && /you are the Designer/.test(panel.textContent) && /Mystery Judge has a secret/.test(panel.textContent) && /ROW 4/.test(panel.querySelector("textarea").value);
+    const ta = panel.querySelector("textarea");
+    ta.value = ta.value.replace("SETXY -140 60 ROW 4", "SETXY -140 60 ROW 5").replace("SETXY -140 0 ROW 4", "SETXY -140 0 ROW 2").replace("SETXY -140 -60 ROW 4", "SETXY -140 -60 ROW 7");
+    ta.dispatchEvent(new w.Event("input", { bubbles: true }));
+    click(w, '[data-act="your-send"]');
+    await sleep(300);
+    const run = w.__ak.app.runs.pebbles.api.run;
+    const said = run.trace.filter(e => e.agentId === "judge").map(e => e.response.text);
+    return waiting && said[0] === "done" && run.status === "done" && !w.document.querySelector(".yourturn") && /\byou\b/.test(entry(w, /Designer ← You/).textContent);
+  });
+  T.test("the Artist's Logo can be changed in the trace, redrawn, and used as a start", ["Logo"], async () => {
+    const { w } = await pageWindow();
+    w.__ak.app.settings.speed = "instant";
+    await w.__ak.runNow();
+    const t = open(w, /Artist ← You/);
+    t.querySelector('[data-act="logo-edit"]').click();
+    const ta = w.document.querySelector('[data-bind="logo-edit"]');
+    ta.value = "SETPENCOLOR \"green\nREPEAT 5 [FORWARD 100 RIGHT 144]";
+    ta.dispatchEvent(new w.Event("input", { bubbles: true }));
+    const shown = !!w.document.querySelector("#logoEditCanvas");
+    click(w, '[data-act="logo-use"]');
+    const st = w.__ak.soc().starts.find(x => x.id === "drawing");
+    return shown && /REPEAT 5 \[FORWARD 100 RIGHT 144\]/.test(st.value) && w.__ak.app.ui.startKind.telephone === "drawing" && !w.document.querySelector('[data-bind="logo-edit"]');
+  });
+  T.test("pretend mode asks questions that pretend mode can answer", ["Seeds"], async () => {
+    const { w } = await page();
+    click(w, '[data-act="world"][data-id="telephone"]');
+    const q = w.document.querySelector(".qcard ul").textContent;
+    return /always gives the same run/.test(q) && !/Run the same start twice/.test(q);
   });
   T.test("the drawing pad writes Logo", ["Logo"], async () => {
     const { w } = await page();
@@ -201,7 +247,7 @@ export default function (T, { pageWindow }) {
     const raw = w.localStorage.getItem("agentkit.v1");
     const p2 = await pageWindow({ storage: { "agentkit.v1": raw } });
     const W = p2.w.__ak.app;
-    return !!raw && W.order.length === w.__ak.app.order.length && p2.errors.length === 0 && !W.replaced.length && W.societies.pebbles.agents.find(a => a.id === "grid-judge").params.rowsNeeded === 4 && W.societies.telephone.agents.some(a => a.typeId === "loop-spotter");
+    return !!raw && W.order.length === w.__ak.app.order.length && p2.errors.length === 0 && !W.replaced.length && W.societies.pebbles.agents.find(a => a.id === "judge").params.rowsNeeded === 4 && W.societies.telephone.agents.some(a => a.typeId === "loop-spotter");
   });
   T.test("an older saved Telephone is replaced by the new one, and can be kept as a copy", ["Store", "Seeds"], async () => {
     const { w } = await page();

@@ -29,6 +29,7 @@ export default function (T, { modelWindow, same }) {
     T.test(t + ": every slot is in its pseudocode and names a param", ["Library", "Slots"], () => Slots.slotPositions(L.pseudocode, L.slots).length === L.slots.length && L.slots.every(s => s.param in L.params));
     T.test(t + ": pretend mode has its translation ready", ["Library", "Translator"], () => Library.CANNED.has(Library.pseudoKey(L.pseudocode)));
   }
+  T.test("Dot Counter's words come from a line of its pseudocode", ["Library"], () => /say "I count \{rows\} rows and \{columns\} columns\."/.test(LIB["dot-counter"].pseudocode) && LIB["dot-counter"].lineMap.some(e => e.pseudo[0] === 5 && e.js[0] === 7));
   T.test("highlighting links pseudocode to JavaScript and back (Grid Judge)", ["Library", "Engine"], () => {
     const m = LIB["grid-judge"].lineMap;
     return same(Engine.linkedLines(m, "pseudo", 1).js, [2, 3, 4]) && same(Engine.linkedLines(m, "js", 7).pseudo, [4]);

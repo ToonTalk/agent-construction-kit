@@ -254,6 +254,17 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **Settings has one model field**: type any model name, or pick one of the suggestions under it.
   - A microworld saved by v1 is replaced by the new version when the page loads; a banner offers to keep the old one as a copy.
   - Suite: 257 PASS, fingerprint `a1034beabcbd`.
+- 2026-10-01 — **Revision 1.0.2, after a second review** (Claude in Chrome on the Pages build, in pretend mode, with a simulated panel: Papert, Minsky, Kay, Vygotsky). The reviewer accepted all of it.
+  - **Models:** the key-based defaults are now each provider's cheapest current model that can see pictures: `claude-haiku-4-5`, `gemini-3.5-flash-lite`, `gpt-6-luna`. Settings suggests stronger ones (Claude Sonnet 5.5, Opus 5.5, Fable 5.1; Gemini 3.8 Flash, 3.1 Pro preview; GPT-5.6 Terra, GPT-6.1 Sol, GPT-6 Astra). Saved settings that still name 1.0's defaults are switched; a model someone typed stays. Haiku 4.5 may retire after 15 October 2026, so a model-shaped error with an Anthropic key retries once on `claude-sonnet-5-5` and says so. Keyless keeps `claude-sonnet-4-6`, proven through the chat proxy, since it costs no money.
+  - **Dot Counter's words now come from its pseudocode** (a fifth line, `say "I count {rows} rows and {columns} columns."`). The glass box had a hidden drawer: the JavaScript said something no pseudocode line did. Its odd "9 columns" for rows of 5, 2 and 7 stays as a bug to find, with a question pointing at it.
+  - **One Judge** (Minsky; supersedes the judge-per-challenge wiring of §5.2 and 1.0.1). Pebble has six agents. A challenge names a library program (`program`), and choosing the challenge gives the Judge that program and its scenarios, says so in a toast, and shows it on the stage; the rules never move. Edits to the Judge are kept with the challenge they were made for. Societies from earlier versions, with a judge agent per challenge, are still rewired as before. Invent a challenge offers the library's judge programs, and any other gate agent.
+  - **"No Critic"** variant (Minsky's ablation): the Judge's words go straight to the Designer. A question asks whether the Critic helps.
+  - **You be the Designer / the Artist** (Papert): a learner can play a society's round agent. The run waits for them, shows what they were sent, takes their answer (Logo, with a live preview), and the other agents answer them. The engine gained `deps.playAs`, the status `waiting`, and `answer(text)`; such entries are marked "you" in the trace.
+  - **Change the drawing in the trace** (Papert): any Logo the Artist, the Designer or the Renderer handled can be edited and redrawn right there, and used as Telephone's drawing start, without changing the run.
+  - **Pebble keeps 5 rounds** (Kay): a perfect bisector needs up to 4 tries on Mystery rows, so 5 leaves room for a good search that isn't perfect. Telephone keeps 4.
+  - **Pretend-mode questions** (Vygotsky): pretend runs never vary, so in pretend mode Telephone's card asks questions pretend mode can answer (`pretendQuestions`).
+  - Small fixes: the Renderer counts shapes ("I drew 2 shapes"), not the 36 short lines of a circle; rules read in English ("Renderer gets the words, always"); a starting run says "Starting…" rather than "paused".
+  - Suite: 270 PASS, fingerprint `7fda16058b96`.
 
 ---
 

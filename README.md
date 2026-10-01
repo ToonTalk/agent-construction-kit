@@ -12,7 +12,9 @@ Two microworlds ship with it, and each is an ordinary saved society:
   Tally from the library. *Iteration, fixed points and cycles, variance.*
 - **Pebble Challenge — “Why did the Designer win?”** A Designer draws a challenge in pebbles,
   Eyes counts them, a programmed Judge lets the work through or blocks it, and a Critic says
-  what to fix. One click swaps Eyes for Dot Counter. The challenges run from easy to hard: in
+  what to fix. Each challenge gives the one Judge its program. One click swaps Eyes for Dot
+  Counter; another takes the Critic out. A learner can also play the Designer (or, in
+  Telephone, the Artist) in the same game as the machine. The challenges run from easy to hard: in
   *Mystery rows* the Judge keeps a secret that only the Critic's notes reveal. *Critics can be
   gamed; perception versus judgment.*
 
@@ -21,7 +23,8 @@ Two microworlds ship with it, and each is an ordinary saved society:
 - **Anywhere:** open `index.html` in a browser. It starts in **pretend mode**, where small
   built-in programs play the model agents: free, offline and deterministic.
 - **GitHub Pages:** https://toontalk.github.io/agent-construction-kit/ — connect Claude,
-  Gemini or OpenAI with your own key in ⚙️ Settings.
+  Gemini or OpenAI with your own key in ⚙️ Settings. Each starts on its provider's cheapest
+  model that can see pictures (Claude Haiku 4.5, Gemini 3.5 Flash-Lite, GPT-6 Luna).
 - **Inside a claude.ai chat:** paste the file into a chat and ask Claude to show it as an
   artifact. There the kit uses Claude **without a key**, through your claude.ai sign-in.
 

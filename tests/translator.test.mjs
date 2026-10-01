@@ -3,7 +3,7 @@ export default function (T, { modelWindow }) {
   const w = modelWindow();
   const { Translator, Library, Society, Seeds, Scenarios, Runtime, Adapters } = w.AK;
   const pretend = Adapters.makePretendAdapter();
-  const gridJudge = () => Society.agentById(Seeds.makePebbles(), "grid-judge");
+  const gridJudge = () => { const s = Seeds.makePebbles(); Society.applyChallenge(s, "grid3x5"); return Society.agentById(s, "judge"); };
 
   T.test("pretend: shipped pseudocode translates to the shipped program", ["Translator"], async () => { const a = gridJudge(); const r = await Translator.translate(a, a.pseudocode, pretend); return r.status === "ok" && r.result.js === Library.LIB["grid-judge"].js; });
   T.test("pretend: new pseudocode needs translation, and says so", ["Translator"], async () => (await Translator.translate(gridJudge(), "if rows is {3}\n  pass, and say \"fine\"", pretend)).status === "needs");
