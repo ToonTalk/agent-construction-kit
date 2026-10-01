@@ -4,8 +4,8 @@ export default function (T, { modelWindow, same }) {
   const { Library, Scenarios, Runtime, SafeJS, Slots, Engine } = w.AK;
   const LIB = Library.LIB;
   const types = Object.keys(LIB);
-  T.test("all nine shipped programmed agents are in the library, each described for + Add an agent", ["Library"], () =>
-    same(types.slice().sort(), ["checker-judge", "color-judge", "dot-counter", "grid-judge", "loop-spotter", "mystery-judge", "row-judge", "tally", "triangle-judge"]) && types.every(t => LIB[t].about && LIB[t].about.length > 20));
+  T.test("all thirteen shipped programmed agents are in the library, each described for + Add an agent", ["Library"], () =>
+    same(types.slice().sort(), ["checker-judge", "color-judge", "dot-counter", "grid-judge", "keeper", "leftovers", "loop-spotter", "mystery-judge", "notebook", "row-judge", "shelf", "tally", "triangle-judge"]) && types.every(t => LIB[t].about && LIB[t].about.length > 20));
   for (const t of types) {
     const L = LIB[t];
     T.test(t + ": its JavaScript passes the static check", ["Library", "SafeJS"], () => SafeJS.checkJS(L.js, "program").ok);
@@ -16,7 +16,7 @@ export default function (T, { modelWindow, same }) {
       return res.length === L.scenarios.length;
     });
     T.test(t + ": has at least four scenarios, including one where the answer is no", ["Library"], () =>
-      L.scenarios.length >= 4 && L.scenarios.some(s => s.expect.pass === false || s.expect.stuck === false || s.expect.say === "" || s.expect.rows === 0));
+      L.scenarios.length >= 4 && L.scenarios.some(s => s.expect.pass === false || s.expect.stuck === false || s.expect.say === "" || s.expect.rows === 0 || s.expect.taken === false || /don't add up/.test(s.expect.sayContains || "")));
     T.test(t + ": its line map covers every pseudocode line and stays inside the JavaScript", ["Library"], () => {
       const pn = L.pseudocode.split("\n").length, jn = L.js.split("\n").length;
       const covered = new Set();

@@ -71,7 +71,7 @@ export default function (T, { modelWindow, same }) {
     const secret = Society.newSecret(s, () => [0.99, 0, 0.99][k++ % 3]);
     const j = Society.agentById(s, "judge");
     const res = await Scenarios.runScenarios(j, Runtime);
-    return same(secret, [8, 1, 8]) && same(j.params.secret, [8, 1, 8]) && /\{8, 1, 8\}/.test(j.pseudocode) && same(s.challenges.find(c => c.id === "mystery").params.secret, [8, 1, 8]) && res.every(r => r.ok) && res.length === 6;
+    return same(secret, [8, 1, 8]) && same(j.params.secret, [8, 1, 8]) && /\{8, 1, 8\}/.test(j.pseudocode) && same(s.challenges.find(c => c.id === "mystery").params.secret, [8, 1, 8]) && res.every(r => r.ok) && res.length === 8;
   });
   T.test("Pebble: the Mystery Judge passes on each row's count and verdict, for an agent a learner might add", ["Library", "Scenarios"], async () => {
     const r = await Scenarios.runScenario(Society.agentById(pebbles(), "judge"), { id: "x", input: { data: { rowList: [{ y: 1, colors: ["red", "red", "red", "red"] }, { y: 2, colors: ["red", "red"] }] } }, expect: {} }, Runtime);

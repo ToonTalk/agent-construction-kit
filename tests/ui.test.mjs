@@ -17,7 +17,7 @@ export default function (T, { pageWindow }) {
   T.test("the page boots with no errors", ["util"], async () => {
     const { w, errors } = await page();
     if (errors.length) throw new Error(errors.join(" | "));
-    return w.__akReady === true && w.document.querySelectorAll(".world").length === 2;
+    return w.__akReady === true && w.document.querySelectorAll(".world").length === 4;
   });
   T.test("the question card starts with a short introduction", ["Seeds"], async () => {
     const { w } = await page();
@@ -116,7 +116,7 @@ export default function (T, { pageWindow }) {
     await sleep(50);   // the Judge's scenarios run again after a challenge change
     w.__ak.openAgent("judge");
     const m = w.document.querySelector(".modal-body");
-    return !!m && m.querySelectorAll("input.slot").length === 4 && m.querySelectorAll(".scn.ok").length === 4;
+    return !!m && m.querySelectorAll("input.slot").length === 4 && m.querySelectorAll(".scn.ok").length === 5;
   });
   T.test("peek under the hood lights up matching lines both ways", ["Engine"], async () => {
     const { w } = await page();
@@ -130,12 +130,12 @@ export default function (T, { pageWindow }) {
     const b = lit();
     return a.indexOf("js2") >= 0 && a.indexOf("js4") >= 0 && a.indexOf("pseudo1") >= 0 && b.indexOf("pseudo4") >= 0;
   });
-  T.test("changing a slot changes params without translating, and reruns scenarios", ["Slots", "Scenarios"], async () => {
+  T.test("changing a slot changes params without translating, and the scenarios, which follow the settings, still pass", ["Slots", "Scenarios"], async () => {
     const { w } = await page();
     const a = w.__ak.soc().agents.find(x => x.id === "judge");
     const js = a.code.js;
     await w.__ak.applyParamChange(a, { rowsNeeded: 4 });
-    return a.params.rowsNeeded === 4 && /rows is \{4\}/.test(a.pseudocode) && a.code.js === js && a.results.some(r => !r.ok);
+    return a.params.rowsNeeded === 4 && /rows is \{4\}/.test(a.pseudocode) && a.code.js === js && a.results.length === 5 && a.results.every(r => r.ok);
   });
   T.test("editing pseudocode in pretend mode reruns the scenarios and says it needs translation", ["Translator", "Scenarios"], async () => {
     const { w } = await page();
@@ -146,7 +146,7 @@ export default function (T, { pageWindow }) {
     ed.draft = a.pseudocode.replace("pass, and say", "pass, then say");
     a.results = null;
     await w.__ak.savePseudo();
-    return a.status === "needs-translation" && Array.isArray(a.results) && a.results.length === 4 && /pass, then say/.test(a.pseudocode) && /Needs translation/.test(w.document.querySelector(".modal-body").textContent);
+    return a.status === "needs-translation" && Array.isArray(a.results) && a.results.length === 5 && /pass, then say/.test(a.pseudocode) && /Needs translation/.test(w.document.querySelector(".modal-body").textContent);
   });
   T.test("+ Add an agent brings in a library agent, with a rule so it hears the right agent", ["Society", "Library"], async () => {
     const { w } = await page();
@@ -315,7 +315,7 @@ export default function (T, { pageWindow }) {
     const data = { schema: 1, version: "1.0.0", settings: {}, order: ["telephone", "pebbles"], activeId: "telephone", societies: { telephone: old, pebbles: w.AK.Seeds.makePebbles() }, traces: {}, helperChat: {} };
     const p2 = await pageWindow({ storage: { "agentkit.v1": "js1:" + JSON.stringify(data) } });
     const W = p2.w;
-    const fresh = W.__ak.app.societies.telephone.seedVersion === W.AK.Seeds.SEED_VERSION && W.__ak.app.societies.telephone.roundLimit === 4 && /Telephone has a new version/.test(W.document.querySelector("#banners").textContent);
+    const fresh = W.__ak.app.societies.telephone.seedVersion === W.AK.Seeds.SEED_VERSIONS.telephone && /Logo now/.test(W.document.querySelector("#banners").textContent) && W.__ak.app.societies.telephone.roundLimit === 4 && /Telephone has a new version/.test(W.document.querySelector("#banners").textContent);
     click(W, '[data-act="keep-old"]');
     await sleep(30);
     const copy = W.__ak.app.societies["telephone-old"];

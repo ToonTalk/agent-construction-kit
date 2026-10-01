@@ -10,7 +10,7 @@ export default function (T, { modelWindow }) {
     Society.setParams(Society.agentById(s, "judge"), { rowsNeeded: 4 });
     const back = Society.importSociety(Society.exportSociety(s, null)).society;
     const g = Society.agentById(back, "judge");
-    return back.agents.length === s.agents.length && back.rules.length === s.rules.length && g.params.rowsNeeded === 4 && /\{4\}/.test(g.pseudocode) && g.scenarios.length === 4 && g.status === "ok" && Society.validateSociety(back).length === 0;
+    return back.agents.length === s.agents.length && back.rules.length === s.rules.length && g.params.rowsNeeded === 4 && /\{4\}/.test(g.pseudocode) && g.scenarios.length === 5 && g.status === "ok" && Society.validateSociety(back).length === 0;
   });
   T.test("tampered JavaScript in a file is thrown away; shipped agents come back from the library", ["Society", "Library"], () => {
     const d = exported();
@@ -59,7 +59,7 @@ export default function (T, { modelWindow }) {
     const d = JSON.parse(Society.exportScenarios(Society.agentById(gridPebbles(), "judge")));
     d.scenarios[0].name = "<b>sideways</b>";
     const back = Society.importScenarios(JSON.stringify(d));
-    return back.typeId === "grid-judge" && back.scenarios.length === 4 && !/[<>]/.test(back.scenarios[0].name);
+    return back.typeId === "grid-judge" && back.scenarios.length === 5 && !/[<>]/.test(back.scenarios[0].name);
   });
   T.test("an imported trace keeps plain text only", ["Society"], () => {
     const d = exported();

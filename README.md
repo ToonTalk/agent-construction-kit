@@ -5,7 +5,7 @@ Learners (about 10 to 16) build **societies of agents**: language-model agents, 
 turns Logo programs into pictures. Everything is a glass box: every prompt, every reply,
 every program and every message between agents can be opened and read.
 
-Two microworlds ship with it, and each is an ordinary saved society:
+Four microworlds ship with it, and each is an ordinary saved society:
 
 - **Telephone — “Where does it go?”** An Artist draws a sentence, a Describer describes the
   picture, and the description goes back to the Artist. Learners can add a Loop Spotter or a
@@ -17,6 +17,11 @@ Two microworlds ship with it, and each is an ordinary saved society:
   Telephone, the Artist) in the same game as the machine. The challenges run from easy to hard: in
   *Mystery rows* the Judge keeps a secret that only the Critic's notes reveal. *Critics can be
   gamed; perception versus judgment.*
+- **Secret Number — “Can a notebook make it smarter?”** The Keeper keeps a number from 1 to 100
+  and says higher or lower; the Guesser has no memory. Switch on a Notebook program that keeps
+  the clues, or let the Guesser remember. *Memory and bookkeeping versus cleverness.*
+- **Lost and Found — “Where did it end up?”** A Drawer draws a lost thing, the Finder names it,
+  and rules send it to a shelf by the words it used. *Routing by words; literal programs.*
 
 ## Run it
 

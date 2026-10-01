@@ -280,6 +280,7 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 .scn.none{border-color:var(--line)}
 .scn.open{box-shadow:0 0 0 3px var(--accent-bg);border-color:var(--accent)}
 .scn .mk{font-weight:900}
+.bench{display:grid;gap:8px}.bench-row{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start}.bench-row .thumb{width:72px;height:72px}.bench-ans{display:inline-block;margin:2px 4px 0 0;padding:1px 6px;border-radius:8px;font-size:12px;background:var(--ok-bg,#E9F7EE)}.bench-ans.bad{background:var(--bad-bg,#FDECEC)}
 .scn-detail{margin-top:10px;border:1.5px solid var(--line);border-radius:12px;padding:10px;background:#FCFDFF}
 .three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 @media (max-width:760px){.three{grid-template-columns:1fr}}
@@ -399,7 +400,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.0.4";
+AK.VERSION = "1.0.5";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -2282,10 +2283,28 @@ const Pretend = (() => {
       } },
     eyes: { id: "eyes", title: "Pretend Eyes", about: "A small built-in program, not an AI. It counts dots and small rings as pebbles and sorts them into rows. Its habits: pebbles closer than 14 pixels look like one pebble to it, and it believes a label that says something like “3 by 5”.",
       reply: ctx => eyesReport(ctx.render, ctx.outputFields, ctx.sees) },
+    guesser: { id: "guesser", title: "Pretend Guesser", about: "Used by the tests. It halves a range it is told, or one it worked out from what it remembers; with neither, it wanders between 40, 50 and 60.",
+      reply: ctx => {
+        const said = String((ctx.message && ctx.message.text) || "");
+        const m = /between (\d+) and (\d+)/.exec(said);
+        if (m) return String(Math.floor((+m[1] + +m[2]) / 2));
+        const hist = ctx.history || [];
+        if (hist.length) {
+          let lo = 1, hi = 100, last = null;
+          for (const x of hist.concat([{ role: "user", content: said }])) {
+            if (x.role === "assistant") last = parseInt(x.content, 10);
+            else if (last != null) { if (/higher/i.test(x.content)) lo = last + 1; if (/lower/i.test(x.content)) hi = last - 1; }
+          }
+          return String(Math.floor((lo + hi) / 2));
+        }
+        return /higher/i.test(said) ? "60" : /lower/i.test(said) ? "40" : "50";
+      } },
     critic: { id: "critic", title: "Pretend Critic", about: "A small built-in program, not an AI. It repeats what the Judge said and bluntly tells the Designer to fix exactly that.",
       reply: ctx => { const said = String((ctx.message && ctx.message.text) || "").replace(/\s+/g, " ").trim(); return "That picture fails. " + (said ? said + " " : "") + "Fix exactly that, and count every pebble again before you send it."; } },
     helper: { id: "helper", title: "Pretend Helper", about: "A small built-in program, not an AI. It can only ask simple questions about what it sees in your society.",
       reply: ctx => helperReply(ctx.helperState || {}) },
+    finder: { id: "finder", title: "Pretend Finder", about: "Used by the tests. It reads the words written in the picture with LABEL; with none, it describes the shapes.",
+      reply: ctx => !ctx.sees ? "I can't see pictures." : ctx.render && ctx.render.labels && ctx.render.labels.length ? ctx.render.labels.join(" ") : describePicture(ctx.render) },
     generic: { id: "generic", title: "Pretend agent", about: "This agent has no pretend program of its own, so in pretend mode it just repeats the start of what it was told.",
       reply: genericReply }
   };
@@ -2628,10 +2647,10 @@ libAgent({
   params: { rowsNeeded: 1, dotsNeeded: 4 },
   slots: [{ line: 1, text: "1", param: "rowsNeeded" }, { line: 1, text: "4", param: "dotsNeeded" }, { line: 4, text: "4", param: "dotsNeeded" }],
   scenarios: [
-    { id: "s1", name: "a row of 4", input: { data: { rows: 1, cols: 4 } }, expect: { pass: true, say: "done" } },
-    { id: "s2", name: "a row of 3", input: { data: { rows: 1, cols: 3 } }, expect: { pass: false } },
-    { id: "s3", name: "two rows of 4", input: { data: { rows: 2, cols: 4 } }, expect: { pass: false } },
-    { id: "s4", name: "a column of 4 (standing up)", input: { data: { rows: 4, cols: 1 } }, expect: { pass: false } },
+    { id: "s1", name: "exactly what it needs", input: { data: { rows: "=rowsNeeded", cols: "=dotsNeeded" } }, expect: { pass: true, say: "done" } },
+    { id: "s2", name: "one dot short", input: { data: { rows: "=rowsNeeded", cols: "=dotsNeeded-1" } }, expect: { pass: false } },
+    { id: "s3", name: "an extra row", input: { data: { rows: "=rowsNeeded+1", cols: "=dotsNeeded" } }, expect: { pass: false } },
+    { id: "s4", name: "a column of 4 dots, standing up", input: { data: { rows: 4, cols: 1 } }, expect: { pass: false } },
     { id: "s5", name: "Eyes saw nothing", input: { data: {} }, expect: { pass: false } }
   ]
 });
@@ -2659,10 +2678,11 @@ libAgent({
   params: { rowsNeeded: 3, columnsNeeded: 5 },
   slots: [{ line: 1, text: "3", param: "rowsNeeded" }, { line: 1, text: "5", param: "columnsNeeded" }, { line: 4, text: "3", param: "rowsNeeded" }, { line: 4, text: "5", param: "columnsNeeded" }],
   scenarios: [
-    { id: "s1", name: "3 by 5", input: { data: { rows: 3, cols: 5 } }, expect: { pass: true, say: "done" } },
-    { id: "s2", name: "5 by 3 (turned sideways)", input: { data: { rows: 5, cols: 3 } }, expect: { pass: false, sayContains: "You drew 5 by 3" } },
-    { id: "s3", name: "3 by 4", input: { data: { rows: 3, cols: 4 } }, expect: { pass: false } },
-    { id: "s4", name: "one pebble", input: { data: { rows: 1, cols: 1 } }, expect: { pass: false } }
+    { id: "s1", name: "exactly what it needs", input: { data: { rows: "=rowsNeeded", cols: "=columnsNeeded" } }, expect: { pass: true, say: "done" } },
+    { id: "s2", name: "turned sideways: rows and columns swapped", input: { data: { rows: "=columnsNeeded", cols: "=rowsNeeded" } }, expect: { pass: false, sayContains: "You drew {=columnsNeeded} by {=rowsNeeded}" } },
+    { id: "s3", name: "rows right, one column short", input: { data: { rows: "=rowsNeeded", cols: "=columnsNeeded-1" } }, expect: { pass: false } },
+    { id: "s4", name: "one pebble", input: { data: { rows: 1, cols: 1 } }, expect: { pass: false } },
+    { id: "s5", name: "Eyes left out the columns", input: { data: { rows: "=rowsNeeded" } }, expect: { pass: false } }
   ]
 });
 libAgent({
@@ -2690,11 +2710,12 @@ libAgent({
   params: { counts: [1, 2, 3, 4] },
   slots: [{ line: 2, text: "1, 2, 3, 4", param: "counts" }, { line: 5, text: "1, 2, 3, 4", param: "counts" }],
   scenarios: [
-    { id: "s1", name: "1, 2, 3, 4 from the top", input: { data: { rowList: rowsOf([[B], [B, B], [B, B, B], [B, B, B, B]]) } }, expect: { pass: true } },
-    { id: "s2", name: "rows listed bottom row first", input: { data: { rowList: [{ y: 4, colors: rep(4, B) }, { y: 3, colors: rep(3, B) }, { y: 2, colors: rep(2, B) }, { y: 1, colors: [B] }] } }, expect: { pass: true } },
-    { id: "s3", name: "upside down", input: { data: { rowList: rowsOf([rep(4, B), rep(3, B), rep(2, B), [B]]) } }, expect: { pass: false, sayContains: "4, 3, 2, 1" } },
-    { id: "s4", name: "a row is missing", input: { data: { rowList: rowsOf([[B], rep(2, B), rep(3, B)]) } }, expect: { pass: false } },
-    { id: "s5", name: "one too many at the bottom", input: { data: { rowList: rowsOf([[B], rep(2, B), rep(3, B), rep(5, B)]) } }, expect: { pass: false } }
+    { id: "s1", name: "the rows it needs, from the top", fromSecret: { param: "counts" }, expect: { pass: true } },
+    { id: "s2", name: "the same rows, listed bottom row first", fromSecret: { param: "counts", reverse: true }, expect: { pass: true } },
+    { id: "s3", name: "upside down", fromSecret: { param: "counts", flip: true }, expect: { pass: false, sayContains: "Your rows have" } },
+    { id: "s4", name: "the bottom row is missing", fromSecret: { param: "counts", drop: 1 }, expect: { pass: false } },
+    { id: "s5", name: "one too many at the bottom", fromSecret: { param: "counts", change: [[-1, 1]] }, expect: { pass: false } },
+    { id: "s6", name: "10 dots as two rows of 5: the right total for 1, 2, 3, 4, the wrong shape", input: { data: { rowList: rowsOf([rep(5, B), rep(5, B)]) } }, expect: { pass: false } }
   ]
 });
 libAgent({
@@ -2741,11 +2762,12 @@ libAgent({
   params: { rowsNeeded: 4, columnsNeeded: 4 },
   slots: [{ line: 1, text: "4", param: "rowsNeeded" }, { line: 1, text: "4", param: "columnsNeeded" }],
   scenarios: [
-    { id: "s1", name: "a real checkerboard", input: { data: { rows: 4, cols: 4, rowList: rowsOf([[R, B, R, B], [B, R, B, R], [R, B, R, B], [B, R, B, R]]) } }, expect: { pass: true } },
-    { id: "s2", name: "all one color", input: { data: { rows: 4, cols: 4, rowList: rowsOf([rep(4, R), rep(4, R), rep(4, R), rep(4, R)]) } }, expect: { pass: false, sayContains: "share a color" } },
-    { id: "s3", name: "3 by 4", input: { data: { rows: 3, cols: 4, rowList: rowsOf([[R, B, R, B], [B, R, B, R], [R, B, R, B]]) } }, expect: { pass: false, sayContains: "size" } },
-    { id: "s4", name: "stacked dots match", input: { data: { rows: 4, cols: 4, rowList: rowsOf([[R, B, R, B], [R, B, R, B], [B, R, B, R], [R, B, R, B]]) } }, expect: { pass: false, sayContains: "column 1" } },
-    { id: "s5", name: "red, blue and green, no matching neighbors", input: { data: { rows: 4, cols: 4, rowList: rowsOf([[R, U, GR, R], [GR, R, U, GR], [U, GR, R, U], [R, U, GR, R]]) } }, expect: { pass: true } }
+    { id: "s1", name: "a 4 by 4 checkerboard: dots corner to corner match, and that's fine", input: { data: { rows: 4, cols: 4, rowList: rowsOf([[R, B, R, B], [B, R, B, R], [R, B, R, B], [B, R, B, R]]) } }, expect: { pass: true } },
+    { id: "s2", name: "4 by 4, all one color", input: { data: { rows: 4, cols: 4, rowList: rowsOf([rep(4, R), rep(4, R), rep(4, R), rep(4, R)]) } }, expect: { pass: false, sayContains: "share a color" } },
+    { id: "s3", name: "3 by 4: the wrong size", input: { data: { rows: 3, cols: 4, rowList: rowsOf([[R, B, R, B], [B, R, B, R], [R, B, R, B]]) } }, expect: { pass: false, sayContains: "size" } },
+    { id: "s4", name: "4 by 4, where dots one above the other match", input: { data: { rows: 4, cols: 4, rowList: rowsOf([[R, B, R, B], [R, B, R, B], [B, R, B, R], [R, B, R, B]]) } }, expect: { pass: false, sayContains: "column 1" } },
+    { id: "s5", name: "4 by 4 in red, blue and green, no matching neighbors", input: { data: { rows: 4, cols: 4, rowList: rowsOf([[R, U, GR, R], [GR, R, U, GR], [U, GR, R, U], [R, U, GR, R]]) } }, expect: { pass: true } },
+    { id: "s6", name: "4 by 5: not square", input: { data: { rows: 4, cols: 5, rowList: rowsOf([[R, B, R, B, R], [B, R, B, R, B], [R, B, R, B, R], [B, R, B, R, B]]) } }, expect: { pass: false, sayContains: "size" } }
   ]
 });
 libAgent({
@@ -2783,9 +2805,11 @@ libAgent({
   scenarios: [
     { id: "s1", name: "7 red and 3 blue", input: { data: { rowList: rowsOf([rep(7, R), rep(3, U)]) } }, expect: { pass: true } },
     { id: "s2", name: "6 red and 4 blue", input: { data: { rowList: rowsOf([rep(6, R), rep(4, U)]) } }, expect: { pass: false, sayContains: "6 red" } },
-    { id: "s3", name: "an extra green one", input: { data: { rowList: rowsOf([rep(7, R), rep(3, U), [GR]]) } }, expect: { pass: false } },
+    { id: "s3", name: "7 red, 3 blue and a green one nobody asked for", input: { data: { rowList: rowsOf([rep(7, R), rep(3, U), [GR]]) } }, expect: { pass: false } },
     { id: "s4", name: "no pebbles at all", input: { data: { rowList: [] } }, expect: { pass: false, sayContains: "no dots" } },
-    { id: "s5", name: "all mixed up in one row", input: { data: { rowList: rowsOf([[R, U, R, R, U, R, R, U, R, R]]) } }, expect: { pass: true } }
+    { id: "s5", name: "7 red and 3 blue, all mixed up in one row", input: { data: { rowList: rowsOf([[R, U, R, R, U, R, R, U, R, R]]) } }, expect: { pass: true } },
+    { id: "s6", name: "the colors swapped: 3 red and 7 blue", input: { data: { rowList: rowsOf([rep(3, R), rep(7, U)]) } }, expect: { pass: false } },
+    { id: "s7", name: "“Red” with a capital letter is a different color to this program", input: { data: { rowList: rowsOf([rep(7, "Red"), rep(3, U)]) } }, expect: { pass: false } }
   ]
 });
 libAgent({
@@ -2841,7 +2865,158 @@ libAgent({
     { id: "s3", name: "one too few in the bottom row", fromSecret: { change: [[-1, -1]] }, expect: { pass: false, sayContains: "needs more" } },
     { id: "s4", name: "the bottom row is missing", fromSecret: { drop: 1 }, expect: { pass: false, sayContains: "needs more" } },
     { id: "s5", name: "an extra row", fromSecret: { extra: 1 }, expect: { pass: false, sayContains: "too many rows" } },
-    { id: "s6", name: "rows listed bottom row first", fromSecret: { reverse: true }, expect: { pass: true } }
+    { id: "s6", name: "rows listed bottom row first", fromSecret: { reverse: true }, expect: { pass: true } },
+    { id: "s7", name: "every row one too many", fromSecret: { add: 1 }, expect: { pass: false, sayContains: "row 1 needs fewer" } },
+    { id: "s8", name: "the secret, as Dot Counter sends it (screen heights)", fromSecret: { y0: 216, yStep: 40 }, expect: { pass: true } }
+  ]
+});
+libAgent({
+  typeId: "keeper", name: "Keeper", emoji: "🤫", gate: true, note: "gate · keeps a secret number and says higher or lower",
+  about: "A gate that keeps a secret number. It reads the first number in a guess and says “higher”, “lower” or “yes!”.",
+  pseudo: [
+    "the secret is {37}, from {1} to {100}",
+    "the guess is the first number in what was said",
+    "if there is no guess, or it is outside the range",
+    "  block, and say \"Please say a number from {1} to {100}.\"",
+    "if the guess is the secret",
+    "  pass, and say \"yes!\"",
+    "otherwise if the guess is smaller",
+    "  block, and say \"higher\"",
+    "otherwise",
+    "  block, and say \"lower\"",
+    "pass on the guess and the answer"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  let guess = null;",
+    "  for (const word of h.words(input.text)) {",
+    "    h.tick();",
+    "    if (guess === null && Number.isFinite(Number(word))) {",
+    "      guess = Number(word);",
+    "    }",
+    "  }",
+    "  if (guess === null || guess < params.lowest || guess > params.highest) {",
+    "    return { pass: false, say: \"Please say a number from \" + params.lowest + \" to \" + params.highest + \".\", guess: guess, answer: \"none\" };",
+    "  }",
+    "  if (guess === params.secret) {",
+    "    return { pass: true, say: \"yes!\", guess: guess, answer: \"yes\" };",
+    "  } else if (guess < params.secret) {",
+    "    return { pass: false, say: \"higher\", guess: guess, answer: \"higher\" };",
+    "  } else {",
+    "    return { pass: false, say: \"lower\", guess: guess, answer: \"lower\" };",
+    "  }",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [9, 9] }, { pseudo: [1, 1], js: [12, 12] }, { pseudo: [2, 2], js: [2, 8] }, { pseudo: [3, 3], js: [9, 9] }, { pseudo: [4, 4], js: [10, 10] }, { pseudo: [5, 5], js: [12, 12] }, { pseudo: [6, 6], js: [13, 13] },
+    { pseudo: [7, 7], js: [14, 14] }, { pseudo: [8, 8], js: [15, 15] }, { pseudo: [9, 9], js: [16, 16] }, { pseudo: [10, 10], js: [17, 17] }, { pseudo: [11, 11], js: [10, 10] }, { pseudo: [11, 11], js: [13, 13] }, { pseudo: [11, 11], js: [15, 15] }, { pseudo: [11, 11], js: [17, 17] }],
+  params: { secret: 37, lowest: 1, highest: 100 },
+  slots: [{ line: 1, text: "37", param: "secret" }, { line: 1, text: "1", param: "lowest" }, { line: 1, text: "100", param: "highest" }, { line: 4, text: "1", param: "lowest" }, { line: 4, text: "100", param: "highest" }],
+  scenarios: [
+    { id: "s1", name: "the secret", input: { text: "=secret" }, expect: { pass: true, say: "yes!" } },
+    { id: "s2", name: "one below the secret", input: { text: "=secret-1" }, expect: { pass: false, say: "higher" } },
+    { id: "s3", name: "one above the secret", input: { text: "=secret+1" }, expect: { pass: false, say: "lower" } },
+    { id: "s4", name: "a number inside a sentence", input: { text: "I think it is {=secret}!" }, expect: { pass: true } },
+    { id: "s5", name: "out of range", input: { text: "=highest+1" }, expect: { pass: false, sayContains: "Please say a number" } },
+    { id: "s6", name: "not a number: “fifty”", input: { text: "fifty" }, expect: { pass: false, sayContains: "Please say a number" } }
+  ]
+});
+libAgent({
+  typeId: "notebook", name: "Notebook", emoji: "📒", gate: false, note: "remembers the clues: what the secret could still be",
+  about: "Keeps notes on the Keeper's answers, so it always knows the lowest and highest the secret could still be. It isn't clever: it just never forgets.",
+  pseudo: [
+    "start with lowest {1} and highest {100}",
+    "if the Keeper said higher, lowest becomes the guess + 1",
+    "if the Keeper said lower, highest becomes the guess - 1",
+    "if lowest is more than highest, say the notes don't add up",
+    "otherwise say \"The Keeper said {its answer}. It is between {lowest} and {highest}.\"",
+    "remember lowest and highest for next time"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const notes = input.memory || { lowest: params.lowest, highest: params.highest };",
+    "  let lowest = notes.lowest;",
+    "  let highest = notes.highest;",
+    "  if (input.data.answer === \"higher\") {",
+    "    lowest = Math.max(lowest, input.data.guess + 1);",
+    "  }",
+    "  if (input.data.answer === \"lower\") {",
+    "    highest = Math.min(highest, input.data.guess - 1);",
+    "  }",
+    "  if (lowest > highest) {",
+    "    return { say: \"These notes don't add up: it would have to be more than \" + (lowest - 1) + \" and less than \" + (highest + 1) + \".\", lowest: lowest, highest: highest, memory: { lowest: lowest, highest: highest } };",
+    "  }",
+    "  return { say: \"The Keeper said \" + input.text + \". It is between \" + lowest + \" and \" + highest + \".\", lowest: lowest, highest: highest, memory: { lowest: lowest, highest: highest } };",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [2, 4] }, { pseudo: [2, 2], js: [5, 7] }, { pseudo: [3, 3], js: [8, 10] }, { pseudo: [4, 4], js: [11, 13] }, { pseudo: [5, 5], js: [14, 14] }, { pseudo: [6, 6], js: [12, 12] }, { pseudo: [6, 6], js: [14, 14] }],
+  params: { lowest: 1, highest: 100 },
+  slots: [{ line: 1, text: "1", param: "lowest" }, { line: 1, text: "100", param: "highest" }],
+  scenarios: [
+    { id: "s1", name: "the first clue: higher than 50", input: { text: "higher", data: { guess: 50, answer: "higher" } }, expect: { lowest: 51, highest: "=highest", say: "The Keeper said higher. It is between 51 and {=highest}." } },
+    { id: "s2", name: "a second clue narrows it", input: { text: "lower", data: { guess: 75, answer: "lower" }, memory: { lowest: 51, highest: 100 } }, expect: { lowest: 51, highest: 74 } },
+    { id: "s3", name: "an old clue is never forgotten", input: { text: "higher", data: { guess: 20, answer: "higher" }, memory: { lowest: 51, highest: 74 } }, expect: { lowest: 51, highest: 74 } },
+    { id: "s4", name: "clues that contradict each other", input: { text: "higher", data: { guess: 80, answer: "higher" }, memory: { lowest: 60, highest: 70 } }, expect: { sayContains: "don't add up" } },
+    { id: "s5", name: "not a clue: the range stays", input: { text: "Please say a number", data: { guess: null, answer: "none" } }, expect: { lowest: "=lowest", highest: "=highest" } }
+  ]
+});
+libAgent({
+  typeId: "shelf", name: "Shelf", emoji: "🗄️", gate: false, note: "keeps whatever it is sent",
+  about: "Keeps whatever it is sent, and says how many things it has. It doesn't check what they are.",
+  pseudo: [
+    "if nothing was sent, say nothing",
+    "otherwise put it on the shelf with everything from before",
+    "  say \"Got: {it}. This shelf has {how many} now.\""
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const things = input.memory || [];",
+    "  if (h.count(input.text) === 0) {",
+    "    return { say: \"\", count: things.length, memory: things };",
+    "  }",
+    "  const now = things.concat([input.text]);",
+    "  return { say: \"Got: \" + input.text + \". This shelf has \" + now.length + (now.length === 1 ? \" thing\" : \" things\") + \" now.\", count: now.length, memory: now };",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [2, 5] }, { pseudo: [2, 2], js: [6, 6] }, { pseudo: [3, 3], js: [7, 7] }],
+  params: {},
+  slots: [],
+  scenarios: [
+    { id: "s1", name: "the first thing", input: { text: "a red hat" }, expect: { say: "Got: a red hat. This shelf has 1 thing now.", count: 1 } },
+    { id: "s2", name: "a second thing", input: { text: "a sock", memory: ["a red hat"] }, expect: { count: 2 } },
+    { id: "s3", name: "it keeps anything, even things that don't belong", input: { text: "a goldfish", memory: ["a hat"] }, expect: { count: 2, sayContains: "goldfish" } },
+    { id: "s4", name: "nothing sent", input: { text: "" }, expect: { say: "", count: 0 } }
+  ]
+});
+libAgent({
+  typeId: "leftovers", name: "Mystery Box", emoji: "📦", gate: false, note: "takes what no shelf took",
+  about: "Hears every description and keeps the ones that have none of the shelves' words. Its word list has to match the rules by hand.",
+  pseudo: [
+    "the shelves take the words {ball, doll, kite, teddy, hat, sock, shirt, shoe, dog, cat, bird, fish, hammer, key, spoon, saw}",
+    "if the description has none of those words",
+    "  say \"Nobody else took it: {the description}.\"",
+    "otherwise",
+    "  say nothing"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const shelfWords = String(params.words).split(\",\").map(word => word.trim().toLowerCase());",
+    "  const said = h.words(input.text);",
+    "  const taken = said.some(word => shelfWords.indexOf(word) >= 0);",
+    "  if (!taken && said.length > 0) {",
+    "    return { say: \"Nobody else took it: \" + input.text + \".\", taken: false };",
+    "  } else {",
+    "    return { say: \"\", taken: taken };",
+    "  }",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [2, 2] }, { pseudo: [2, 2], js: [3, 5] }, { pseudo: [3, 3], js: [6, 6] }, { pseudo: [4, 4], js: [7, 7] }, { pseudo: [5, 5], js: [8, 8] }],
+  params: { words: "ball, doll, kite, teddy, hat, sock, shirt, shoe, dog, cat, bird, fish, hammer, key, spoon, saw" },
+  slots: [{ line: 1, text: "ball, doll, kite, teddy, hat, sock, shirt, shoe, dog, cat, bird, fish, hammer, key, spoon, saw", param: "words" }],
+  scenarios: [
+    { id: "s1", name: "something no shelf wants", input: { text: "a teapot" }, expect: { say: "Nobody else took it: a teapot.", taken: false } },
+    { id: "s2", name: "a red hat goes to a shelf", input: { text: "a red hat" }, expect: { say: "", taken: true } },
+    { id: "s3", name: "“dogs” isn't “dog”: the Animals rule takes it, but this program doesn't see “dog”", input: { text: "two dogs" }, expect: { taken: false } },
+    { id: "s4", name: "an empty description", input: { text: "" }, expect: { say: "" } }
   ]
 });
 libAgent({
@@ -2873,7 +3048,13 @@ libAgent({
     { id: "s2", name: "a row of 4, with a label that says 12", program: "PENUP SETXY -60 0 SETHEADING 90 SETPENCOLOR \"red\nREPEAT 4 [DOT 14 FORWARD 40]\nSETXY -76 56 LABEL [12 dots here]", expect: { rows: 1, cols: 4 } },
     { id: "s3", name: "pebbles drawn as little circles", program: RINGS_3X5, expect: { rows: 0, cols: 0 } },
     { id: "s4", name: "a slightly wobbly row", program: "PENUP SETPENCOLOR \"blue\nSETXY -56 6 DOT 14\nSETXY -16 3 DOT 14\nSETXY 24 8 DOT 14\nSETXY 64 4 DOT 14", expect: { rows: 1, cols: 4 } },
-    { id: "s5", name: "a triangle of 10", program: "TO ROW :N\n  REPEAT :N [DOT 14 FORWARD 40]\nEND\nPENUP SETHEADING 90\nSETXY 0 60 ROW 1\nSETXY -20 20 ROW 2\nSETXY -40 -20 ROW 3\nSETXY -60 -60 ROW 4", expect: { rows: 4 } }
+    { id: "s5", name: "a triangle of 10", program: "TO ROW :N\n  REPEAT :N [DOT 14 FORWARD 40]\nEND\nPENUP SETHEADING 90\nSETXY 0 60 ROW 1\nSETXY -20 20 ROW 2\nSETXY -40 -20 ROW 3\nSETXY -60 -60 ROW 4", expect: { rows: 4 } },
+    { id: "s6", name: "rows of 5, 2 and 7, centered: 9 columns, because a column is a different x position, not the longest row", program: "TO ROW :N\n  REPEAT :N [DOT 14 FORWARD 40]\nEND\nPENUP SETHEADING 90\nSETXY -80 40 ROW 5\nSETXY -20 0 ROW 2\nSETXY -120 -40 ROW 7", expect: { rows: 3, cols: 9 } },
+    { id: "s7", name: "one row split in two: heights 214 and 216 round to 210 and 220", program: "PENUP\nSETXY -60 42 DOT 14\nSETXY -20 40 DOT 14\nSETXY 20 42 DOT 14\nSETXY 60 40 DOT 14", expect: { rows: 2, cols: 4 } },
+    { id: "s8", name: "an empty picture", program: "PENUP", expect: { rows: 0, cols: 0 } },
+    { id: "s9", name: "one dot", program: "DOT 14", expect: { rows: 1, cols: 1 } },
+    { id: "s10", name: "lines and dots: the lines are ignored", program: "REPEAT 4 [FORWARD 60 RIGHT 90]\nPENUP SETXY -40 -80 SETHEADING 90\nREPEAT 3 [DOT 14 FORWARD 40]", expect: { rows: 1, cols: 3 } },
+    { id: "s11", name: "a row of 4 in mixed colors", program: "PENUP SETXY -60 0 SETHEADING 90\nSETPENCOLOR \"red DOT 14 FORWARD 40\nSETPENCOLOR \"blue DOT 14 FORWARD 40\nSETPENCOLOR \"green DOT 14 FORWARD 40\nSETPENCOLOR \"red DOT 14", expect: { rows: 1, cols: 4 } }
   ]
 });
 libAgent({
@@ -3054,10 +3235,12 @@ const EYES_INSTRUCTIONS = "You are Eyes. You look at a picture of pebbles and re
 const CRITIC_INSTRUCTIONS = "You are the Critic. The Judge rejected the Designer's picture and said why. Write one or two blunt, specific sentences telling the Designer exactly what is wrong with the picture and what to change. Talk only about the drawing.";
 const MYSTERY_TASK = "The Mystery Judge has a secret: how many pebbles each of 3 rows should have. Each row has between 1 and 8 pebbles. Draw 3 rows of pebbles, one under another. After each try, the Critic will tell you which rows need more pebbles and which need fewer.";
 // Bump this when a microworld changes: saved copies of the older version are then replaced (and can be kept as copies).
-const SEED_VERSION = 4;
+const SEED_VERSION = 5;   // the newest; each microworld has its own, so one that didn't change isn't replaced
+const SEED_VERSIONS = { telephone: 4, pebbles: 5, secret: 5, lost: 5 };
+const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, and they follow its settings, so changing a slot doesn't break them." };
 function makeTelephone() {
   return {
-    kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSION, id: "telephone", title: "Telephone", question: "Where does it go?",
+    kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSIONS.telephone, id: "telephone", title: "Telephone", question: "Where does it go?",
     intro: "Like the party game, but with pictures. The Artist turns words into a drawing, the Describer looks at the drawing and says what it sees, and those words go back to the Artist. Round after round, what happens to the picture?",
     questions: [
       "Run the same start twice. How different are the two runs?",
@@ -3087,7 +3270,7 @@ function makeTelephone() {
 }
 function makePebbles() {
   return {
-    kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSION, id: "pebbles", title: "Pebble Challenge", question: "Why did the Designer win?",
+    kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSIONS.pebbles, id: "pebbles", title: "Pebble Challenge", question: "Why did the Designer win?",
     intro: "The Designer writes a Logo program that draws pebbles for a challenge. Eyes looks at the picture and counts, and a Judge decides whether the drawing passes. If it doesn't, the Critic tells the Designer what to fix, and the Designer tries again.",
     questions: [
       "Can you find a challenge the Designer can't meet?",
@@ -3138,7 +3321,73 @@ function makePebbles() {
     ]
   };
 }
-const MICROWORLDS = [{ id: "telephone", make: makeTelephone }, { id: "pebbles", make: makePebbles }];
+const GUESSER_INSTRUCTIONS = "You are the Guesser. Someone has picked a secret whole number from 1 to 100. Guess it. Reply with just one number.";
+const DRAWER_INSTRUCTIONS = "You are the Drawer. You get the name of a lost thing, and you write a Logo program that draws it simply.\n" + LOGO_HELP + "\nReply with only the Logo program, with no explanation.";
+const FINDER_INSTRUCTIONS = "You are the Finder. You are shown a drawing of a lost thing. Say what it is in at most five words, like “a red hat”. Reply with only those words.";
+function makeSecretNumber() {
+  return {
+    kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSIONS.secret, id: "secret", title: "Secret Number", question: "Can a notebook make it smarter?",
+    intro: "The Keeper thinks of a number from 1 to 100. The Guesser guesses, and the Keeper says “higher” or “lower”. How many guesses does it take, and can you help without making the Guesser any cleverer?",
+    questions: [
+      "With no Notebook and no memory, does the Guesser ever find the number?",
+      "Let the Guesser remember the whole game. How many guesses now?",
+      "Switch the Notebook on instead. Is the Guesser now smarter, or just better informed?",
+      "What is the fewest guesses anyone could need? Can you beat the Guesser yourself?"
+    ],
+    openers: ["What do you think the Guesser will say first?", "What does the Guesser know when it makes its third guess?", "What would you write in a notebook if you were guessing?"],
+    roundAgent: "guesser", roundLimit: 10,
+    random: { agent: "keeper", param: "secret", count: 1, lo: 1, hi: 100, on: true },
+    playTemplate: "50",
+    starts: [{ id: "start", label: "Start", kind: "text", to: "guesser", value: "I'm thinking of a number from 1 to 100. What is your guess?" }],
+    variants: [
+      { id: "notebook", label: "Notebook on: it keeps the Keeper's clues for the Guesser", enable: ["n3", "n4"], disable: ["n2"], on: false },
+      { id: "remember", label: "The Guesser remembers the whole game", enable: [], disable: [], set: [{ agent: "guesser", field: "history", on: "full", off: "stateless" }], on: false }
+    ],
+    agents: [
+      { id: "guesser", kind: "model", name: "Guesser", emoji: "🙋", role: "guesses a number", instructions: GUESSER_INSTRUCTIONS, outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "guesser", shipped: true },
+      programAgent("keeper", "keeper"),
+      programAgent("notebook", "notebook")
+    ],
+    rules: [
+      { id: "n1", from: "guesser", when: "always", send: "text", to: "keeper", prefix: "", enabled: true },
+      { id: "n2", from: "keeper", when: "data", field: "pass", op: "=", value: "false", send: "text", to: "guesser", prefix: "", enabled: true },
+      { id: "n3", from: "keeper", when: "data", field: "pass", op: "=", value: "false", send: "both", to: "notebook", prefix: "", enabled: false },
+      { id: "n4", from: "notebook", when: "always", send: "text", to: "guesser", prefix: "", enabled: false }
+    ]
+  };
+}
+function makeLostAndFound() {
+  const shelf = (id, name, emoji) => programAgent(id, "shelf", { name, emoji, role: "keeps what it is sent", note: "keeps what it is sent" });
+  const to = (id, shelfId, words) => ({ id, from: "finder", when: "text", word: words, send: "text", to: shelfId, prefix: "", enabled: true });
+  return {
+    kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSIONS.lost, id: "lost", title: "Lost and Found", question: "Where did it end up?",
+    intro: "Someone draws a lost thing, and the Finder looks at the picture and says what it is. Rules send it to a shelf by the words the Finder used. Some things are hard to sort.",
+    questions: [
+      "Which things went to two shelves at once? Which went nowhere?",
+      "“A hat on a dog”: where should it go? Change a rule so it goes where you think.",
+      "Can you find a thing the Finder names correctly but the rules still put in the wrong place?",
+      "Why might “two dogs” go to Animals but also into the Mystery Box?"
+    ],
+    openers: ["Which shelf do you think a spoon will go to?", "What exactly does a rule look at?", "What happens if the Finder uses a word no rule knows?"],
+    roundAgent: "drawer", roundLimit: 1,
+    starts: [{ id: "thing", label: "A lost thing", kind: "text", to: "drawer", value: "a red hat", examples: ["a key", "a red hat", "a dog", "a spoon", "a snowman", "a hat on a dog"] }],
+    agents: [
+      { id: "drawer", kind: "model", name: "Drawer", emoji: "✏️", role: "draws the lost thing in Logo", instructions: DRAWER_INSTRUCTIONS, outputFields: [], canSeeImages: false, history: "stateless", replyKind: "program", pretend: "artist", shipped: true },
+      { id: "renderer", kind: "renderer", name: "Renderer", emoji: "🖼️", role: "runs the program and makes the picture", shipped: true },
+      { id: "finder", kind: "model", name: "Finder", emoji: "🔎", role: "looks at the picture and names the thing", instructions: FINDER_INSTRUCTIONS, outputFields: [], canSeeImages: true, history: "stateless", replyKind: "prose", pretend: "finder", shipped: true },
+      shelf("toys", "Toys", "🧸"), shelf("clothes", "Clothes", "👕"), shelf("animals", "Animals", "🐾"), shelf("tools", "Tools", "🔧"),
+      programAgent("mystery-box", "leftovers")
+    ],
+    rules: [
+      { id: "l1", from: "drawer", when: "always", send: "text", to: "renderer", prefix: "", enabled: true },
+      { id: "l2", from: "renderer", when: "always", send: "image", to: "finder", prefix: "", enabled: true },
+      { id: "l3", from: "renderer", when: "data", field: "pass", op: "=", value: "false", send: "both", to: "drawer", prefix: "Your program did not run.", enabled: true },
+      to("l4", "toys", "ball, doll, kite, teddy"), to("l5", "clothes", "hat, sock, shirt, shoe"), to("l6", "animals", "dog, cat, bird, fish"), to("l7", "tools", "hammer, key, spoon, saw"),
+      { id: "l8", from: "finder", when: "always", send: "text", to: "mystery-box", prefix: "", enabled: true }
+    ]
+  };
+}
+const MICROWORLDS = [{ id: "telephone", make: makeTelephone }, { id: "pebbles", make: makePebbles }, { id: "secret", make: makeSecretNumber }, { id: "lost", make: makeLostAndFound }];
 // What a reporter (Eyes or Dot Counter) must send for each kind of judge to work.
 const REPORTER_FIELDS = { "row-judge": [F_ROWS, F_COLS], "grid-judge": [F_ROWS, F_COLS], "triangle-judge": [F_ROWLIST], "checker-judge": [F_ROWS, F_COLS, F_ROWLIST], "color-judge": [F_ROWLIST], "mystery-judge": [F_ROWLIST] };
 const reporterFieldsFor = typeId => clone(REPORTER_FIELDS[typeId] || [F_ROWS, F_COLS, F_ROWLIST]);
@@ -3151,7 +3400,7 @@ const V1_TEXTS = [
   ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
   ["a turtle program", "a Logo program"]
 ];
-AK.Seeds = { makeTelephone, makePebbles, MICROWORLDS, SEED_VERSION, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+AK.Seeds = { makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
 const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
@@ -3233,9 +3482,10 @@ function applyVariant(soc, id, on) {
   if (!v) return false;
   v.on = !!on;
   for (const r of soc.rules) {
-    if (v.enable.indexOf(r.id) >= 0) r.enabled = !!on;
-    if (v.disable.indexOf(r.id) >= 0) r.enabled = !on;
+    if ((v.enable || []).indexOf(r.id) >= 0) r.enabled = !!on;
+    if ((v.disable || []).indexOf(r.id) >= 0) r.enabled = !on;
   }
+  for (const x of v.set || []) { const a = agentById(soc, x.agent); if (a) a[x.field] = on ? x.on : x.off; }   // e.g. an agent's memory
   return true;
 }
 // Mystery rows can draw a new secret for each run, so its difficulty isn't one lucky number.
@@ -3246,11 +3496,13 @@ function randomSecret(spec, rng) {
 }
 function newSecret(soc, rng) {
   const ch = (soc.challenges || []).find(c => c.id === soc.challenge);
-  const judge = ch && agentById(soc, ch.judge);
-  if (!ch || !ch.random || ch.random.on === false || !judge || judge.kind !== "program") return null;
-  const secret = randomSecret(ch.random, rng);
-  setParams(judge, { [ch.random.param]: secret });
-  ch.params = clone(judge.params);
+  const spec = ch && ch.random ? ch.random : soc.random;
+  const agent = ch && ch.random ? agentById(soc, ch.judge) : soc.random && agentById(soc, soc.random.agent);
+  if (!spec || spec.on === false || !agent || agent.kind !== "program") return null;
+  const list = randomSecret(spec, rng);
+  const secret = spec.count === 1 ? list[0] : list;
+  setParams(agent, { [spec.param]: secret });
+  if (ch && ch.random) ch.params = clone(agent.params);
   return secret;
 }
 function uniqueAgentId(soc, base) { let id = cleanId(base) || "agent", n = 2; const b = id; while (agentById(soc, id)) id = b + "-" + n++; return id; }
@@ -3317,7 +3569,7 @@ function sanitizeParams(p) {
     const v = p[k];
     if (typeof v === "number" && isFinite(v)) out[k] = v;
     else if (typeof v === "boolean") out[k] = v;
-    else if (typeof v === "string") out[k] = cleanText(v, 100);
+    else if (typeof v === "string") out[k] = cleanText(v, 400);
     else if (Array.isArray(v)) out[k] = v.slice(0, 50).filter(x => (typeof x === "number" && isFinite(x)) || typeof x === "string").map(x => typeof x === "string" ? cleanText(x, 40) : x);
   }
   return out;
@@ -3339,6 +3591,10 @@ function sanitizeScenario(s) {
     if (f.drop) out.fromSecret.drop = clampInt(f.drop, 0, 20, 0);
     if (f.extra) out.fromSecret.extra = clampInt(f.extra, 0, 50, 0);
     if (f.reverse) out.fromSecret.reverse = true;
+    if (f.flip) out.fromSecret.flip = true;
+    if (f.add) out.fromSecret.add = clampInt(f.add, -20, 20, 0);
+    if (f.param) out.fromSecret.param = String(f.param).replace(/[^A-Za-z_]/g, "").slice(0, 30);
+    if (f.yStep) { out.fromSecret.yStep = clampInt(f.yStep, 1, 200, 40); out.fromSecret.y0 = clampInt(f.y0, 0, 512, 0); }
   }
   out.expect = safeData(s.expect && typeof s.expect === "object" && !Array.isArray(s.expect) ? s.expect : {}) || {};
   return out;
@@ -3355,7 +3611,7 @@ function sanitizeRule(r, ids, used) {
   used.add(id);
   const out = { id, from, to, when, send: ["text", "data", "both", "image"].indexOf(r.send) >= 0 ? r.send : "text", prefix: cleanText(r.prefix, 200), enabled: r.enabled !== false };
   if (when === "data") { out.field = String(r.field || "").replace(/[^A-Za-z0-9_.]/g, "").slice(0, 40) || "pass"; out.op = ["=", "!=", "<", ">", "<=", ">="].indexOf(r.op) >= 0 ? r.op : "="; out.value = cleanText(r.value, 60); }
-  if (when === "text") out.word = cleanText(r.word, 40);
+  if (when === "text") out.word = cleanText(r.word, 200);
   if (r.tag) out.tag = cleanId(r.tag);
   return out;
 }
@@ -3420,6 +3676,7 @@ function sanitizeSociety(raw) {
   soc.rules = arr(d.rules, 100).map(r => sanitizeRule(r, ids, used)).filter(Boolean);
   soc.starts = arr(d.starts, 4).map(s => (s && typeof s === "object" && ids.has(s.to)) ? { id: cleanId(s.id) || "start", label: cleanName(s.label, 40) || "Start", kind: ["text", "program", "challenge"].indexOf(s.kind) >= 0 ? s.kind : "text", to: s.to, value: cleanText(s.value, 20000), examples: arr(s.examples, 12).map(x => cleanName(x, 80)).filter(Boolean) } : null).filter(Boolean);
   if (d.playTemplate) soc.playTemplate = cleanText(d.playTemplate, 4000);
+  if (d.random && typeof d.random === "object" && ids.has(d.random.agent)) soc.random = { agent: d.random.agent, param: String(d.random.param || "secret").replace(/[^A-Za-z_]/g, "").slice(0, 30) || "secret", count: clampInt(d.random.count, 1, 8, 1), lo: clampInt(d.random.lo, 0, 1000, 1), hi: Math.max(clampInt(d.random.lo, 0, 1000, 1), clampInt(d.random.hi, 0, 1000, 100)), on: d.random.on !== false };
   if (!soc.starts.length) soc.starts = [{ id: "sentence", label: "Start", kind: "text", to: soc.roundAgent, value: "" }];
   if (Array.isArray(d.challenges)) {
     soc.challenges = arr(d.challenges, 20).map(c => (c && typeof c === "object" && ids.has(c.judge)) ? Object.assign({ id: cleanId(c.id) || "challenge", title: cleanName(c.title, 60) || "Challenge", task: cleanText(c.task, 600), judge: c.judge, params: sanitizeParams(c.params), eyesFields: arr(c.eyesFields, 8).map(sanitizeField).filter(Boolean) }, c.tests ? { tests: cleanName(c.tests, 60) } : {}, c.random && typeof c.random === "object" ? { random: { param: String(c.random.param || "secret").replace(/[^A-Za-z_]/g, "").slice(0, 30) || "secret", count: clampInt(c.random.count, 1, 8, 3), lo: clampInt(c.random.lo, 0, 50, 1), hi: Math.max(clampInt(c.random.lo, 0, 50, 1), clampInt(c.random.hi, 0, 50, 8)), on: c.random.on !== false } } : {}, LIB[c.program] ? { program: c.program } : {}) : null).filter(Boolean);   // a judge's saved edits for other challenges aren't imported
@@ -3427,7 +3684,7 @@ function sanitizeSociety(raw) {
   }
   if (d.challengeWiring && typeof d.challengeWiring === "object") soc.challengeWiring = { toJudge: cleanId(d.challengeWiring.toJudge), fromJudge: cleanId(d.challengeWiring.fromJudge), reporter: ids.has(d.challengeWiring.reporter) ? d.challengeWiring.reporter : "" };
   const ruleIds = new Set(soc.rules.map(r => r.id));
-  if (Array.isArray(d.variants)) soc.variants = arr(d.variants, 6).map(v => (v && typeof v === "object") ? { id: cleanId(v.id) || "variant", label: cleanName(v.label, 60), enable: arr(v.enable, 20).filter(x => ruleIds.has(x)), disable: arr(v.disable, 20).filter(x => ruleIds.has(x)), on: !!v.on } : null).filter(Boolean);
+  if (Array.isArray(d.variants)) soc.variants = arr(d.variants, 6).map(v => (v && typeof v === "object") ? { id: cleanId(v.id) || "variant", label: cleanName(v.label, 80), enable: arr(v.enable, 20).filter(x => ruleIds.has(x)), disable: arr(v.disable, 20).filter(x => ruleIds.has(x)), set: arr(v.set, 4).filter(x => x && ids.has(x.agent) && x.field === "history").map(x => ({ agent: x.agent, field: "history", on: x.on === "full" ? "full" : "stateless", off: x.off === "full" ? "full" : "stateless" })), on: !!v.on } : null).filter(Boolean);
   migrateSociety(soc);
   return soc;
 }
@@ -3599,19 +3856,38 @@ function compareExpect(expect, output) {
   }
   return problems;
 }
-// A scenario can be written relative to the secret param: change: [[row, by]] (a negative row counts from
-// the bottom), drop: rows taken off the bottom, extra: dots in an extra row, reverse: list the rows bottom first.
-function rowsFromSecret(spec, secret) {
-  const counts = (Array.isArray(secret) ? secret : []).map(n => Math.max(0, Math.round(+n) || 0));
+// Scenarios follow the agent's settings, so they still mean the same after a slot changes:
+// a value "=name" (or "=name+1") is that param, and "{=name}" inside a text is replaced by it.
+function withParams(v, params) {
+  const P = params || {};
+  const val = (name, off) => { const x = P[name]; if (x === undefined) return undefined; return off ? (Array.isArray(x) ? x.map(n => +n + off) : +x + off) : clone(x); };
+  if (typeof v === "string") {
+    const m = /^=([A-Za-z_]\w*)\s*(?:([+-])\s*(\d+))?$/.exec(v);
+    if (m) { const r = val(m[1], m[2] ? (m[2] === "-" ? -m[3] : +m[3]) : 0); return r === undefined ? v : r; }
+    return v.replace(/\{=([A-Za-z_]\w*)\s*(?:([+-])\s*(\d+))?\}/g, (all, n, sign, k) => { const r = val(n, sign ? (sign === "-" ? -k : +k) : 0); return r === undefined ? all : Array.isArray(r) ? r.join(", ") : String(r); });
+  }
+  if (Array.isArray(v)) return v.map(x => withParams(x, P));
+  if (v && typeof v === "object") { const o = {}; for (const k of Object.keys(v)) o[k] = withParams(v[k], P); return o; }
+  return v;
+}
+// Rows of dots built from a list param (default "secret"): change: [[row, by]] (a negative row counts from the
+// bottom), add: added to every row, flip: rows in the opposite order, drop: rows taken off the bottom,
+// extra: dots in an extra row, reverse: the same rows listed bottom first, y0 and yStep: screen heights.
+function rowsFromSecret(spec, params) {
+  const list = Array.isArray(params) ? params : (params || {})[spec.param || "secret"];
+  let counts = (Array.isArray(list) ? list : []).map(n => Math.max(0, Math.round(+n) || 0));
+  if (spec.add) counts = counts.map(n => Math.max(0, n + spec.add));
   for (const [row, by] of spec.change || []) { const i = row < 0 ? counts.length + row : row; if (i >= 0 && i < counts.length) counts[i] = Math.max(0, counts[i] + by); }
+  if (spec.flip) counts.reverse();
   counts.splice(Math.max(0, counts.length - (spec.drop || 0)));
   if (spec.extra) counts.push(spec.extra);
-  const rows = counts.map((n, i) => ({ y: i + 1, colors: Array.from({ length: Math.min(n, 100) }, () => "black") }));
+  const rows = counts.map((n, i) => ({ y: spec.yStep ? (spec.y0 || 0) + i * spec.yStep : i + 1, colors: Array.from({ length: Math.min(n, 100) }, () => "black") }));
   return spec.reverse ? rows.reverse() : rows;
 }
 async function runScenario(agent, sc, runtime) {
-  const input = Object.assign({ text: "", data: {}, from: "You", round: 1 }, clone(sc.input || {}));
-  if (sc.fromSecret) input.data = Object.assign({}, input.data, { rowList: rowsFromSecret(sc.fromSecret, (agent.params || {}).secret) });
+  const params = agent.params || {};
+  const input = Object.assign({ text: "", data: {}, from: "You", round: 1 }, withParams(clone(sc.input || {}), params));
+  if (sc.fromSecret) input.data = Object.assign({}, input.data, { rowList: rowsFromSecret(sc.fromSecret, params) });
   let render = null;
   if (sc.program) {
     const r = await runtime.runTurtle(sc.program, { seed: 1 });
@@ -3622,7 +3898,7 @@ async function runScenario(agent, sc, runtime) {
   if (!agent.code || !agent.code.js) return { id: sc.id, ok: false, error: "This agent has no program yet: it needs translation.", input, render };
   const res = await runtime.runProgram(agent.code.js, input, { params: agent.params || {}, seed: 1 });
   if (!res.ok) return { id: sc.id, ok: false, error: res.error, input, render, ticks: res.ticks };
-  const problems = compareExpect(sc.expect || {}, res.output);
+  const problems = compareExpect(withParams(sc.expect || {}, params), res.output);
   return { id: sc.id, ok: problems.length === 0, problems, input, output: res.output, render, ticks: res.ticks };
 }
 async function runScenarios(agent, runtime) {
@@ -3630,7 +3906,7 @@ async function runScenarios(agent, runtime) {
   for (const sc of agent.scenarios || []) out.push(await runScenario(agent, sc, runtime));
   return out;
 }
-AK.Scenarios = { runScenario, runScenarios, compareExpect, rowsFromSecret };
+AK.Scenarios = { runScenario, runScenarios, compareExpect, rowsFromSecret, withParams };
 
 /* ===== SECTION: ENGINE (message bus + rule engine + round loop, with a full trace) ===== */
 function getPath(obj, path) {
@@ -3655,9 +3931,11 @@ function compareValues(actual, op, raw) {
 }
 function ruleMatches(rule, response) {
   if (rule.when === "always") return { match: true, reason: "ALWAYS" };
-  if (rule.when === "text") {
-    const w = String(rule.word || "").toLowerCase();
-    return { match: !!w && String(response.text || "").toLowerCase().indexOf(w) >= 0, reason: "its words contain “" + rule.word + "”" };
+  if (rule.when === "text") {   // one word, or several separated by commas: any of them will do
+    const said = String(response.text || "").toLowerCase();
+    const words = String(rule.word || "").toLowerCase().split(",").map(w => w.trim()).filter(Boolean);
+    const hit = words.find(w => said.indexOf(w) >= 0);
+    return { match: !!hit, reason: "its words contain “" + (hit || words.join(", ")) + "”" };
   }
   if (rule.when === "data") {
     const actual = getPath(response.data, rule.field);
@@ -3893,6 +4171,66 @@ function linkedLines(lineMap, side, line) {
   return { pseudo: Array.from(p).sort((a, b) => a - b), js: Array.from(j).sort((a, b) => a - b) };
 }
 AK.Engine = { createRun, ruleMatches, compareValues, describeRule, composeUserText, linkedLines };
+/* ===== SECTION: TEST BENCH ===== */
+// Saved pictures with known answers, for an agent that looks at pictures and counts. Each picture is shown to
+// the agent several times, through a tiny run (Renderer → the agent), so you can see how often it's right.
+const Bench = (() => {
+  const grid = (rows, cols, gap, size) => "PENUP SETXY " + (-gap * (cols - 1) / 2) + " " + (gap * (rows - 1) / 2) + " SETHEADING 90\nREPEAT " + rows + " [\n  REPEAT " + cols + " [DOT " + size + " FORWARD " + gap + "]\n  BACK " + (cols * gap) + " RIGHT 90 FORWARD " + gap + " LEFT 90\n]";
+  const rep = (n, x) => Array.from({ length: n }, () => x);
+  const PICTURES = [
+    { id: "grid-3x5", name: "a 3 by 5 grid", program: grid(3, 5, 40, 20), rows: 3, cols: 5, counts: [5, 5, 5] },
+    { id: "grid-11x14", name: "an 11 by 14 grid", program: grid(11, 14, 30, 12), rows: 11, cols: 14, counts: rep(11, 14) },
+    { id: "staggered", name: "rows of 5, 2 and 7", program: "TO ROW :N\n  REPEAT :N [DOT 20 FORWARD 40]\nEND\nPENUP SETHEADING 90\nSETXY -80 40 ROW 5\nSETXY -20 0 ROW 2\nSETXY -120 -40 ROW 7", rows: 3, cols: null, counts: [5, 2, 7] },
+    { id: "checker", name: "a 4 by 4 checkerboard", program: "TO TWO :A :B\n  SETPENCOLOR :A DOT 24 FORWARD 40\n  SETPENCOLOR :B DOT 24 FORWARD 40\nEND\nPENUP SETHEADING 90\nSETXY -60 60 TWO \"red \"blue TWO \"red \"blue\nSETXY -60 20 TWO \"blue \"red TWO \"blue \"red\nSETXY -60 -20 TWO \"red \"blue TWO \"red \"blue\nSETXY -60 -60 TWO \"blue \"red TWO \"blue \"red", rows: 4, cols: 4, counts: [4, 4, 4, 4] },
+    { id: "stray", name: "a 3 by 5 grid, with a stray line", program: "SETXY -140 -110\n" + grid(3, 5, 40, 20), rows: 3, cols: 5, counts: [5, 5, 5] }
+  ];
+  const FIELDS = ["rows", "cols", "rowList"];
+  const fieldsOf = agent => (agent.outputFields || []).map(f => f.name).filter(n => FIELDS.indexOf(n) >= 0);
+  const benchable = agent => !!(agent && agent.kind === "model" && agent.canSeeImages && fieldsOf(agent).length);
+  const countsOf = list => (Array.isArray(list) ? list : []).map(r => Array.isArray(r) ? r.length : r && Array.isArray(r.colors) ? r.colors.length : r && Number.isFinite(+r.count) ? +r.count : Number.isFinite(+r) ? +r : 0);
+  const sameList = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+  // Right means every field it sends that this picture has an answer for is right. Rows listed bottom first count too.
+  function check(pic, data, fields) {
+    const d = data || {};
+    const parts = [], checks = [];
+    if (fields.indexOf("rowList") >= 0) {
+      const c = countsOf(d.rowList);
+      checks.push(sameList(c, pic.counts) || sameList(c.slice().reverse(), pic.counts));
+      parts.push(c.length + (c.length === 1 ? " row" : " rows") + (c.length ? ": " + c.join(", ") : ""));
+    }
+    if (fields.indexOf("rows") >= 0) { checks.push(+d.rows === pic.rows); if (fields.indexOf("rowList") < 0) parts.push((d.rows == null ? "?" : d.rows) + " rows"); }
+    if (fields.indexOf("cols") >= 0 && pic.cols != null) { checks.push(+d.cols === pic.cols); parts.push((d.cols == null ? "?" : d.cols) + " columns"); }
+    return { ok: checks.length > 0 && checks.every(Boolean), answer: parts.join(", ") };
+  }
+  const truth = (pic, fields) => fields.indexOf("rowList") >= 0 ? pic.counts.length + " rows: " + pic.counts.join(", ") : pic.rows + " rows" + (pic.cols != null ? ", " + pic.cols + " columns" : "");
+  async function run(agent, opts) {
+    const o = opts || {};
+    const fields = fieldsOf(agent);
+    const times = clampInt(o.times, 1, 10, 3);
+    const out = [];
+    for (const pic of o.pictures || PICTURES) {
+      for (let k = 0; k < times; k++) {
+        if (o.shouldStop && o.shouldStop()) return out;
+        const looker = Object.assign(clone(agent), { history: "stateless" });
+        const soc = { id: "bench", title: "Test bench", roundLimit: 1, roundAgent: "renderer", agents: [{ id: "renderer", kind: "renderer", name: "Renderer", emoji: "🖼️" }, looker],
+          rules: [{ id: "b1", from: "renderer", when: "always", send: "image", to: looker.id, prefix: "", enabled: true }] };
+        const api = createRun(soc, { adapter: o.adapter, runtime: o.runtime, rasterize: o.rasterize, delayMs: 0, seed: 1 + k });
+        api.start({ to: "renderer", text: pic.program });
+        await api.play();
+        const e = api.run.trace.find(x => x.kind === "activation" && x.agentId === looker.id);
+        const err = !e ? "It was never asked." : e.error ? String(e.error.message || e.error) : "";
+        const r = err ? { ok: false, answer: "" } : check(pic, e.response && e.response.data, fields);
+        const res = { picture: pic.id, pictureName: pic.name, k, ok: r.ok, answer: r.answer, error: err, call: e && e.call ? e.call : null };
+        out.push(res);
+        if (o.onResult) o.onResult(res);
+      }
+    }
+    return out;
+  }
+  return { PICTURES, benchable, fieldsOf, check, truth, run };
+})();
+AK.Bench = Bench;
+
 
 /* ===== SECTION: HELPER (reads the society, trace and scenarios; cannot change them) ===== */
 const HELPER_SYSTEM = PREAMBLE +
@@ -4037,7 +4375,7 @@ AK.MODULES = ["util", "SafeJS", "Sandbox", "Logo", "Runtime", "Geometry", "Promp
 (function () {
 "use strict";
 const AK = window.AK;
-const { util, Runtime, Adapters, Slots, Seeds, Society, Translator, Scenarios, Engine, Helper, Store, Prompts, Pretend, SafeJS, Words, Logo } = AK;
+const { util, Runtime, Adapters, Slots, Seeds, Society, Translator, Scenarios, Engine, Helper, Store, Prompts, Pretend, SafeJS, Words, Logo, Bench } = AK;
 const { esc, clone, hash } = util;
 const $ = (sel, root) => (root || document).querySelector(sel);
 const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
@@ -4075,7 +4413,7 @@ const app = {
   runs: {}, traces: {}, prevStrips: {}, log: {}, helperChat: {},
   banners: [], saveError: "", loadError: "", replaced: [],
   adapter: null, adapterKey: "",
-  ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), tech: new Set(), expandedW: new Set(), replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
+  ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), tech: new Set(), expandedW: new Set(), bench: {}, replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
 };
 const soc = () => app.societies[app.activeId];
 const nameOf = (s, id) => (id === "*" ? "anyone" : id === "you" ? "You" : ((Society.agentById(s, id) || { name: id }).name));
@@ -4116,7 +4454,7 @@ async function load() {
       const s = d.societies && d.societies[id];
       if (!s) continue;
       // A microworld saved by an older version is set aside; ensureSocieties brings in the new one.
-      if (isMicroworld(id) && s.seedVersion !== Seeds.SEED_VERSION) { app.replaced.push(s); continue; }
+      if (isMicroworld(id) && s.seedVersion !== Seeds.SEED_VERSIONS[id]) { app.replaced.push(s); continue; }
       if (Society.validateSociety(s).length === 0) app.societies[id] = s;
       else { try { app.societies[id] = Society.sanitizeSociety(s); } catch (e) { /* drop a broken one */ } }
       if (app.societies[id]) Society.migrateSociety(app.societies[id]);
@@ -4465,7 +4803,7 @@ function beginRun(override) {
   } else if (app.traces[s.id] && app.traces[s.id].length) app.prevStrips[s.id] = { start: traceStartText(app.traces[s.id]), rounds: stripOf(app.traces[s.id], s) };
   if (!override) {
     const secret = Society.newSecret(s, Math.random);
-    if (secret) { const j = (s.agents || []).find(a => a.kind === "program" && a.gate && a.params && Array.isArray(a.params.secret)); if (j) rerunScenarios(j); }
+    if (secret != null) for (const a of s.agents || []) if (a.kind === "program" && a.params && a.params.secret !== undefined) rerunScenarios(a);
   }
   // A new seed every run: programs that pick at random pick differently, like the models do.
   const api = Engine.createRun(s, { adapter: getAdapter(), runtime: Runtime, rasterize, delayMs: speedDelay(), seed: 1 + Math.floor(Math.random() * 2147483646), playAs: app.ui.playAs[s.id] || null });
@@ -4671,6 +5009,12 @@ function challengeHTML(s) {
     if (judge && judge.kind === "program") h += '<p class="hint">' + (prog ? "For this challenge, " + esc(judge.name) + " runs the " + esc(prog.name) + " program" : esc(judge.name) + " decides like this") + ' (the Designer never sees it):</p><button class="judge-peek" data-act="open-agent" data-id="' + esc(judge.id) + '" title="Open ' + esc(judge.name) + '">' + pseudoStaticHTML(judge.pseudocode, judge.slots) + '</button>' + SLOT_NOTE;
     if (ch.random) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="new-secret" data-id="' + esc(ch.id) + '"' + (ch.random.on !== false ? " checked" : "") + '> A new secret every run, so no secret is lucky</label>';
   }
+  return h;
+}
+// Switches that go with any start: the society's own secret, and its variants.
+function switchesHTML(s) {
+  let h = "";
+  if (s.random) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="new-secret" data-id=""' + (s.random.on !== false ? " checked" : "") + '> ' + esc(nameOf(s, s.random.agent)) + ' picks a new secret every run (switch it off to choose the secret yourself)</label>';
   for (const v of s.variants || []) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="variant" data-id="' + esc(v.id) + '"' + (v.on ? " checked" : "") + '> ' + esc(v.label) + '</label>';
   return h;
 }
@@ -4684,7 +5028,7 @@ function startHTML(s) {
     if (cur.examples && cur.examples.length) h += '<div class="examples">' + cur.examples.map(x => '<button class="example" data-act="example" data-text="' + esc(x) + '">' + esc(x) + '</button>').join("") + '</div>';
   } else if (cur.kind === "program") h += padHTML(cur);
   else if (cur.kind === "challenge") h += challengeHTML(s);
-  return h;
+  return h + switchesHTML(s);
 }
 function renderStage() {
   const s = soc();
@@ -4834,6 +5178,7 @@ function responseHTML(e, s, run) {
   const words = Words.paraphrase(rest);
   if (words) body += text ? '<div class="also">It also sent data: ' + esc(words) + '</div>' : '<div class="said data-only"><span class="dl">In plain words. It sent data, not words:</span> ' + esc(words) + '</div>';
   else if (!text && !verdict) body += '<p class="small muted">It said nothing.</p>';
+  if (a && a.kind === "program" && e.program && e.program.input && e.program.output && !e.program.error) body += '<div class="row" style="margin-top:6px"><button class="btn tiny" data-act="save-scn-from" data-i="' + e.i + '" title="Keep this input, and this answer as what ' + esc(a.name) + ' should say, as a test">＋ Save as a scenario</button></div>';
   return h + '<div class="tsec"><h4>Response</h4>' + body + '</div>';
 }
 const SENT = { text: "the words", data: "the data", both: "the words and the data", image: "the picture" };
@@ -4926,11 +5271,11 @@ function replayHTML(run, trace) {
 }
 function workshopHTML(s) {
   const log = app.log[s.id] || [];
-  if (!log.length) return '<p class="muted small">Model calls made outside a run show up here: the translator turning pseudocode into JavaScript, and the helper answering questions. Each one opens to show exactly what was sent and what came back.</p>';
+  if (!log.length) return '<p class="muted small">Model calls made outside a run show up here: the translator turning pseudocode into JavaScript, the helper answering questions, and the test bench. Each one opens to show exactly what was sent and what came back.</p>';
   return '<div class="trace-list">' + log.slice().reverse().map(x => {
     const open = app.ui.expandedW.has(x.id);
-    const badge = x.status === "ok" ? '<span class="badge ok">ok</span>' : x.status === "refused" ? '<span class="badge warn">question</span>' : x.status === "needs" ? '<span class="badge warn">needs translation</span>' : '<span class="badge bad">problem</span>';
-    return '<div class="tentry kind-model"><button class="th" data-act="workshop-toggle" data-id="' + esc(x.id) + '"><span class="rb">' + (x.kind === "helper" ? "🤔" : "🔤") + '</span><span class="sum"><b>' + esc(x.title) + '</b> ' + badge + '<br><span class="small muted">' + esc(x.when) + '</span></span><span class="faint">' + (open ? "▾" : "▸") + '</span></button>' +
+    const badge = x.status === "ok" ? '<span class="badge ok">ok</span>' : x.status === "wrong" ? '<span class="badge warn">wrong answer</span>' : x.status === "refused" ? '<span class="badge warn">question</span>' : x.status === "needs" ? '<span class="badge warn">needs translation</span>' : '<span class="badge bad">problem</span>';
+    return '<div class="tentry kind-model"><button class="th" data-act="workshop-toggle" data-id="' + esc(x.id) + '"><span class="rb">' + (x.kind === "helper" ? "🤔" : x.kind === "bench" ? "🧪" : "🔤") + '</span><span class="sum"><b>' + esc(x.title) + '</b> ' + badge + '<br><span class="small muted">' + esc(x.when) + '</span></span><span class="faint">' + (open ? "▾" : "▸") + '</span></button>' +
       (open ? '<div class="tbody">' + (x.error ? '<div class="errline">' + esc(x.error) + '</div>' : "") + (x.call ? callHTML(x.call, null, []) : "") + '</div>' : "") + '</div>';
   }).join("") + '</div>';
 }
@@ -5035,8 +5380,25 @@ function modelEditorHTML(a, s) {
   h += '<div class="section"><h3>Output fields</h3><p class="hint">Data it must send back, as JSON after its answer. Rules can test these (IF data.rows = 3), and programmed agents read them.</p><div class="fields-edit">' +
     (a.outputFields || []).map((f, i) => '<div class="frow"><input class="field" data-bind="ofield" data-i="' + i + '" data-field="name" value="' + esc(f.name) + '" placeholder="name" aria-label="Field name"><select class="field" data-bind="ofield" data-i="' + i + '" data-field="type" aria-label="Field type">' + Adapters.FIELD_TYPES.map(t => '<option' + sel(f.type === t) + '>' + t + '</option>').join("") + '</select><input class="field" data-bind="ofield" data-i="' + i + '" data-field="about" value="' + esc(f.about || "") + '" placeholder="what it means" aria-label="Field meaning"><button class="icon-btn" data-act="field-del" data-i="' + i + '" aria-label="Delete field">🗑</button></div>').join("") +
     '</div><button class="btn tiny" data-act="field-add" style="margin-top:6px">+ Add a field</button></div>';
+  if (Bench.benchable(a)) h += benchHTML(a, s);
   h += '<div class="section"><h3>The safety preamble</h3><p class="hint">Every model call starts with this fixed text, before the instructions.</p><pre class="box">' + esc(Prompts.PREAMBLE) + '</pre></div>';
   return h;
+}
+function benchHTML(a, s) {
+  const b = app.ui.bench[s.id + "/" + a.id] || { times: 3, results: [] };
+  const times = b.times || 3, fields = Bench.fieldsOf(a);
+  const right = b.results.filter(r => r.ok).length;
+  let h = '<div class="section"><div class="row"><h3 class="grow">Test bench' + (b.results.length ? ' <span class="badge ' + (right === b.results.length ? "ok" : "warn") + '">right ' + right + ' of ' + b.results.length + '</span>' : "") + '</h3>' +
+    '<span class="small muted">each picture</span><select class="small" data-bind="bench-times" aria-label="How many times">' + [1, 3, 5, 10].map(n => '<option value="' + n + '"' + sel(times === n) + '>' + n + (n === 1 ? " time" : " times") + '</option>').join("") + '</select>' +
+    (b.running ? '<button class="btn tiny" data-act="bench-stop">⏹ Stop</button>' : '<button class="btn tiny primary" data-act="bench-run">▶ Run the test bench</button>') + '</div>' +
+    '<p class="hint">Five saved pictures whose answers we know. ' + esc(a.name) + ' looks at each one ' + times + (times === 1 ? " time" : " times") + ', so you can see how often it is right, not just once. That is ' + (5 * times) + ' model calls' + (liveConnection() ? ", which may cost money on your key" : "") + '. Every call shows up in the Workshop tab of the trace.</p><div class="bench">';
+  for (const pic of Bench.PICTURES) {
+    const rs = b.results.filter(r => r.picture === pic.id);
+    const ok = rs.filter(r => r.ok).length;
+    h += '<div class="bench-row">' + imgTag({ program: pic.program, seed: 1 }, "thumb", pic.name, null) + '<div><b>' + esc(pic.name) + '</b><div class="small muted">The answer: ' + esc(Bench.truth(pic, fields)) + '</div>' +
+      (rs.length ? '<div class="small"><span class="badge ' + (ok === rs.length ? "ok" : ok ? "warn" : "bad") + '">right ' + ok + ' of ' + rs.length + '</span> ' + rs.map(r => '<span class="bench-ans ' + (r.ok ? "ok" : "bad") + '">' + (r.ok ? "✓ " : "✗ ") + esc(r.error ? "no answer" : r.answer || "nothing") + '</span>').join(" ") + '</div>' : b.running ? '<div class="small muted">waiting…</div>' : "") + '</div></div>';
+  }
+  return h + '</div></div>';
 }
 function rendererEditorHTML(a, s) {
   return editorHead(a, s, "built-in") + '<div class="section"><h3>What the Renderer does</h3><p>The Renderer is not a model. It runs the Logo program it is sent and makes a picture (white background, 512 by 512). Along with the picture it sends data:</p><ul><li><code>dots</code>: every dot drawn with <code>DOT</code>, as <code>{x, y, color}</code>, counted in pixels from the top-left corner</li><li><code>segments</code>: how many straight pieces of line were drawn</li><li><code>labels</code>: the words written with <code>LABEL</code></li><li><code>pass</code>: false if the program didn\'t run (then its ALWAYS rules wait)</li></ul><h3 style="margin-top:12px">The Logo it understands</h3><p class="hint">This is also what the Artist and the Designer are told.</p>' + logoBox(Prompts.LOGO_HELP, "", true) + '<p class="hint">Logo is never turned into JavaScript: a small interpreter reads it, so a drawing can only move the turtle. A drawing that takes more than ' + Runtime.tickLimit.toLocaleString("en-US") + ' steps is stopped. It also knows SETX, SETY, ARC, CLEARSCREEN, FOR, WHILE, RANDOM, PICK and the usual arithmetic, like SUM and SQRT.</p></div>';
@@ -5455,6 +5817,42 @@ const ACTIONS = {
     renderTrace();
   },
   "logo-cancel"() { app.ui.logoEdit = null; renderTrace(); },
+  async "save-scn-from"(t) {
+    const s = soc(), rec = app.runs[s.id];
+    const trace = rec ? rec.api.run.trace : (app.traces[s.id] || []);
+    const e = trace.find(x => x.i === +t.dataset.i);
+    const a = e && Society.agentById(s, e.agentId);
+    if (!a || a.kind !== "program" || !e.program || !e.program.output) return;
+    const expect = {};
+    for (const k of Object.keys(e.program.output)) if (k !== "memory") expect[k] = clone(e.program.output[k]);
+    const input = clone(e.program.input);
+    const about = input.text ? "“" + short(input.text, 40) + "”" : short(Words.paraphrase(input.data || {}) || "data", 40);
+    const sc = Society.sanitizeScenario({ id: "s" + Date.now().toString(36), name: "from round " + e.round + ": " + about, input, expect });
+    a.scenarios = a.scenarios || [];
+    a.scenarios.push(sc);
+    await rerunScenarios(a);
+    save();
+    openAgent(a.id);
+    if (app.ui.editor) { app.ui.editor.scn = sc.id; renderEditor(); }
+    toast("Saved as a scenario for " + a.name + ". If that answer was wrong, edit what it should say.");
+  },
+  async "bench-run"() {
+    const a = editorAgent(), s = soc();
+    if (!a || !Bench.benchable(a)) return;
+    if (app.settings.connection === "none") { noModelBanner(); openSettings(); toast("Choose a model first."); return; }
+    const key = s.id + "/" + a.id;
+    const b = app.ui.bench[key] = { times: (app.ui.bench[key] && app.ui.bench[key].times) || 3, results: [], running: true, stop: false };
+    renderEditor();
+    await Bench.run(a, { adapter: getAdapter(), runtime: Runtime, rasterize, times: b.times, shouldStop: () => b.stop,
+      onResult: r => {
+        b.results.push(r);
+        logWorkshop(s.id, { kind: "bench", title: "Test bench: " + a.name + " looks at " + r.pictureName + (r.error ? "" : r.ok ? ", right" : ", wrong"), status: r.error ? "error" : r.ok ? "ok" : "wrong", error: r.error, call: r.call ? Object.assign({ adapterLabel: getAdapter().label }, r.call) : null });
+        if (editorAgent() === a) renderEditor();
+      } });
+    b.running = false;
+    if (editorAgent() === a) renderEditor();
+  },
+  "bench-stop"() { const a = editorAgent(), s = soc(); const b = a && app.ui.bench[s.id + "/" + a.id]; if (b) b.stop = true; },
   async "logo-run"() {
     const s = soc(), r = s.agents.find(a => a.kind === "renderer");
     if (!r || !app.ui.logoEdit) return;
@@ -5626,7 +6024,8 @@ async function handleBind(t, evt) {
     case "speed": { app.settings.speed = t.value; const r = app.runs[app.activeId]; if (r) r.api.setDelay(speedDelay()); save(); return; }
     case "roundAgent": if (change) { s.roundAgent = t.value; save(); renderAll(); } return;
     case "variant": { Society.applyVariant(s, t.dataset.id, t.checked); save(); renderAll(); return; }
-    case "new-secret": { const ch = (s.challenges || []).find(c => c.id === t.dataset.id); if (ch && ch.random) { ch.random.on = t.checked; save(); } return; }
+    case "bench-times": { const a = editorAgent(); if (!a) return; const key = s.id + "/" + a.id; app.ui.bench[key] = Object.assign(app.ui.bench[key] || { results: [] }, { times: Math.max(1, Math.min(10, Math.round(+t.value) || 3)) }); renderEditor(); return; }
+    case "new-secret": { const ch = (s.challenges || []).find(c => c.id === t.dataset.id); const r = ch ? ch.random : !t.dataset.id && s.random; if (r) { r.on = t.checked; save(); } return; }
     case "play-as": {
       app.ui.playAs[s.id] = t.checked ? s.roundAgent : null;
       renderStage();
@@ -5727,7 +6126,7 @@ async function boot() {
   if (app.loadError) setBanner("load", "warn", esc(app.loadError));
   if (app.replaced.length) {
     const many = app.replaced.length > 1;
-    setBanner("updated", "info", "<b>" + esc(app.replaced.map(x => x.title || x.id).join(" and ")) + (many ? " have new versions" : " has a new version") + ".</b> Drawings are in Logo now, runs are shorter, and Pebble Challenge has harder challenges. Your earlier " + (many ? "versions were" : "version was") + " set aside.", [{ act: "keep-old", label: many ? "Keep my old versions as copies" : "Keep my old version as a copy" }]);
+    setBanner("updated", "info", "<b>" + esc(app.replaced.map(x => x.title || x.id).join(" and ")) + (many ? " have new versions" : " has a new version") + ".</b> " + esc(app.replaced.map(x => Seeds.WHATS_NEW[x.id] || "").filter(Boolean).join(" ")) + " Your earlier " + (many ? "versions were" : "version was") + " set aside.", [{ act: "keep-old", label: many ? "Keep my old versions as copies" : "Keep my old version as a copy" }]);
   }
   if (ENV.codeArtifact) { app.settings.connection = "none"; setBanner("code-artifact", "info", "A published artifact can't reach a model, so the agents can't think here. Open the kit inside a claude.ai chat to use Claude without a key, or from GitHub Pages to use your own key or Gemini Nano."); }
   else if (app.settings.connection === "none") chooseFirstModel();
