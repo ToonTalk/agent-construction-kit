@@ -250,6 +250,43 @@ export default function (T, { pageWindow }) {
     const body = open(w, /R2.*Artist ← Describer/).querySelector(".tbody");
     return /It got, from Describer/.test(body.textContent) && /next to a/.test(body.querySelector(".heard").textContent);
   });
+  T.test("after Step, Run carries on from there; Reset starts over", ["Engine"], async () => {
+    const { w } = await boot();
+    w.__ak.app.settings.speed = "instant";
+    await w.__ak.stepNow(); await w.__ak.stepNow();
+    const rec = w.__ak.app.runs.telephone;
+    const runBtn = w.document.querySelector('.controls [data-act="run"]');
+    const label = runBtn.textContent;
+    runBtn.click();
+    await sleep(300);
+    const same = w.__ak.app.runs.telephone === rec && rec.api.run.status === "done" && rec.api.run.trace.filter(e => e.kind === "activation").length === 12;
+    click(w, '.controls [data-act="reset"]');
+    return /Run/.test(label) && !w.document.querySelector('[data-act="resume"]') && same && !w.__ak.app.runs.telephone && !w.__ak.app.traces.telephone && /Press ▶ Run to start/.test(w.document.querySelector(".picture").textContent);
+  });
+  T.test("the agents on the stage open their editors", ["Society"], async () => {
+    const { w } = await boot();
+    click(w, '.agent-strip [data-act="open-agent"][data-id="describer"]');
+    const ok = /Instructions/.test(w.__ak.app.ui.editorModal.body.textContent) && w.__ak.app.ui.editor.agentId === "describer";
+    w.__ak.app.ui.editorModal.close();
+    return ok;
+  });
+  T.test("trace filters show how many entries each has, and a drawing that didn't run is a problem", ["Engine"], async () => {
+    const { w } = await boot();
+    w.__ak.app.settings.speed = "instant";
+    await w.__ak.runNow({ to: "renderer", text: "FOWARD 100" });
+    const btn = w.document.querySelector('[data-act="trace-filter"][data-id="problems"]');
+    const count = btn.querySelector(".cnt").textContent;
+    btn.click();
+    const shown = Array.from(w.document.querySelectorAll("#traceList .tentry")).map(e => e.textContent);
+    return count === "1" && shown.length === 1 && /Renderer/.test(shown[0]) && /AI agents/.test(w.document.querySelector(".filters").textContent);
+  });
+  T.test("pseudocode on the stage says what { } means", ["Library"], async () => {
+    const { w } = await page();
+    click(w, '[data-act="world"][data-id="pebbles"]');
+    const note = /is a setting you can change\. Any other \{ \} is filled in when the program runs/.test(w.document.querySelector(".stage").textContent);
+    click(w, '[data-act="world"][data-id="telephone"]');
+    return note;
+  });
   T.test("the drawing pad writes Logo", ["Logo"], async () => {
     const { w } = await page();
     click(w, '[data-act="world"][data-id="telephone"]');

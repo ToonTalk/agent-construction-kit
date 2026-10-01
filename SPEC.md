@@ -275,6 +275,13 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **Challenges say what they test** instead of easy, medium or hard (Kay: the "hard" big grid was easy for Terra's vision), and the first-try message asks "Can you invent a challenge it can't meet?".
   - A question points at the stray line a Designer draws when its first SETXY comes before PENUP. It stays in, as a bug for a child to find (Papert).
   - Suite: 275 PASS, fingerprint `e37e4e98e2f2`.
+- 2026-10-01 — **Revision 1.0.4.**
+  - **▶ Run carries on after ⏭ Step**, and a new **↺ Reset** clears the run so the next Run starts from the beginning (before, after Step the choices were "Go on" and "Restart", and Restart started over).
+  - **The agents on the stage are buttons** that open each agent's editor.
+  - **Trace filters** are named "AI agents", "Programmed agents", "Pictures" and "Problems", show how many entries each has, and a drawing that didn't run now counts as a problem.
+  - **Gemini Nano wrote commands Logo doesn't have** (LINE, TRIANGLE). The Logo help now says there are none for shapes, with a triangle as the example, and the error for a shape name shows how to draw it, so a model can fix its program.
+  - Pseudocode shown read-only says what { } means: a highlighted one is a setting (a slot); any other is filled in when the program runs.
+  - Suite: 280 PASS, fingerprint `de5ab9d61235`.
 
 ---
 

@@ -363,6 +363,10 @@ pre.box.logo{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-heigh
 .lib-list{display:flex;flex-direction:column;gap:6px}
 .lib-item{display:flex;gap:10px;align-items:center;border:1.5px solid var(--line);border-radius:12px;padding:8px 10px}
 .hmsg.ai{white-space:normal}
+button.achip{cursor:pointer;font:inherit;font-size:12.5px;font-weight:700}
+button.achip:hover{border-color:var(--k);color:var(--ink)}
+.filters .cnt{font-weight:800;opacity:.65;margin-left:2px}
+.slot-note{margin-top:4px}
 .heard{background:#F3F6FA;border:1px solid var(--line);border-radius:9px;padding:6px 9px;font-size:13px;overflow-wrap:anywhere}
 .challenge .who.tests{font-style:italic}
 textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-height:1.55}
@@ -395,7 +399,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.0.3";
+AK.VERSION = "1.0.4";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -1100,6 +1104,8 @@ const Logo = (() => {
   const PALETTE = ["black", "blue", "green", "cyan", "red", "magenta", "yellow", "white", "brown", "tan", "forestgreen", "aqua", "salmon", "purple", "orange", "gray"];
   const WORD_END = /[\s\[\]();,+\-*\/=<>"]/;
   const NUM_TEXT = /^\s*-?(\d+(\.\d*)?|\.\d+)\s*$/;
+  // Shapes models often expect to be commands; the error shows how to draw them, so a model can fix its program.
+  const SHAPE_HINTS = { LINE: "PENDOWN FORWARD 100, or SETXY to the end point", TRIANGLE: "REPEAT 3 [FORWARD 100 RIGHT 120]", SQUARE: "REPEAT 4 [FORWARD 100 RIGHT 90]", RECTANGLE: "REPEAT 2 [FORWARD 150 RIGHT 90 FORWARD 80 RIGHT 90]", RECT: "REPEAT 2 [FORWARD 150 RIGHT 90 FORWARD 80 RIGHT 90]", STAR: "REPEAT 5 [FORWARD 100 RIGHT 144]", POLYGON: "REPEAT 6 [FORWARD 60 RIGHT 60]", HEXAGON: "REPEAT 6 [FORWARD 60 RIGHT 60]", PENTAGON: "REPEAT 5 [FORWARD 80 RIGHT 72]", OVAL: "CIRCLE 40", ELLIPSE: "CIRCLE 40", DISK: "DOT 40", MOVE: "PENUP FORWARD 100", GOTO: "SETXY 100 50", TEXT: "LABEL [some words]", WRITE: "LABEL [some words]" };
   function fail(line, message) { const e = new Error(message); e.logoLine = line || 0; throw e; }
 
   // Reading: words, numbers, "quoted words, :names, [lists], ( ) and + - * / = < > <= >= <>.
@@ -1430,6 +1436,7 @@ const Logo = (() => {
       if (NAMED_COLORS[w.toLowerCase()]) return "To use a color, put a quote mark before it, like SETPENCOLOR \"" + t.text + ".";
       if (/^(SETBG|SETBACKGROUND|SETSCREENCOLOR|SETSC)$/.test(w)) return "The background is always white here, so draw shapes on it instead.";
       if (/^(FILL|FILLED|SETFLOODCOLOR|BEGINFILL|ENDFILL)$/.test(w)) return "There's no " + t.text + " here. For a filled circle, use DOT, like DOT 40.";
+      if (SHAPE_HINTS[w]) return "There's no " + t.text + " command. Draw it with " + SHAPE_HINTS[w] + ", or make your own command with TO " + w + " … END.";
       const glued = /^([A-Z]+)(\d+(\.\d+)?)$/.exec(w);
       if (glued && P[glued[1]]) return "Put a space between " + glued[1] + " and " + glued[2] + ".";
       const near = closest(w, Object.keys(P).concat(Array.from(procs.keys())));
@@ -1820,7 +1827,8 @@ const LOGO_HELP =
   "TO SQUARE :SIZE REPEAT 4 [FORWARD :SIZE RIGHT 90] END makes a new command, used like SQUARE 50.\n" +
   "MAKE \"N 5 stores a number, used as :N. Arithmetic works, like FORWARD :N * 10. IF :N > 3 [ … ] and IFELSE :N > 3 [ … ] [ … ] work too.\n" +
   "The picture is 512 by 512. The turtle starts in the middle at 0 0, facing up, with its pen down. x runs from -256 (left edge) to 256 (right edge), and y from -256 (bottom) to 256 (top).\n" +
-  "Use REPEAT whenever something happens more than once, instead of writing the same commands again and again.";
+  "Use REPEAT whenever something happens more than once, instead of writing the same commands again and again.\n" +
+  "Use only the commands above. There is no LINE, TRIANGLE, SQUARE, RECTANGLE, STAR, POLYGON, FILL or SETBG command: draw shapes with FORWARD and RIGHT, for example a triangle is REPEAT 3 [FORWARD 100 RIGHT 120], or make your own command with TO … END.";
 const H_DOC = [
   ["h.words(text)", "the words of a text, in lower case: h.words(\"A red Cat\") is [\"a\", \"red\", \"cat\"]"],
   ["h.sharedWordFraction(a, b)", "what fraction of a's different words also appear in b, from 0 to 1"],
@@ -4264,6 +4272,7 @@ function logoHTML(src, upperOnly) {
 }
 const logoBox = (src, cls, upperOnly) => '<pre class="box logo' + (cls ? " " + cls : "") + '">' + logoHTML(src, upperOnly) + "</pre>";
 // Read-only pseudocode, with its settings in { } picked out.
+const SLOT_NOTE = '<div class="small muted slot-note">A <span class="slot ro">green</span> { } is a setting you can change. Any other { } is filled in when the program runs.</div>';
 function pseudoStaticHTML(text, slots) {
   const pos = Slots.slotPositions(text || "", slots || []);
   return '<div class="pseudo mini">' + String(text || "").split("\n").map((ln, li) => {
@@ -4620,7 +4629,7 @@ function viewState(s, run, trace) {
 }
 function achipHTML(a, s, view) {
   const v = a.gate || view.verdicts[a.id] === false ? view.verdicts[a.id] : undefined;
-  return '<span class="achip kind-' + a.kind + (view.active === a.id ? " active" : "") + '"><span class="e">' + esc(a.emoji) + '</span>' + esc(a.name) + (a.id === s.roundAgent ? '<span class="round-mark" title="starts each round">↻</span>' : "") + (v === true ? '<span class="v-ok" title="pass">✓</span>' : v === false ? '<span class="v-bad" title="block">✗</span>' : "") + '</span>';
+  return '<button class="achip kind-' + a.kind + (view.active === a.id ? " active" : "") + '" data-act="open-agent" data-id="' + esc(a.id) + '" title="Open ' + esc(a.name) + ' to read or change it"><span class="e">' + esc(a.emoji) + '</span>' + esc(a.name) + (a.id === s.roundAgent ? '<span class="round-mark" title="starts each round">↻</span>' : "") + (v === true ? '<span class="v-ok" title="pass">✓</span>' : v === false ? '<span class="v-bad" title="block">✗</span>' : "") + '</button>';
 }
 function bubbleHTML(b) { return '<div class="bubble kind-' + esc(b.kind) + (b.err ? " err" : "") + '"><div class="who">R' + b.round + " · " + esc(b.who) + '</div>' + (b.md ? md(clip(b.text, 420), true) : nl2br(short(b.text, 420))) + '</div>'; }
 function rcardHTML(r, prev, run, view) {
@@ -4659,7 +4668,7 @@ function challengeHTML(s) {
     h += '<p class="hint" style="margin-top:8px">The Designer is told:</p><textarea class="field" rows="2" data-bind="challenge-task" data-id="' + esc(ch.id) + '" aria-label="Challenge task">' + esc(ch.task) + '</textarea>';
     const judge = Society.agentById(s, ch.judge);
     const prog = ch.program && AK.Library.LIB[ch.program];
-    if (judge && judge.kind === "program") h += '<p class="hint">' + (prog ? "For this challenge, " + esc(judge.name) + " runs the " + esc(prog.name) + " program" : esc(judge.name) + " decides like this") + ' (the Designer never sees it):</p><button class="judge-peek" data-act="open-agent" data-id="' + esc(judge.id) + '" title="Open ' + esc(judge.name) + '">' + pseudoStaticHTML(judge.pseudocode, judge.slots) + '</button>';
+    if (judge && judge.kind === "program") h += '<p class="hint">' + (prog ? "For this challenge, " + esc(judge.name) + " runs the " + esc(prog.name) + " program" : esc(judge.name) + " decides like this") + ' (the Designer never sees it):</p><button class="judge-peek" data-act="open-agent" data-id="' + esc(judge.id) + '" title="Open ' + esc(judge.name) + '">' + pseudoStaticHTML(judge.pseudocode, judge.slots) + '</button>' + SLOT_NOTE;
     if (ch.random) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="new-secret" data-id="' + esc(ch.id) + '"' + (ch.random.on !== false ? " checked" : "") + '> A new secret every run, so no secret is lucky</label>';
   }
   for (const v of s.variants || []) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="variant" data-id="' + esc(v.id) + '"' + (v.on ? " checked" : "") + '> ' + esc(v.label) + '</label>';
@@ -4689,9 +4698,10 @@ function renderStage() {
   const live = ["running", "paused", "stepping", "ready", "waiting"].indexOf(status) >= 0;
   let h = '<div class="card stage">' + (s.intro ? '<p class="intro mobile-only">' + esc(s.intro) + '</p>' : "") + startHTML(s);
   h += '<div class="controls">' +
-    (status === "running" ? '<button class="btn" data-act="pause">⏸ Pause</button>' : (status === "paused" || status === "ready") ? '<button class="btn go" data-act="resume">▶ Go on</button><button class="btn" data-act="run" title="Start again from the beginning">↺ Restart</button>' : '<button class="btn go" data-act="run"' + (busy ? " disabled" : "") + '>▶ Run</button>') +
+    (status === "running" ? '<button class="btn" data-act="pause">⏸ Pause</button>' : '<button class="btn go" data-act="run"' + (busy ? " disabled" : "") + ' title="' + (status === "paused" || status === "ready" ? "Go on from here" : "Start a run") + '">▶ Run</button>') +
     '<button class="btn" data-act="step"' + (busy || status === "waiting" ? " disabled" : "") + ' title="Deliver just one message">⏭ Step</button>' +
     '<button class="btn" data-act="stop"' + (live ? "" : " disabled") + '>⏹ Stop</button>' +
+    '<button class="btn" data-act="reset"' + (run || trace.length ? "" : " disabled") + ' title="Clear this run, so ▶ Run starts from the beginning">↺ Reset</button>' +
     '<span class="small muted">Rounds</span><input class="num" type="number" min="1" max="50" data-bind="roundLimit" value="' + s.roundLimit + '" aria-label="Round limit">' +
     '<select class="small" data-bind="speed" aria-label="Speed" title="How fast messages are delivered">' + ["slow", "normal", "fast", "instant"].map(v => '<option value="' + v + '"' + sel(app.settings.speed === v) + '>' + v + '</option>').join("") + '</select>' + playAsHTML(s) + '</div>';
   h += '<div class="status-line">' + statusLineHTML(s, rec, run) + '</div>';
@@ -4803,7 +4813,7 @@ function paintLogoEdit() {
 function responseHTML(e, s, run) {
   const resp = e.response;
   let h = "";
-  if (e.program && e.program.pseudocode) h += '<div class="tsec"><h4>Its program</h4>' + pseudoStaticHTML(e.program.pseudocode, e.program.slots) + '</div>';
+  if (e.program && e.program.pseudocode) h += '<div class="tsec"><h4>Its program</h4>' + pseudoStaticHTML(e.program.pseudocode, e.program.slots) + SLOT_NOTE + '</div>';
   if (!resp) return h;
   const a = Society.agentById(s, e.agentId);
   const text = String(resp.text || "").trim();
@@ -4904,7 +4914,7 @@ function traceEntryHTML(e, s, run, trace, currentI) {
 }
 function traceFilterOK(e, f) {
   if (f === "all") return true;
-  if (f === "problems") return !!(e.error || e.parseError || e.kind === "error");
+  if (f === "problems") return !!(e.error || e.parseError || e.kind === "error" || (e.render && e.render.error));
   return e.kind === "activation" && e.agentKind === f;
 }
 function replayHTML(run, trace) {
@@ -4945,7 +4955,7 @@ function renderTrace() {
   if (tab === "workshop") h += workshopHTML(s);
   else {
     const f = app.ui.traceFilter;
-    h += '<div class="trace-head"><div class="filters">' + [["all", "All"], ["model", "Model calls"], ["program", "Programs"], ["renderer", "Pictures"], ["problems", "Problems"]].map(x => '<button class="seg' + (f === x[0] ? " on" : "") + '" data-act="trace-filter" data-id="' + x[0] + '">' + x[1] + '</button>').join("") + '</div><span class="grow"></span><button class="btn tiny" data-act="export-trace"' + (trace.length ? "" : " disabled") + '>⬇ As a web page</button></div>';
+    h += '<div class="trace-head"><div class="filters">' + [["all", "All", "Every message"], ["model", "AI agents", "What the agents run by an AI model got and said"], ["program", "Programmed agents", "What the agents written in pseudocode got and said"], ["renderer", "Pictures", "The Renderer's drawings"], ["problems", "Problems", "Errors, missing data, and drawings that didn't run"]].map(x => { const n = trace.filter(e => traceFilterOK(e, x[0])).length; return '<button class="seg' + (f === x[0] ? " on" : "") + '" data-act="trace-filter" data-id="' + x[0] + '" title="' + esc(x[2]) + '">' + x[1] + (x[0] === "all" ? "" : ' <span class="cnt">' + n + '</span>') + '</button>'; }).join("") + '</div><span class="grow"></span><button class="btn tiny" data-act="export-trace"' + (trace.length ? "" : " disabled") + '>⬇ As a web page</button></div>';
     h += replayHTML(run, trace);
     const view = viewState(s, run, trace);
     const shown = trace.filter(e => traceFilterOK(e, f));
@@ -5387,7 +5397,22 @@ const ACTIONS = {
   world(t) { app.activeId = t.dataset.id; app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); save(); renderAll(); },
   look() { app.ui.lookInside = !app.ui.lookInside; if (window.innerWidth <= 820) app.ui.mobileTab = app.ui.lookInside ? "inside" : "stage"; renderWorlds(); renderLeft(); },
   mtab(t) { app.ui.mobileTab = t.dataset.id; renderAll(); window.scrollTo && window.scrollTo(0, 0); },
-  run() { runNow(); },
+  run() {
+    const r = app.runs[app.activeId], st = r ? r.api.run.status : "";
+    if (st === "paused" || st === "ready") return resumeRun();   // after Step, Run carries on
+    if (st === "waiting") { toast("It's your turn: write your answer and press Send."); return; }
+    return runNow();
+  },
+  reset() {
+    const s = soc(), r = app.runs[s.id];
+    if (r && ["running", "paused", "stepping", "ready", "waiting"].indexOf(r.api.run.status) >= 0) r.api.stop();
+    const trace = r ? r.api.run.trace : (app.traces[s.id] || []);
+    if (trace.length) app.prevStrips[s.id] = { start: r ? r.startText : traceStartText(trace), rounds: stripOf(trace, s) };
+    delete app.runs[s.id]; delete app.traces[s.id];
+    app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); app.ui.logoEdit = null;
+    save(); renderAll();
+    toast("Reset. ▶ Run starts from the beginning.");
+  },
   resume() { resumeRun(); },
   pause() { const r = app.runs[app.activeId]; if (r) r.api.pause(); renderAll(); },
   step() { stepNow(); },

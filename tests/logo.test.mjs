@@ -52,6 +52,8 @@ export default function (T, { modelWindow, same, MODEL_SRC }) {
     return !a.ok && /^Line 2: /.test(a.error) && /Did you mean FORWARD\?/.test(a.error) && /space between FD and 10/.test(b.error) && /quote mark/.test(c.error) && /needs 1 input/.test(d.error) && /what to do with “20”/.test(e.error);
   });
   T.test("Logo: commands it hasn't got get a hint the model can use", ["Logo"], () => /always white/.test(run("SETBG 1").error) && /use DOT/.test(run("FILL").error) && run("SETLABELHEIGHT 30 LABEL [big]").output.ops[0].s === 30);
+  T.test("Logo: a shape name used as a command gets a hint that shows how to draw it", ["Logo", "Prompts"], () =>
+    /no TRIANGLE command\. Draw it with REPEAT 3 \[FORWARD 100 RIGHT 120\]/.test(run("TRIANGLE 100").error) && /no LINE command/.test(run("LINE 0 0 100 100").error) && run("TO TRIANGLE :S REPEAT 3 [FD :S RT 120] END TRIANGLE 50").ok && /There is no LINE, TRIANGLE/.test(w.AK.Prompts.LOGO_HELP));
   T.test("Logo: an empty program is an error, not a crash", ["Logo", "Runtime"], async () => { const r = await Runtime.runTurtle("   ", {}); return !r.ok && r.output.ops.length === 0; });
   T.test("Logo: a runaway drawing is stopped", ["Logo"], () => { const r = run("REPEAT 100000000 [FORWARD 1 RIGHT 1]"); return !r.ok && /too many steps/.test(r.error); });
   T.test("Logo: a command that never stops calling itself is stopped", ["Logo"], () => { const r = run("TO GO :N\n  FORWARD 1 GO :N + 1\nEND\nGO 1"); return !r.ok && /too many times/.test(r.error); });
