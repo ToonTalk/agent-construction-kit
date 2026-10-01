@@ -67,4 +67,15 @@ export default function (T, { modelWindow }) {
     return r.trace.length === 1 && !/sk-secret/.test(JSON.stringify(r.trace)) && !r.trace[0].render.image && !/[<>]/.test(r.trace[0].agentName);
   });
   T.test("exports never contain API keys", ["Society"], () => !/sk-secret/.test(Society.exportSociety(Seeds.makeTelephone(), [{ kind: "activation", call: { headers: { "x-api-key": "sk-secret" } } }])));
+  T.test("introductions and challenge levels survive export and import", ["Society"], () => {
+    const s = Society.importSociety(Society.exportSociety(Seeds.makePebbles(), null)).society;
+    return /Designer writes a Logo program/.test(s.intro) && s.challenges.find(c => c.id === "mystery").level === 3 && !("seed" in s);
+  });
+  T.test("a file from Agent Kit 1.0 gets Logo instead of its JavaScript drawings", ["Society", "Logo"], () => {
+    const d = JSON.parse(Society.exportSociety(Seeds.makeTelephone(), null));
+    d.society.starts[1].value = "penColor('green');\nfor (let i = 0; i < 3; i++) {\n  forward(120);\n  right(120);\n}";
+    d.society.agents[0].instructions = "You are the Artist in a game of Telephone. You get a short description of a picture, and you write a turtle program that draws it.\nCommands you can use: forward(n), back(n), left(degrees), right(degrees), penUp(), penDown(), penColor('red'), penWidth(n), goTo(x, y), home(), setHeading(degrees), dot(size, 'color'), label('text').\nThe canvas is 512 by 512. The turtle starts in the middle (256, 256), facing up. goTo(x, y) counts x from the left and y from the top.\nYou may use plain JavaScript loops, variables and Math. Put { } around every loop body. Do not use anything else.\nReply with only the program, with no explanation.";
+    const s = Society.importSociety(JSON.stringify(d)).society;
+    return s.starts[1].value === "SETPENCOLOR \"green\nREPEAT 3 [FORWARD 120 RIGHT 120]" && /write a Logo program/.test(s.agents[0].instructions) && /REPEAT 4 \[FORWARD 100 RIGHT 90\]/.test(s.agents[0].instructions) && !/penColor/.test(s.agents[0].instructions);
+  });
 }

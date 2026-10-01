@@ -318,6 +318,52 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 .guide p,.guide li{font-size:14px}
 .guide ul,.guide ol{padding-left:20px}
 
+/* words on screen: introductions, Markdown, Logo, read-only pseudocode */
+.qcard .intro{font-size:13.5px;color:var(--ink-soft);margin:4px 0 8px}
+.stage .intro{font-size:13.5px;color:var(--ink-soft);margin:0 0 10px}
+.mobile-only{display:none}
+@media (max-width:820px){.mobile-only{display:block}}
+.md p{margin:0 0 6px}
+.md p:last-child,.md ul:last-child,.md ol:last-child{margin-bottom:0}
+.md ul,.md ol{margin:2px 0 6px;padding-left:20px}
+.md li{margin:1px 0}
+.md .md-h{font-weight:800}
+.md code{background:#EEF2F8;border-radius:5px;padding:0 4px;font-size:.92em}
+.md blockquote{margin:4px 0;padding-left:8px;border-left:3px solid var(--line-strong);color:var(--ink-soft)}
+.md hr{border:none;border-top:1px solid var(--line);margin:6px 0}
+.md.compact p{margin:0}
+.said{background:#F7F5FF;border:1px solid #E4DFFF;border-radius:9px;padding:7px 10px;font-size:13.5px;overflow-wrap:anywhere}
+.said.data-only{background:#F3F6FA;border-color:var(--line)}
+.said .dl{display:block;font-size:11px;font-weight:800;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.tsec .badge{margin-bottom:5px}
+.also{font-size:12.5px;color:var(--ink-soft);margin-top:5px;overflow-wrap:anywhere}
+.techbtn{align-self:flex-start}
+.tech{border-top:1px dashed var(--line);padding-top:6px;display:flex;flex-direction:column;gap:8px}
+.thumb.big{width:180px;height:180px}
+pre.box.logo{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-height:1.55}
+.lg-k{color:#5B4BDB;font-weight:700}
+.lg-n{color:#B05E00}
+.lg-q{color:#12876A}
+.lg-v{color:#2563EB}
+.lg-b{color:#8A94AB;font-weight:700}
+.lg-c{color:#8A94AB;font-style:italic}
+.pseudo.mini{font-size:12.5px;line-height:1.6;padding:6px 0}
+.pseudo.mini .pl{padding:0 10px}
+.slot.ro{display:inline;border-width:1px;padding:0 3px;font-size:12px}
+.judge-peek{display:block;width:100%;text-align:left;border:none;background:none;padding:0;margin-top:2px;color:inherit}
+.judge-peek:hover .pseudo{border-color:var(--program)}
+.lvl{font-weight:800}
+.lvl1{color:var(--ok)}
+.lvl2{color:var(--warn)}
+.lvl3{color:var(--bad)}
+.nudge-inline{display:block;width:100%;margin-top:4px;color:#3D2E9E;background:#F4F1FF;border-radius:8px;padding:4px 9px;font-size:12.5px}
+.picks{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.pick{border:1.5px solid var(--line-strong);background:#fff;border-radius:999px;padding:2px 9px;font-size:12px}
+.pick.on{border-color:var(--accent);background:var(--accent-bg);color:#1846B8}
+.lib-list{display:flex;flex-direction:column;gap:6px}
+.lib-item{display:flex;gap:10px;align-items:center;border:1.5px solid var(--line);border-radius:12px;padding:8px 10px}
+.hmsg.ai{white-space:normal}
+
 /* toast */
 #toasts{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;width:max-content;max-width:calc(100vw - 30px)}
 .toast{background:var(--ink);color:#fff;border-radius:999px;padding:9px 18px;font-size:13.5px;transition:all .25s;text-align:center;opacity:0;transform:translateY(16px)}
@@ -338,7 +384,7 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.0.0";
+AK.VERSION = "1.0.1";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -412,7 +458,7 @@ function extractProgram(text) {
   const s = String(text == null ? "" : text);
   const m = s.match(/```[\w-]*[ \t]*\n?([\s\S]*?)```/);
   let code = m ? m[1] : s;
-  code = code.replace(/^\s*(?:javascript|js)\s*\n/i, "");
+  code = code.replace(/^\s*(?:javascript|js|logo)\s*\n/i, "");
   return code.trim();
 }
 // Tolerant JSON: whole reply, then a fenced block, then first "{" to last "}".
@@ -445,14 +491,13 @@ const fmt = n => String(Math.round(n * 100) / 100);
 AK.util = { hash, mulberry32, clone, deepEqual, esc, cleanText, cleanName, cleanId, cleanColor, safeData, stripMd, extractProgram, parseJsonTolerant, withTimeout, sleep, now, plural };
 
 /* ===== SECTION: SAFE JS (tokenizer, static check, instrumenter) ===== */
-// Programs (programmed agents and turtle drawings) are small JavaScript. Before any of it runs:
+// Programmed agents are small JavaScript (drawings are Logo, which never becomes JavaScript). Before a program runs:
 // 1. a static check rejects forbidden and unknown names, regexes, try/catch, and braceless loops;
 // 2. an instrumenter adds a step counter to every loop and function body and wraps every [ ]
 //    lookup in a key guard, so neither a runaway loop nor a "constructor" lookup can escape.
-const TURTLE_API = ["forward", "back", "left", "right", "penUp", "penDown", "penColor", "penWidth", "goTo", "home", "setHeading", "dot", "label"];
 const PROGRAM_API = ["input", "params", "h"];
 const BASE_GLOBALS = ["undefined", "NaN", "Infinity", "Math", "Number", "String", "Boolean", "Array", "Object", "JSON", "Map", "Set", "Error", "isNaN", "isFinite", "parseInt", "parseFloat"];
-const SHADOW_KEEP = ["__ak", "Math"].concat(BASE_GLOBALS, TURTLE_API, PROGRAM_API);
+const SHADOW_KEEP = ["__ak", "Math"].concat(BASE_GLOBALS, PROGRAM_API);
 const KEYWORDS = new Set(("break case catch class const continue debugger default delete do else export extends finally for function if import in instanceof let new of return super switch this throw try typeof var void while with yield async await static true false null").split(" "));
 const FORBIDDEN_KEYWORDS = new Set(["class", "debugger", "export", "extends", "import", "super", "this", "try", "catch", "finally", "with", "yield", "async", "await", "static"]);
 const ALWAYS_FORBIDDEN = { window: "the web page", document: "the web page", globalThis: "the web page", self: "the web page", fetch: "the internet", XMLHttpRequest: "the internet", WebSocket: "the internet", postMessage: "other programs", importScripts: "other programs", eval: "hidden code", Function: "hidden code", constructor: "hidden code", prototype: "hidden code", arguments: "hidden code" };
@@ -678,13 +723,12 @@ function braceKind(prev, frame) {
 }
 const isForbiddenMember = name => FORBIDDEN_MEMBERS.has(name) || name.slice(0, 2) === "__";
 const PROGRAM_KNOWS = "Programs can use input, params, h, their own variables, and Math, Array, String and Number.";
-const TURTLE_KNOWS = "Turtle programs can use forward, back, left, right, penUp, penDown, penColor, penWidth, goTo, home, setHeading, dot, label, their own variables, and Math.";
 function forbiddenMessage(name) {
   const what = ALWAYS_FORBIDDEN[name] || SOFT_FORBIDDEN[name] || "hidden code";
   return "“" + name + "” isn't allowed. Programs here only work with the data they are given, so they can't reach " + what + ".";
 }
 function checkJS(src, kind) {
-  const api = kind === "turtle" ? TURTLE_API : PROGRAM_API;
+  const api = PROGRAM_API;
   const tk = tokenize(String(src == null ? "" : src));
   const errors = [];
   const err = (t, message) => errors.push({ line: t ? t.line : 1, message });
@@ -698,7 +742,7 @@ function checkJS(src, kind) {
   for (let k = 0; k < sig.length; k++) {
     const t = sig[k], prev = sig[k - 1], next = sig[k + 1];
     if (t.type === "bad") continue;
-    if (t.type === "regex") { err(t, kind === "turtle" ? "patterns like /…/ aren't allowed in turtle programs." : "patterns like /…/ aren't allowed here. Use h.words(text) to get the words of a text."); continue; }
+    if (t.type === "regex") { err(t, "patterns like /…/ aren't allowed here. Use h.words(text) to get the words of a text."); continue; }
     if (t.type === "tmpl") {
       if (t.value[0] === "}" && stack.length > 1 && top().type === "tmpl") stack.pop();
       if (t.value.endsWith("${")) stack.push({ type: "tmpl", q: 0 });
@@ -770,20 +814,18 @@ function checkJS(src, kind) {
     }
     if (allowed.has(name)) continue;
     if (SOFT_FORBIDDEN[name]) { err(t, forbiddenMessage(name)); continue; }
-    err(t, "“" + name + "” isn't a name this program knows. " + (kind === "turtle" ? TURTLE_KNOWS : PROGRAM_KNOWS));
+    err(t, "“" + name + "” isn't a name this program knows. " + PROGRAM_KNOWS);
   }
-  if (kind === "program") {
-    if (!sig.length) err(null, "The program is empty. It must be one function: function run(input, params, h) { … }");
-    else if (!(sig[0].value === "function" && sig[1] && sig[1].value === "run" && sig[2] && sig[2].value === "(")) err(sig[0], "the program must start with: function run(input, params, h) {");
+  if (!sig.length) err(null, "The program is empty. It must be one function: function run(input, params, h) { … }");
+  else if (!(sig[0].value === "function" && sig[1] && sig[1].value === "run" && sig[2] && sig[2].value === "(")) err(sig[0], "the program must start with: function run(input, params, h) {");
+  else {
+    const close = matchForward(sig, 2);
+    const open = close + 1;
+    if (close < 0 || !sig[open] || sig[open].value !== "{") err(sig[2], "the program must be one function: function run(input, params, h) { … }");
     else {
-      const close = matchForward(sig, 2);
-      const open = close + 1;
-      if (close < 0 || !sig[open] || sig[open].value !== "{") err(sig[2], "the program must be one function: function run(input, params, h) { … }");
-      else {
-        const end = matchForward(sig, open);
-        if (end < 0) err(sig[open], "a { is never closed with }.");
-        else for (let j = end + 1; j < sig.length; j++) if (sig[j].value !== ";") { err(sig[j], "only one function is allowed: put everything inside function run."); break; }
-      }
+      const end = matchForward(sig, open);
+      if (end < 0) err(sig[open], "a { is never closed with }.");
+      else for (let j = end + 1; j < sig.length; j++) if (sig[j].value !== ";") { err(sig[j], "only one function is allowed: put everything inside function run."); break; }
     }
   }
   const seen = new Set();
@@ -869,7 +911,7 @@ function compileJS(src, kind) {
   return out;
 }
 function formatErrors(errors) { return (errors || []).slice(0, 6).map(e => "Line " + e.line + ": " + e.message).join("\n"); }
-AK.SafeJS = { tokenize, checkJS, instrument, compileJS, formatErrors, TURTLE_API, PROGRAM_API, BASE_GLOBALS };
+AK.SafeJS = { tokenize, checkJS, instrument, compileJS, formatErrors, PROGRAM_API, BASE_GLOBALS };
 
 /* ===== SECTION: SANDBOX PRIMITIVES (serialized into the Worker, so self-contained) ===== */
 function makeGuard(limit) {
@@ -936,6 +978,7 @@ function makeH(seed, guard) {
   };
 }
 // The turtle: records drawing operations as plain data. Canvas 512 x 512, starts in the middle facing up.
+// It works in canvas units (x from the left, y down from the top, heading 0 = right); Logo converts.
 function makeTurtle(guard) {
   let x = 256, y = 256, heading = -90, pen = true, color = "black", width = 2, segments = 0;
   const ops = [], dots = [], labels = [];
@@ -948,7 +991,22 @@ function makeTurtle(guard) {
     x = nx; y = ny;
   }
   function move(d) { guard.tick(); const a = heading * Math.PI / 180; lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d); }
+  // Part of a circle around (cx, cy), from angle a0 through sweep degrees; the turtle ends back at the middle.
+  function around(cx, cy, r, a0, sweep, steps) {
+    const was = pen;
+    pen = false; lineTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r); pen = was;
+    for (let k = 1; k <= steps; k++) { const a = a0 + (sweep * k / steps) * Math.PI / 180; lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+    pen = false; lineTo(cx, cy); pen = was;
+  }
   const api = {
+    circle(r) { guard.tick(); const rr = Math.abs(num(r, 0)); if (rr > 0) around(x, y, Math.min(rr, 2000), -Math.PI / 2, 360, 36); },
+    arc(angle, r) {
+      guard.tick();
+      const rr = Math.min(Math.abs(num(r, 0)), 2000), sweep = Math.max(-3600, Math.min(3600, num(angle, 0)));
+      if (rr > 0 && sweep) around(x, y, rr, heading * Math.PI / 180, sweep, Math.max(1, Math.ceil(Math.abs(sweep) / 10)));
+    },
+    clear(home) { guard.tick(); ops.length = 0; dots.length = 0; labels.length = 0; segments = 0; if (home) { x = 256; y = 256; heading = -90; } },
+    state() { return { x: x, y: y, heading: heading, pen: pen }; },
     forward(d) { move(num(d, 0)); },
     back(d) { move(-num(d, 0)); },
     left(a) { guard.tick(); heading -= num(a, 0); },
@@ -991,7 +1049,7 @@ function computeShadowNames(realm, keep) {
   }
   return Array.from(names);
 }
-function workerMain(scope, TURTLE, KEEP) {
+function workerMain(scope, KEEP) {
   const shadow = computeShadowNames(scope, KEEP);
   const cache = new Map();
   scope.onmessage = function (e) {
@@ -1001,28 +1059,19 @@ function workerMain(scope, TURTLE, KEEP) {
     M.random = mulberry32((job.seed >>> 0) || 1);
     const t0 = Date.now();
     let reply;
-    let T = null;
     try {
       let factory = cache.get(job.key);
       if (!factory) {
-        factory = Function.apply(null, shadow.concat(["__ak", "Math"], job.kind === "turtle" ? TURTLE : [], [job.body]));
+        factory = Function.apply(null, shadow.concat(["__ak", "Math", job.body]));
         if (cache.size > 200) cache.clear();
         cache.set(job.key, factory);
       }
-      const pad = new Array(shadow.length);
-      if (job.kind === "program") {
-        const run = factory.apply(null, pad.concat([guard, M]));
-        if (typeof run !== "function") throw new Error("The program must define function run(input, params, h).");
-        const out = run(job.input, job.params, makeH(job.seed, guard));
-        reply = { ok: true, output: out === undefined ? null : JSON.parse(JSON.stringify(out)) };
-      } else {
-        T = makeTurtle(guard);
-        factory.apply(null, pad.concat([guard, M], TURTLE.map(n => T.api[n])));
-        reply = { ok: true, output: T.result() };
-      }
+      const run = factory.apply(null, new Array(shadow.length).concat([guard, M]));
+      if (typeof run !== "function") throw new Error("The program must define function run(input, params, h).");
+      const out = run(job.input, job.params, makeH(job.seed, guard));
+      reply = { ok: true, output: out === undefined ? null : JSON.parse(JSON.stringify(out)) };
     } catch (err) {
       reply = { ok: false, error: String((err && err.message) || err), errName: err && err.name };
-      if (T) reply.output = T.result();
     }
     reply.id = job.id;
     reply.ticks = guard.ticks;
@@ -1031,13 +1080,502 @@ function workerMain(scope, TURTLE, KEEP) {
   };
 }
 
+/* ===== SECTION: LOGO (the drawing language: the Artist and Designer write it, the Renderer runs it) ===== */
+// A small Logo interpreter. It reads a program as words and lists and never turns it into
+// JavaScript, so a drawing can only move the turtle; every instruction counts as a step.
+// Coordinates are Logo's: 0 0 is the middle, y goes up, heading 0 is up and 90 is right.
+const Logo = (() => {
+  const MAX_DEPTH = 200;
+  const PALETTE = ["black", "blue", "green", "cyan", "red", "magenta", "yellow", "white", "brown", "tan", "forestgreen", "aqua", "salmon", "purple", "orange", "gray"];
+  const WORD_END = /[\s\[\]();,+\-*\/=<>"]/;
+  const NUM_TEXT = /^\s*-?(\d+(\.\d*)?|\.\d+)\s*$/;
+  function fail(line, message) { const e = new Error(message); e.logoLine = line || 0; throw e; }
+
+  // Reading: words, numbers, "quoted words, :names, [lists], ( ) and + - * / = < > <= >= <>.
+  function tokenize(src) {
+    const s = String(src == null ? "" : src).replace(/\r\n?/g, "\n");
+    const root = { t: "list", items: [], line: 1, raw: s };
+    const stack = [root];
+    const items = () => stack[stack.length - 1].items;
+    const valueEnd = t => !!t && (t.t === "num" || t.t === "word" || t.t === "qword" || t.t === "var" || t.t === "list" || t.t === ")");
+    let i = 0, line = 1;
+    while (i < s.length) {
+      const c = s[i];
+      if (c === "\n") { line++; i++; continue; }
+      if (/\s/.test(c) || c === ",") { i++; continue; }
+      if (c === ";") { while (i < s.length && s[i] !== "\n") i++; continue; }
+      if (c === "[") { const l = { t: "list", items: [], line, start: i + 1 }; items().push(l); stack.push(l); i++; continue; }
+      if (c === "]") {
+        if (stack.length === 1) fail(line, "There's a ] without a [ before it.");
+        const l = stack.pop(); l.raw = s.slice(l.start, i); i++; continue;
+      }
+      if (c === "(" || c === ")") { items().push({ t: c, line, text: c }); i++; continue; }
+      if ("+*/=<>".indexOf(c) >= 0) {
+        const two = s.slice(i, i + 2);
+        const op = two === "<=" || two === ">=" || two === "<>" ? two : c;
+        items().push({ t: "op", v: op, line, text: op }); i += op.length; continue;
+      }
+      if (c === "-") {
+        // Logo's rule: a minus with a space before it and none after it is a negative sign, so SETXY 10 -20 works.
+        const list = items(), prev = list[list.length - 1];
+        const spaceBefore = i === 0 || /[\s\[(]/.test(s[i - 1]);
+        const spaceAfter = i + 1 >= s.length || /\s/.test(s[i + 1]);
+        list.push(!valueEnd(prev) || (spaceBefore && !spaceAfter) ? { t: "neg", line, text: "-" } : { t: "op", v: "-", line, text: "-" });
+        i++; continue;
+      }
+      if (c === '"' || c === ":") {
+        let j = i + 1;
+        const stop = c === '"' ? /[\s\[\]();]/ : WORD_END;
+        while (j < s.length && !stop.test(s[j])) j++;
+        let w = s.slice(i + 1, j);
+        if (c === '"') {
+          if (w.length > 1 && w.endsWith('"')) w = w.slice(0, -1);   // "red" written as in JavaScript
+          items().push({ t: "qword", v: w, line, text: s.slice(i, j) });
+        } else {
+          if (!w) fail(line, "A : needs a name right after it, like :SIZE.");
+          items().push({ t: "var", v: w.toUpperCase(), line, text: s.slice(i, j) });
+        }
+        i = j; continue;
+      }
+      let j = i;
+      while (j < s.length && !WORD_END.test(s[j])) j++;
+      if (j === i) j = i + 1;
+      const w = s.slice(i, j);
+      if (/^(\d+(\.\d*)?|\.\d+)$/.test(w)) items().push({ t: "num", v: +w, line, text: w });
+      else if (w.length > 2 && w[0] === "'" && w[w.length - 1] === "'") items().push({ t: "qword", v: w.slice(1, -1), line, text: w });
+      else items().push({ t: "word", v: w.toUpperCase(), line, text: w });
+      i = j;
+    }
+    if (stack.length > 1) fail(stack[stack.length - 1].line, "A [ is never closed with ].");
+    return root.items;
+  }
+  function editDistance(a, b) {
+    let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+  function closest(w, names) {
+    let best = null, bestD = w.length <= 4 ? 2 : 3;
+    for (const n of names) if (Math.abs(n.length - w.length) <= 2) { const d = editDistance(w, n); if (d < bestD) { best = n; bestD = d; } }
+    return best;
+  }
+
+  // Running. T is a turtle from makeTurtle; rng gives RANDOM and PICK their numbers.
+  function interpreter(T, guard, rng) {
+    const procs = new Map(), globals = new Map(), frames = [], reps = [];
+    let depth = 0;
+    const where = () => T.api.state();
+    const r6 = v => Math.round(v * 1e6) / 1e6;
+    const asNum = v => (typeof v === "number" ? v : typeof v === "string" && NUM_TEXT.test(v) ? +v : null);
+    const isList = v => Array.isArray(v) || !!(v && v.t === "list");
+    function show(v) {   // with a length budget, so a list built from itself can't run away
+      let out = "";
+      (function walk(x) {
+        if (x === undefined) out += "nothing";
+        else if (typeof x === "boolean") out += x ? "true" : "false";
+        else if (typeof x === "number") out += String(r6(x));
+        else if (Array.isArray(x)) {
+          out += "[";
+          for (let k = 0; k < x.length && out.length <= 2000; k++) { if (k) out += " "; walk(x[k]); }
+          out += "]";
+        } else if (x && x.t === "list") out += "[" + String(x.raw || "").replace(/\s+/g, " ").trim() + "]";
+        else out += String(x);
+      })(v);
+      return out.length > 2000 ? out.slice(0, 2000) + "…" : out;
+    }
+    const quote = v => (isList(v) ? show(v) : "“" + show(v) + "”");
+    function num(v, t) {
+      const n = asNum(v);
+      if (n !== null && isFinite(n)) return n;
+      fail(t.line, (t.text || "This") + " needs a number, not " + quote(v) + ".");
+    }
+    function bool(v, t) {
+      if (typeof v === "boolean") return v;
+      const w = String(v).toLowerCase();
+      if (w === "true" || w === "false") return w === "true";
+      fail(t.line, (t.text || "This") + " needs true or false, not " + quote(v) + ".");
+    }
+    function values(v, t) {
+      if (Array.isArray(v)) return v;
+      if (!v || v.t !== "list") fail(t.line, (t.text || "This") + " needs a list in [ ], not " + quote(v) + ".");
+      const out = [];
+      for (let k = 0; k < v.items.length; k++) {
+        const x = v.items[k];
+        if (x.t === "neg" && v.items[k + 1] && v.items[k + 1].t === "num") { out.push(-v.items[++k].v); continue; }
+        out.push(x.t === "num" ? x.v : x.t === "list" ? x : x.t === "qword" ? x.v : x.text);
+      }
+      return out;
+    }
+    function body(v, t) {
+      if (v && v.t === "list") return v.items;
+      fail(t.line, (t.text || "This") + " needs its commands in [ ], like REPEAT 4 [FORWARD 50 RIGHT 90].");
+    }
+    function color(v, t) {
+      if (typeof v === "number" || (typeof v === "string" && /^\s*\d+\s*$/.test(v))) {
+        const c = PALETTE[Math.round(+v)];
+        if (!c) fail(t.line, t.text + " knows the colors 0 to 15 by number. A color name works too, like \"red.");
+        return c;
+      }
+      if (isList(v)) {
+        const p = values(v, t).map(x => Math.max(0, Math.min(255, Math.round(num(x, t)))));
+        if (p.length !== 3) fail(t.line, t.text + " needs three numbers for red, green and blue, like [255 128 0].");
+        return "rgb(" + p.join(", ") + ")";
+      }
+      const c = cleanColor(String(v));
+      if (!c) fail(t.line, t.text + " doesn't know the color " + quote(v) + ".");
+      return c;
+    }
+    const labelText = v => (v && v.t === "list" ? String(v.raw || "").replace(/\s+/g, " ").trim() : Array.isArray(v) ? v.map(show).join(" ") : show(v));
+    function getVar(t) {
+      for (let k = frames.length - 1; k >= 0; k--) if (frames[k].has(t.v)) { const v = frames[k].get(t.v); return v === undefined ? noValue(t) : v; }
+      return globals.has(t.v) ? globals.get(t.v) : noValue(t);
+    }
+    function noValue(t) { fail(t.line, t.text + " has no value yet. Give it one first, like MAKE \"" + t.v + " 10."); }
+    function setVar(name, v, t) {
+      const n = typeof name === "string" ? name.replace(/^:/, "").toUpperCase() : "";
+      if (!n || /[\s\[\]();:"]/.test(n)) fail(t.line, t.text + " needs a name with a quote mark before it, like " + t.text + " \"SIZE 10.");
+      for (let k = frames.length - 1; k >= 0; k--) if (frames[k].has(n)) { frames[k].set(n, v); return; }
+      if (globals.size >= 500 && !globals.has(n)) fail(t.line, "This program uses too many different names.");
+      globals.set(n, v);
+    }
+
+    const P = {};
+    function def(names, arity, fn, out) { const list = names.split(" "); for (const n of list) P[n] = { arity, fn, out: !!out }; }
+    const deg = Math.PI / 180;
+    const xcor = () => r6(where().x - 256), ycor = () => r6(256 - where().y);
+    const nums = (a, t) => a.map(x => num(x, t));
+    const items1 = (v, t) => (typeof v === "string" ? v.split("") : values(v, t));
+    const nonEmpty = (l, t) => { if (!l.length) fail(t.line, t.text + " needs something that isn't empty."); return l; };
+    const divide = (y, t) => { if (y === 0) fail(t.line, "You can't divide by zero."); return y; };
+    // moving and drawing
+    def("FORWARD FD", 1, (a, t) => T.api.forward(num(a[0], t)));
+    def("BACK BK", 1, (a, t) => T.api.back(num(a[0], t)));
+    def("RIGHT RT", 1, (a, t) => T.api.right(num(a[0], t)));
+    def("LEFT LT", 1, (a, t) => T.api.left(num(a[0], t)));
+    def("PENUP PU", 0, () => T.api.penUp());
+    def("PENDOWN PD", 0, () => T.api.penDown());
+    def("SETPENCOLOR SETPC SETCOLOR PENCOLOR", 1, (a, t) => T.api.penColor(color(a[0], t)));
+    def("SETPENSIZE SETWIDTH SETPENWIDTH", 1, (a, t) => T.api.penWidth(num(isList(a[0]) ? values(a[0], t)[0] : a[0], t)));
+    def("SETXY", 2, (a, t) => T.api.goTo(256 + num(a[0], t), 256 - num(a[1], t)));
+    def("SETX", 1, (a, t) => T.api.goTo(256 + num(a[0], t), where().y));
+    def("SETY", 1, (a, t) => T.api.goTo(where().x, 256 - num(a[0], t)));
+    def("SETPOS", 1, (a, t) => { const p = values(a[0], t); if (p.length !== 2) fail(t.line, "SETPOS needs a list of two numbers, like [100 -50]."); T.api.goTo(256 + num(p[0], t), 256 - num(p[1], t)); });
+    def("SETHEADING SETH", 1, (a, t) => T.api.setHeading(num(a[0], t) - 90));
+    def("HOME", 0, () => T.api.home());
+    def("CLEARSCREEN CS", 0, () => T.api.clear(true));
+    def("CLEAN", 0, () => T.api.clear(false));
+    def("HIDETURTLE HT SHOWTURTLE ST", 0, () => guard.tick());
+    def("WAIT", 1, () => guard.tick());
+    def("DOT", 1, (a, t) => T.api.dot(num(a[0], t), a.length > 1 ? color(a[1], t) : undefined));
+    def("CIRCLE", 1, (a, t) => T.api.circle(num(a[0], t)));
+    def("ARC", 2, (a, t) => T.api.arc(num(a[0], t), num(a[1], t)));
+    let labelSize = 18;
+    def("LABEL", 1, a => T.api.label(labelText(a[0]), labelSize));
+    def("SETLABELHEIGHT SETFONTSIZE", 1, (a, t) => { guard.tick(); labelSize = Math.max(6, Math.min(72, num(a[0], t))); });
+    def("PRINT PR SHOW TYPE", 1, (a, t) => fail(t.line, t.text + " has nowhere to print here. To write words on the picture, use LABEL."));
+    // control
+    def("REPEAT", 2, (a, t) => {
+      const n = Math.floor(num(a[0], t)), list = body(a[1], t);
+      for (let k = 1; k <= n; k++) { guard.tick(); reps.push(k); try { runList(list); } finally { reps.pop(); } }
+    });
+    def("FOR", 2, (a, t) => {
+      const ctl = a[0] && a[0].t === "list" ? a[0].items : null;
+      if (!ctl || !ctl.length || (ctl[0].t !== "word" && ctl[0].t !== "qword")) fail(t.line, "FOR needs a name and numbers in [ ], like FOR [I 1 10] [FORWARD :I].");
+      const ends = [];
+      for (let j = 1; j < ctl.length;) { const r = expr(ctl, j); ends.push(num(need(r.v, ctl[j]), t)); j = r.i; }
+      if (ends.length < 2 || ends.length > 3) fail(t.line, "FOR needs a start and an end, like FOR [I 1 10], and maybe a step, like FOR [I 1 10 2].");
+      const from = ends[0], to = ends[1], step = ends.length === 3 ? ends[2] : (to >= from ? 1 : -1);
+      if (!step) fail(t.line, "FOR's step can't be 0.");
+      const list = body(a[1], t), frame = new Map();
+      frames.push(frame);
+      try { for (let v = from; step > 0 ? v <= to + 1e-9 : v >= to - 1e-9; v += step) { guard.tick(); frame.set(String(ctl[0].v).toUpperCase(), r6(v)); runList(list); } }
+      finally { frames.pop(); }
+    });
+    def("WHILE", 2, (a, t) => {
+      if (!a[0] || a[0].t !== "list") fail(t.line, "WHILE needs its test in [ ], like WHILE [:N < 10] [MAKE \"N :N + 1].");
+      const list = body(a[1], t);
+      for (;;) { guard.tick(); if (!bool(need(runList(a[0].items, true), a[0]), t)) break; runList(list); }
+    });
+    def("IF", 2, (a, t) => (bool(a[0], t) ? runList(body(a[1], t), true) : a.length > 2 ? runList(body(a[2], t), true) : undefined), true);
+    def("IFELSE", 3, (a, t) => runList(body(bool(a[0], t) ? a[1] : a[2], t), true), true);
+    def("MAKE", 2, (a, t) => setVar(a[0], a[1], t));
+    def("LOCAL", 1, (a, t) => { if (frames.length) { const n = typeof a[0] === "string" ? a[0].toUpperCase() : ""; if (!n) fail(t.line, "LOCAL needs a name with a quote mark before it."); frames[frames.length - 1].set(n, undefined); } });
+    def("STOP", 0, () => { throw { logoStop: true }; });
+    def("OUTPUT OP", 1, a => { throw { logoStop: true, value: a[0] }; });
+    // operations that give back a value
+    def("SUM", 2, (a, t) => nums(a, t).reduce((x, y) => x + y, 0), true);
+    def("DIFFERENCE", 2, (a, t) => num(a[0], t) - num(a[1], t), true);
+    def("PRODUCT", 2, (a, t) => nums(a, t).reduce((x, y) => x * y, 1), true);
+    def("QUOTIENT", 2, (a, t) => num(a[0], t) / divide(num(a[1], t), t), true);
+    def("REMAINDER", 2, (a, t) => num(a[0], t) % divide(num(a[1], t), t), true);
+    def("MODULO", 2, (a, t) => { const y = divide(num(a[1], t), t); return ((num(a[0], t) % y) + y) % y; }, true);
+    def("POWER", 2, (a, t) => Math.pow(num(a[0], t), num(a[1], t)), true);
+    def("MINUS", 1, (a, t) => -num(a[0], t), true);
+    def("ABS", 1, (a, t) => Math.abs(num(a[0], t)), true);
+    def("SQRT", 1, (a, t) => { const x = num(a[0], t); if (x < 0) fail(t.line, "SQRT needs a number that isn't negative."); return Math.sqrt(x); }, true);
+    def("ROUND", 1, (a, t) => Math.round(num(a[0], t)), true);
+    def("INT", 1, (a, t) => Math.trunc(num(a[0], t)), true);
+    def("SIN", 1, (a, t) => r6(Math.sin(num(a[0], t) * deg)), true);
+    def("COS", 1, (a, t) => r6(Math.cos(num(a[0], t) * deg)), true);
+    def("ARCTAN", 1, (a, t) => r6(Math.atan(num(a[0], t)) / deg), true);
+    def("PI", 0, () => Math.PI, true);
+    def("RANDOM", 1, (a, t) => { const n = Math.floor(num(a[0], t)); if (n < 1) fail(t.line, "RANDOM needs a number of at least 1."); return Math.floor(rng() * n); }, true);
+    def("PICK", 1, (a, t) => { const l = nonEmpty(values(a[0], t), t); return l[Math.floor(rng() * l.length)]; }, true);
+    def("REPCOUNT", 0, (a, t) => { if (!reps.length) fail(t.line, "REPCOUNT only works inside REPEAT."); return reps[reps.length - 1]; }, true);
+    def("XCOR", 0, xcor, true);
+    def("YCOR", 0, ycor, true);
+    def("POS", 0, () => [xcor(), ycor()], true);
+    def("HEADING", 0, () => r6((((where().heading + 90) % 360) + 360) % 360), true);
+    def("ITEM", 2, (a, t) => { const k = Math.floor(num(a[0], t)), l = items1(a[1], t); if (k < 1 || k > l.length) fail(t.line, "ITEM " + k + " is past the end: there are only " + l.length + "."); return l[k - 1]; }, true);
+    def("COUNT", 1, (a, t) => (isList(a[0]) ? values(a[0], t).length : show(a[0]).length), true);
+    def("FIRST", 1, (a, t) => nonEmpty(items1(a[0], t), t)[0], true);
+    def("LAST", 1, (a, t) => { const l = nonEmpty(items1(a[0], t), t); return l[l.length - 1]; }, true);
+    def("BUTFIRST BF", 1, (a, t) => (typeof a[0] === "string" ? a[0].slice(1) : nonEmpty(values(a[0], t), t).slice(1)), true);
+    def("LIST", 2, a => a.slice(), true);
+    def("SENTENCE SE", 2, (a, t) => { const out = []; for (const x of a) { if (isList(x)) for (const y of values(x, t)) { guard.tick(); out.push(y); } else out.push(x); } return out; }, true);
+    def("WORD", 2, (a, t) => { const w = a.map(show).join(""); if (w.length > 1000) fail(t.line, "That word is too long."); return w; }, true);
+    def("AND", 2, (a, t) => a.every(x => bool(x, t)), true);
+    def("OR", 2, (a, t) => a.some(x => bool(x, t)), true);
+    def("NOT", 1, (a, t) => !bool(a[0], t), true);
+
+    function need(v, at, user) {
+      if (v === undefined) fail(at ? at.line : 0, ((at && at.text) || "That") + " doesn't give back a value" + (user ? ", so " + user.text + " can't use it" : "") + ".");
+      return v;
+    }
+    function compare(op, a, b) {
+      if (op.v === "=" || op.v === "<>") {
+        const x = asNum(a), y = asNum(b);
+        const eq = x !== null && y !== null ? Math.abs(x - y) < 1e-9 : show(a).toLowerCase() === show(b).toLowerCase();
+        return op.v === "=" ? eq : !eq;
+      }
+      const x = num(a, op), y = num(b, op);
+      return op.v === "<" ? x < y : op.v === ">" ? x > y : op.v === "<=" ? x <= y : x >= y;
+    }
+    function binary(toks, i, ops, next, apply) {
+      let r = next(toks, i);
+      for (;;) {
+        const op = toks[r.i];
+        if (!op || op.t !== "op" || ops.indexOf(op.v) < 0) return r;
+        if (r.i + 1 >= toks.length) fail(op.line, "“" + op.v + "” needs something after it.");
+        const left = need(r.v, toks[i]), b = next(toks, r.i + 1);
+        r = { v: apply(op, left, need(b.v, toks[r.i + 1])), i: b.i };
+      }
+    }
+    function expr(toks, i) { return binary(toks, i, ["=", "<", ">", "<=", ">=", "<>"], additive, compare); }
+    function additive(toks, i) { return binary(toks, i, ["+", "-"], multiplicative, (op, x, y) => (op.v === "+" ? num(x, op) + num(y, op) : num(x, op) - num(y, op))); }
+    function multiplicative(toks, i) { return binary(toks, i, ["*", "/"], unary, (op, x, y) => (op.v === "*" ? num(x, op) * num(y, op) : num(x, op) / divide(num(y, op), op))); }
+    function unary(toks, i) {
+      const t = toks[i];
+      if (t && (t.t === "neg" || (t.t === "op" && t.v === "-"))) {
+        if (i + 1 >= toks.length) fail(t.line, "A minus sign needs a number after it.");
+        const r = unary(toks, i + 1);
+        return { v: -num(need(r.v, toks[i + 1]), t), i: r.i };
+      }
+      return primary(toks, i);
+    }
+    function primary(toks, i) {
+      const t = toks[i];
+      if (!t) { const p = toks[i - 1]; fail(p ? p.line : 0, "Something is missing at the end" + (p && p.text ? ", after " + p.text : "") + "."); }
+      if (t.t === "num" || t.t === "qword") return { v: t.v, i: i + 1 };
+      if (t.t === "var") return { v: getVar(t), i: i + 1 };
+      if (t.t === "list") return { v: t, i: i + 1 };
+      if (t.t === ")") fail(t.line, "There's a ) without a ( before it.");
+      if (t.t === "op") fail(t.line, "“" + t.v + "” needs something before it.");
+      if (t.t === "(") {
+        const nx = toks[i + 1], after = toks[i + 2];
+        if (nx && nx.t === "word" && (P[nx.v] || procs.has(nx.v)) && !(after && after.t === "op")) {   // (DOT 14 "red): a command with extra inputs
+          const args = [];
+          let j = i + 2;
+          while (j < toks.length && toks[j].t !== ")") { const r = expr(toks, j); args.push(need(r.v, toks[j], nx)); j = r.i; }
+          if (j >= toks.length) fail(t.line, "A ( is never closed with ).");
+          return { v: invoke(nx, args), i: j + 1 };
+        }
+        const r = expr(toks, i + 1);
+        if (!toks[r.i] || toks[r.i].t !== ")") fail(t.line, "A ( is never closed with ).");
+        return { v: r.v, i: r.i + 1 };
+      }
+      const p = P[t.v], up = procs.get(t.v);
+      if (!p && !up) fail(t.line, unknown(t));
+      const arity = p ? p.arity : up.params.length;
+      const args = [];
+      let j = i + 1;
+      for (let k = 0; k < arity; k++) {
+        if (j >= toks.length || toks[j].t === ")") fail(t.line, t.text + " needs " + plural(arity, "input") + (k ? ", but it got only " + k : "") + ".");
+        const r = expr(toks, j);
+        args.push(need(r.v, toks[j], t));
+        j = r.i;
+      }
+      if (t.v === "IF" && toks[j] && toks[j].t === "list") args.push(toks[j++]);   // IF test [yes] [no] works like IFELSE
+      return { v: invoke(t, args), i: j };
+    }
+    function unknown(t) {
+      const w = t.v;
+      if (w === "TO") return "TO makes a new command, so it can't go inside [ ] or inside another TO.";
+      if (w === "END") return "There's an END without a TO before it.";
+      if (NAMED_COLORS[w.toLowerCase()]) return "To use a color, put a quote mark before it, like SETPENCOLOR \"" + t.text + ".";
+      if (/^(SETBG|SETBACKGROUND|SETSCREENCOLOR|SETSC)$/.test(w)) return "The background is always white here, so draw shapes on it instead.";
+      if (/^(FILL|FILLED|SETFLOODCOLOR|BEGINFILL|ENDFILL)$/.test(w)) return "There's no " + t.text + " here. For a filled circle, use DOT, like DOT 40.";
+      const glued = /^([A-Z]+)(\d+(\.\d+)?)$/.exec(w);
+      if (glued && P[glued[1]]) return "Put a space between " + glued[1] + " and " + glued[2] + ".";
+      const near = closest(w, Object.keys(P).concat(Array.from(procs.keys())));
+      return "I don't know how to " + t.text + "." + (near ? " Did you mean " + near + "?" : "");
+    }
+    function invoke(t, args) {
+      const p = P[t.v];
+      if (p) {
+        if (args.length < p.arity) fail(t.line, t.text + " needs " + plural(p.arity, "input") + ".");
+        guard.tick();
+        const v = p.fn(args, t);
+        return p.out ? v : undefined;
+      }
+      const up = procs.get(t.v);
+      if (args.length !== up.params.length) fail(t.line, t.text + " needs " + plural(up.params.length, "input") + ".");
+      if (depth >= MAX_DEPTH) fail(t.line, up.text + " was used inside itself too many times (more than " + MAX_DEPTH + " deep). Does it ever STOP?");
+      const frame = new Map();
+      up.params.forEach((n, k) => frame.set(n, args[k]));
+      frames.push(frame); depth++;
+      try { runList(up.body); return undefined; }
+      catch (e) { if (e && e.logoStop) return e.value; throw e; }
+      finally { frames.pop(); depth--; }
+    }
+    function runList(toks, wantValue) {
+      for (let i = 0; i < toks.length;) {
+        guard.tick();
+        const r = expr(toks, i);
+        if (r.v !== undefined) {
+          if (wantValue && r.i >= toks.length) return r.v;
+          fail(toks[i].line, "You don't say what to do with " + quote(r.v) + ". A line should start with a command, like FORWARD.");
+        }
+        i = r.i;
+      }
+      return undefined;
+    }
+    // TO NAME :INPUT … END makes a new command. Commands are collected first, so they can be used before they are defined.
+    function define(toks) {
+      const rest = [];
+      for (let k = 0; k < toks.length; k++) {
+        const t = toks[k];
+        if (t.t !== "word" || (t.v !== "TO" && t.v !== "END")) { rest.push(t); continue; }
+        if (t.v === "END") fail(t.line, "There's an END without a TO before it.");
+        const nameTok = toks[k + 1];
+        if (!nameTok || nameTok.t !== "word") fail(t.line, "TO needs a name for the new command, like TO SQUARE.");
+        if (P[nameTok.v]) fail(nameTok.line, nameTok.text + " is already a Logo command, so pick another name.");
+        if (procs.has(nameTok.v)) fail(nameTok.line, "There are two commands called " + nameTok.text + ".");
+        let j = k + 2;
+        const params = [];
+        while (toks[j] && toks[j].t === "var") params.push(toks[j++].v);
+        const start = j;
+        while (j < toks.length && !(toks[j].t === "word" && toks[j].v === "END")) {
+          if (toks[j].t === "word" && toks[j].v === "TO") fail(toks[j].line, "A TO can't go inside another TO. Is an END missing?");
+          j++;
+        }
+        if (j >= toks.length) fail(t.line, "TO " + nameTok.text + " needs an END.");
+        procs.set(nameTok.v, { text: nameTok.text, params, body: toks.slice(start, j) });
+        k = j;
+      }
+      return rest;
+    }
+    function runTop(toks) {
+      const main = define(toks);
+      try { runList(main); }
+      catch (e) {
+        if (e && e.logoStop) { if (e.value !== undefined) fail(0, "OUTPUT only works inside a command made with TO."); return; }
+        throw e;
+      }
+    }
+    return { runTop, names: Object.keys(P) };
+  }
+  const NAMES = interpreter(makeTurtle(makeGuard(1)), makeGuard(1), Math.random).names;
+
+  function looksLikeJS(src) {
+    const s = String(src == null ? "" : src);
+    return /\b[A-Za-z_$][\w$]*\s*\([^()\n]*\)\s*;/.test(s) || /\b(?:for|while)\s*\([^)\n]*;/.test(s) || /\b(?:let|const|var)\s+[A-Za-z_$][\w$]*\s*=/.test(s) || /=>/.test(s);
+  }
+  function run(src, opts) {
+    opts = opts || {};
+    const t0 = now();
+    const guard = makeGuard(opts.tickLimit || 100000);
+    const T = makeTurtle(guard);
+    const text = String(src == null ? "" : src);
+    const done = (ok, error, line) => Object.assign({ ok, output: T.result(), ticks: guard.ticks, ms: now() - t0, mode: "logo" }, ok ? {} : { error, line: line || null });
+    if (!text.trim()) return done(false, "There was no program to draw.");
+    try {
+      interpreter(T, guard, mulberry32((opts.seed >>> 0) || 1)).runTop(tokenize(text));
+      return done(true);
+    } catch (e) {
+      let msg = e instanceof RangeError ? "The program is nested too deeply to run." : String((e && e.message) || e);
+      if (e && e.logoLine) msg = "Line " + e.logoLine + ": " + msg;
+      if (looksLikeJS(text)) msg = "This looks like JavaScript, but the Renderer reads Logo, like REPEAT 4 [FORWARD 50 RIGHT 90]. " + msg;
+      return done(false, msg, e && e.logoLine);
+    }
+  }
+  // Drawings saved by Agent Kit 1.0 were JavaScript turtle calls. Plain calls and simple counted
+  // loops become Logo; anything else gives null and is left as it was.
+  function callToLogo(name, argText) {
+    const args = argText.trim() ? argText.split(",").map(x => x.trim()) : [];
+    const n = x => (x !== undefined && /^-?\d+(\.\d+)?$/.test(x) ? +x : null);
+    const str = x => { const m = /^(['"])(.*)\1$/.exec(x || ""); return m ? m[2] : null; };
+    const a0 = n(args[0]);
+    switch (name) {
+      case "forward": case "back": case "left": case "right": return args.length === 1 && a0 !== null ? name.toUpperCase() + " " + fmt(a0) : null;
+      case "penUp": case "penDown": case "home": return args.length ? null : name.toUpperCase();
+      case "penColor": { const c = cleanColor(str(args[0]) || ""); return args.length === 1 && c ? "SETPENCOLOR \"" + c : null; }
+      case "penWidth": return a0 === null ? null : "SETPENSIZE " + fmt(a0);
+      case "goTo": { const y = n(args[1]); return args.length === 2 && a0 !== null && y !== null ? "SETXY " + fmt(a0 - 256) + " " + fmt(256 - y) : null; }
+      case "setHeading": return a0 === null ? null : "SETHEADING " + fmt(((a0 + 90) % 360 + 360) % 360);
+      case "dot": {
+        if (a0 === null || args.length > 2) return null;
+        if (args.length === 1) return "DOT " + fmt(a0);
+        const c = cleanColor(str(args[1]) || "");
+        return c ? "(DOT " + fmt(a0) + " \"" + c + ")" : null;
+      }
+      case "label": { const s = args.length === 1 ? str(args[0]) : null; return s === null ? null : "LABEL [" + s.replace(/[\[\]]/g, "") + "]"; }
+    }
+    return null;
+  }
+  function fromJS(src) {
+    const s = String(src == null ? "" : src).replace(/\/\/[^\n]*/g, "");
+    let i = 0;
+    const loop = /^for\s*\(\s*let\s+(\w+)\s*=\s*0\s*;\s*\1\s*<\s*(\d+)\s*;\s*\1\s*\+\+\s*\)\s*\{/;
+    function block(close) {
+      const out = [];
+      for (;;) {
+        while (i < s.length && /[\s;]/.test(s[i])) i++;
+        if (i >= s.length) return close ? null : out;
+        if (close && s[i] === close) { i++; return out; }
+        const m = loop.exec(s.slice(i));
+        if (m) {
+          i += m[0].length;
+          const from = i, inner = block("}");
+          if (!inner || new RegExp("\\b" + m[1] + "\\b").test(s.slice(from, i))) return null;
+          out.push("REPEAT " + m[2] + " [" + inner.join(" ") + "]");
+          continue;
+        }
+        const c = /^([A-Za-z]+)\s*\(([^()]*)\)/.exec(s.slice(i));
+        const l = c && callToLogo(c[1], c[2]);
+        if (!l) return null;
+        out.push(l);
+        i += c[0].length;
+      }
+    }
+    const lines = block(null);
+    return lines && lines.length ? lines.join("\n") : null;
+  }
+  return { run, tokenize, looksLikeJS, fromJS, NAMES };
+})();
+AK.Logo = Logo;
+
 /* ===== SECTION: RUNTIME (Worker preferred; in-page step-counted fallback) ===== */
 const WorkerExec = (() => {
   let worker = null, url = null, seq = 0;
   const pending = new Map();
   function source() {
-    return '"use strict";\n' + [mulberry32, makeGuard, makeH, makeTurtle, computeShadowNames, workerMain].map(f => f.toString()).join("\n") +
-      "\nworkerMain(self, " + JSON.stringify(TURTLE_API) + ", " + JSON.stringify(SHADOW_KEEP) + ");\n";
+    return '"use strict";\n' + [mulberry32, makeGuard, makeH, computeShadowNames, workerMain].map(f => f.toString()).join("\n") +
+      "\nworkerMain(self, " + JSON.stringify(SHADOW_KEEP) + ");\n";
   }
   function failAll(msg) { for (const p of pending.values()) { clearTimeout(p.timer); p.resolve({ ok: false, error: msg }); } pending.clear(); }
   function kill() { if (worker) { try { worker.terminate(); } catch (e) { /* already gone */ } worker = null; } }
@@ -1067,16 +1605,15 @@ const WorkerExec = (() => {
 })();
 let _shadow = null, _shadowCount = -1;
 const _factoryCache = new Map();
-function bodyFor(kind, exec) { return '"use strict";\n' + exec + (kind === "program" ? "\n;return run;" : "\n"); }
-function pageFactory(kind, exec) {
+function bodyFor(exec) { return '"use strict";\n' + exec + "\n;return run;"; }
+function pageFactory(exec) {
   let count = 0;
   try { count = Object.getOwnPropertyNames(G).length; } catch (e) { count = 0; }
   if (!_shadow || count !== _shadowCount) { _shadow = computeShadowNames(G, SHADOW_KEEP); _shadowCount = count; _factoryCache.clear(); }   // new globals get shadowed too
-  const key = kind + ":" + hash(exec);
+  const key = "program:" + hash(exec);
   let f = _factoryCache.get(key);
   if (f) return f;
-  const params = _shadow.concat(["__ak", "Math"], kind === "turtle" ? TURTLE_API : []);
-  const factory = Function.apply(null, params.concat([bodyFor(kind, exec)]));
+  const factory = Function.apply(null, _shadow.concat(["__ak", "Math", bodyFor(exec)]));
   f = { factory, pad: _shadow.length };
   if (_factoryCache.size > 300) _factoryCache.clear();
   _factoryCache.set(key, f);
@@ -1091,32 +1628,23 @@ function friendlyRuntimeError(e) {
   if (/Maximum call stack/i.test(m)) return "The program called itself too many times.";
   return m;
 }
-function execInPage(kind, exec, payload) {
+function execInPage(exec, payload) {
   const guard = makeGuard(payload.tickLimit || 100000);
   const M = Object.create(Math);
   M.random = mulberry32((payload.seed >>> 0) || 1);
   const t0 = now();
-  let T = null;
   try {
-    const f = pageFactory(kind, exec);
-    const pad = new Array(f.pad);
-    if (kind === "program") {
-      const run = f.factory.apply(null, pad.concat([guard, M]));
-      if (typeof run !== "function") throw new Error("The program must define function run(input, params, h).");
-      const out = run(clone(payload.input), clone(payload.params || {}), makeH(payload.seed, guard));
-      return { ok: true, output: out === undefined ? null : clone(out), ticks: guard.ticks, ms: now() - t0 };
-    }
-    T = makeTurtle(guard);
-    f.factory.apply(null, pad.concat([guard, M], TURTLE_API.map(n => T.api[n])));
-    return { ok: true, output: T.result(), ticks: guard.ticks, ms: now() - t0 };
+    const f = pageFactory(exec);
+    const run = f.factory.apply(null, new Array(f.pad).concat([guard, M]));
+    if (typeof run !== "function") throw new Error("The program must define function run(input, params, h).");
+    const out = run(clone(payload.input), clone(payload.params || {}), makeH(payload.seed, guard));
+    return { ok: true, output: out === undefined ? null : clone(out), ticks: guard.ticks, ms: now() - t0 };
   } catch (e) {
-    const r = { ok: false, error: friendlyRuntimeError(e), ticks: guard.ticks, ms: now() - t0 };
-    if (T) r.output = T.result();
-    return r;
+    return { ok: false, error: friendlyRuntimeError(e), ticks: guard.ticks, ms: now() - t0 };
   }
 }
-function jobFor(kind, exec, payload) {
-  return { kind, key: kind + ":" + hash(exec), body: bodyFor(kind, exec), input: payload.input, params: payload.params, seed: payload.seed, tickLimit: payload.tickLimit };
+function jobFor(exec, payload) {
+  return { kind: "program", key: "program:" + hash(exec), body: bodyFor(exec), input: payload.input, params: payload.params, seed: payload.seed, tickLimit: payload.tickLimit };
 }
 const Runtime = {
   mode: "function",
@@ -1129,7 +1657,7 @@ const Runtime = {
     let workerOK = false, why = "";
     if (typeof Worker === "function" && typeof Blob === "function" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
       const c = compileJS("function run(input, params, h) { return { value: 6 * 7 }; }", "program");
-      const r = await WorkerExec.run(jobFor("program", c.exec, { input: {}, params: {}, seed: 1, tickLimit: 1000 }), 3000);
+      const r = await WorkerExec.run(jobFor(c.exec, { input: {}, params: {}, seed: 1, tickLimit: 1000 }), 3000);
       workerOK = !!(r.ok && r.output && r.output.value === 42);
       if (!workerOK) { why = r.error || "no answer"; WorkerExec.kill(); }
     } else why = "no Worker in this page";
@@ -1139,13 +1667,13 @@ const Runtime = {
       : "This page can't run programs: the host blocks both Workers and new Function.";
     return this.mode;
   },
-  async exec(kind, src, payload) {
-    const c = compileJS(src, kind);
+  async exec(src, payload) {
+    const c = compileJS(src, "program");
     if (!c.ok) return { ok: false, error: formatErrors(c.errors), errors: c.errors, stage: "check", mode: this.mode, ticks: 0, ms: 0 };
     const p = { input: payload.input, params: payload.params || {}, seed: (payload.seed >>> 0) || 1, tickLimit: this.tickLimit };
     let r;
-    if (this.mode === "worker") r = await WorkerExec.run(jobFor(kind, c.exec, p), this.timeoutMs);
-    else if (this.mode === "function") r = execInPage(kind, c.exec, p);
+    if (this.mode === "worker") r = await WorkerExec.run(jobFor(c.exec, p), this.timeoutMs);
+    else if (this.mode === "function") r = execInPage(c.exec, p);
     else r = { ok: false, error: "This page can't run programs here (the host blocks it)." };
     r.mode = this.mode;
     if (!r.ok && r.error) r.error = friendlyRuntimeError({ message: r.error });
@@ -1153,20 +1681,16 @@ const Runtime = {
   },
   async runProgram(js, input, opts) {
     opts = opts || {};
-    const r = await this.exec("program", js, { input: clone(input || {}), params: clone(opts.params || {}), seed: opts.seed });
+    const r = await this.exec(js, { input: clone(input || {}), params: clone(opts.params || {}), seed: opts.seed });
     if (r.ok) {
       const o = r.output;
       if (!o || typeof o !== "object" || Array.isArray(o)) return Object.assign(r, { ok: false, error: "function run must give back an object, like { say: \"done\" }." });
     }
     return r;
   },
+  // Drawings are Logo, read by the interpreter above: no Worker or new Function is needed for them.
   async runTurtle(program, opts) {
-    opts = opts || {};
-    const src = String(program == null ? "" : program);
-    if (!src.trim()) return { ok: false, error: "There was no program to draw.", output: { ops: [], dots: [], labels: [], segments: 0 }, ticks: 0, ms: 0, mode: this.mode };
-    const r = await this.exec("turtle", src, { input: null, params: null, seed: opts.seed });
-    if (!r.output) r.output = { ops: [], dots: [], labels: [], segments: 0 };
-    return r;
+    return Logo.run(program, { seed: (opts || {}).seed, tickLimit: this.tickLimit });
   }
 };
 AK.Runtime = Runtime;
@@ -1274,11 +1798,18 @@ AK.Geometry = { strokesOf, pebblesOf, basicColorName, toRGB };
 const PREAMBLE =
   'You are one agent in "Agent Kit", a construction kit where young people aged 10 to 16 build teams of simple AI agents. ' +
   "Everything you write may be read by a child. Use simple, clear language. Never include violence, romance, scary themes, or anything not suitable for children. " +
-  "Unless your instructions ask for a program or for JSON, write in plain sentences only: no markdown, no asterisks, no # headings, no bullet points.\n\n";
-const TURTLE_HELP =
-  "Commands you can use: forward(n), back(n), left(degrees), right(degrees), penUp(), penDown(), penColor('red'), penWidth(n), goTo(x, y), home(), setHeading(degrees), dot(size, 'color'), label('text').\n" +
-  "The canvas is 512 by 512. The turtle starts in the middle (256, 256), facing up. goTo(x, y) counts x from the left and y from the top.\n" +
-  "You may use plain JavaScript loops, variables and Math. Put { } around every loop body. Do not use anything else.";
+  "Keep your answers short. Simple Markdown, such as **bold** words or a short list, is fine.\n\n";
+const LOGO_HELP =
+  "Write the drawing in Logo, the turtle language. Commands:\n" +
+  "FORWARD 50 (or FD 50), BACK 50 (BK), RIGHT 90 (RT), LEFT 90 (LT), PENUP (PU), PENDOWN (PD), HOME,\n" +
+  "SETXY 100 -50 (go straight to a point), SETHEADING 90 (SETH: 0 is up, 90 is right),\n" +
+  "SETPENCOLOR \"red (put a quote mark before a color name), SETPENSIZE 4,\n" +
+  "DOT 20 (a filled dot 20 across, in the pen color, where the turtle is), CIRCLE 30 (a circle of radius 30 around the turtle), LABEL [some words] (writes the words where the turtle is).\n" +
+  "REPEAT 4 [FORWARD 100 RIGHT 90] runs the commands in the brackets 4 times. Inside a REPEAT, REPCOUNT says which time it is: 1, 2, 3 …\n" +
+  "TO SQUARE :SIZE REPEAT 4 [FORWARD :SIZE RIGHT 90] END makes a new command, used like SQUARE 50.\n" +
+  "MAKE \"N 5 stores a number, used as :N. Arithmetic works, like FORWARD :N * 10. IF :N > 3 [ … ] and IFELSE :N > 3 [ … ] [ … ] work too.\n" +
+  "The picture is 512 by 512. The turtle starts in the middle at 0 0, facing up, with its pen down. x runs from -256 (left edge) to 256 (right edge), and y from -256 (bottom) to 256 (top).\n" +
+  "Use REPEAT whenever something happens more than once, instead of writing the same commands again and again.";
 const H_DOC = [
   ["h.words(text)", "the words of a text, in lower case: h.words(\"A red Cat\") is [\"a\", \"red\", \"cat\"]"],
   ["h.sharedWordFraction(a, b)", "what fraction of a's different words also appear in b, from 0 to 1"],
@@ -1287,10 +1818,10 @@ const H_DOC = [
   ["h.roundTo(n, step)", "n rounded to the nearest step: h.roundTo(47, 10) is 50"],
   ["h.groupBy(list, key)", "an object that groups the list's items by one of their fields"],
   ["h.tally(map, key)", "a copy of the map with 1 added to map[key]"],
-  ["h.pick(list)", "one item picked at random — the same pick every time for the same seed"],
+  ["h.pick(list)", "one item picked at random"],
   ["h.tick()", "counts one step; a program that takes more than 100,000 steps is stopped"]
 ];
-AK.Prompts = { PREAMBLE, TURTLE_HELP, H_DOC };
+AK.Prompts = { PREAMBLE, LOGO_HELP, H_DOC };
 
 /* ===== SECTION: PRETEND PERSONAS (deterministic stand-ins for every shipped model agent) ===== */
 const Pretend = (() => {
@@ -1333,7 +1864,8 @@ const Pretend = (() => {
     const i = String(instructions || "").toLowerCase();
     return { big: /\b(big|huge|large|giant)\b/.test(i), small: /\b(small|tiny|little)\b/.test(i), wobbly: /\b(wobbl\w*|shak\w*|messy|sketchy)\b/.test(i), colorful: /\b(colou?rful|rainbow)\b/.test(i) };
   }
-  function moveTo(L, x, y, heading) { L.push("penUp(); goTo(" + fmt(x) + ", " + fmt(y) + "); setHeading(" + heading + "); penDown();"); }
+  // The pretend agents write Logo: 0 0 is the middle of the 512 x 512 picture, and y goes up. Whole numbers read better.
+  const at = (x, y) => "SETXY " + Math.round(x - 256) + " " + Math.round(256 - y);
   function polygonStart(n, side, turnRight) {
     // simulate the path to find its middle, so the shape can be centered
     let x = 0, y = 0, hd = 0; const pts = [];
@@ -1341,59 +1873,42 @@ const Pretend = (() => {
     const cx = pts.reduce((a, p) => a + p[0], 0) / n, cy = pts.reduce((a, p) => a + p[1], 0) / n;
     return [-cx, -cy];
   }
-  function drawOne(L, shape, cx, cy, d, color, style, extra) {
-    L.push("penColor('" + color + "');");
+  // One shape: where it starts (an offset from its middle, in screen units), its heading, and its Logo.
+  // A shape marked "again" ends where it started, facing right, so REPEAT can draw a row of them.
+  function shapeParts(shape, d, style, extra) {
     if (shape === "circle" || shape === "blob") {
-      const r = d / 2, step = 2 * Math.PI * r / 36;
-      moveTo(L, cx, cy - r, 0);
-      if (style.wobbly || shape === "blob") L.push("for (let i = 0; i < 36; i++) { forward(" + fmt(step) + "); right(i % 2 === 0 ? 40 : -20); }");
-      else L.push("for (let i = 0; i < 36; i++) { forward(" + fmt(step) + "); right(10); }");
-    } else if (shape === "square") {
-      moveTo(L, cx - d / 2, cy - d / 2, 0);
-      L.push(style.wobbly ? "for (let i = 0; i < 4; i++) { forward(" + fmt(d / 2) + "); right(30); forward(" + fmt(d / 2) + "); right(60); }" : "for (let i = 0; i < 4; i++) { forward(" + fmt(d) + "); right(90); }");
-    } else if (shape === "rectangle") {
-      const w = d * 1.4, h = d * 0.7;
-      moveTo(L, cx - w / 2, cy - h / 2, 0);
-      L.push("for (let i = 0; i < 2; i++) { forward(" + fmt(w) + "); right(90); forward(" + fmt(h) + "); right(90); }");
-    } else if (shape === "triangle") {
-      const hgt = d * Math.sqrt(3) / 2;
-      moveTo(L, cx - d / 2, cy + hgt / 3, 0);
-      L.push("for (let i = 0; i < 3; i++) { forward(" + fmt(d) + "); left(120); }");
-    } else if (shape === "star" || shape === "pentagon" || shape === "hexagon") {
-      const n = shape === "hexagon" ? 6 : 5, turn = shape === "star" ? 144 : 360 / n, side = shape === "star" ? d * 0.95 : d * 0.55;
-      const [ox, oy] = polygonStart(n, side, turn);
-      moveTo(L, cx + ox, cy + oy, 0);
-      L.push("for (let i = 0; i < " + n + "; i++) { forward(" + fmt(side) + "); right(" + turn + "); }");
-    } else if (shape === "line") {
-      if (extra && extra.vertical) { L.push("penUp(); goTo(" + fmt(cx) + ", " + fmt(cy - d / 2) + "); penDown(); goTo(" + fmt(cx) + ", " + fmt(cy + d / 2) + ");"); }
-      else L.push("penUp(); goTo(" + fmt(cx - d / 2) + ", " + fmt(cy) + "); penDown(); goTo(" + fmt(cx + d / 2) + ", " + fmt(cy) + ");");
-    } else if (shape === "zigzag") {
-      const dx = d / 6, amp = d / 5;
-      L.push("penUp(); goTo(" + fmt(cx - d / 2) + ", " + fmt(cy) + "); penDown();");
-      L.push("for (let i = 1; i <= 6; i++) { goTo(" + fmt(cx - d / 2) + " + i * " + fmt(dx) + ", " + fmt(cy) + " + (i % 2 === 1 ? " + fmt(amp) + " : " + fmt(-amp) + ")); }");
-    } else if (shape === "spiral") {
-      const t = (extra && extra.turns) || 2, steps = t * 36, k = Math.min(0.6, 17 / steps);
-      moveTo(L, cx, cy, 0);
-      L.push("for (let i = 0; i < " + steps + "; i++) { forward(0.3 + i * " + fmt(k) + "); right(10); }");
-    } else if (shape === "curve") {
-      const r = d / 2, step = Math.PI * r / 18;
-      moveTo(L, cx - r, cy, -90);
-      L.push("for (let i = 0; i < 18; i++) { forward(" + fmt(step) + "); right(10); }");
-    } else if (shape === "label") {
-      const text = (extra && extra.text) || "hello";
-      L.push("penUp(); goTo(" + fmt(cx - text.length * 5) + ", " + fmt(cy + 6) + "); label('" + text + "');");
-    } else {  // squiggle
-      L.push("penUp(); goTo(" + fmt(cx - d / 2) + ", " + fmt(cy) + "); setHeading(0); penDown();");
-      L.push("for (let i = 0; i < 24; i++) { forward(" + fmt(d / 14) + "); right(i % 6 < 3 ? 30 : -30); }");
+      if (shape === "circle" && !style.wobbly) return { start: [0, 0], heading: null, body: "CIRCLE " + fmt(d / 2), again: true };
+      const s = fmt(Math.PI * d / 36);
+      return { start: [0, -d / 2], heading: 90, body: "REPEAT 18 [FORWARD " + s + " RIGHT 40 FORWARD " + s + " LEFT 20]", again: true };
     }
+    if (shape === "square") return { start: [-d / 2, -d / 2], heading: 90, body: style.wobbly ? "REPEAT 4 [FORWARD " + fmt(d / 2) + " RIGHT 30 FORWARD " + fmt(d / 2) + " RIGHT 60]" : "REPEAT 4 [FORWARD " + fmt(d) + " RIGHT 90]", again: true };
+    if (shape === "rectangle") { const w = d * 1.4, h = d * 0.7; return { start: [-w / 2, -h / 2], heading: 90, body: "REPEAT 2 [FORWARD " + fmt(w) + " RIGHT 90 FORWARD " + fmt(h) + " RIGHT 90]", again: true }; }
+    if (shape === "triangle") return { start: [-d / 2, d * Math.sqrt(3) / 6], heading: 90, body: "REPEAT 3 [FORWARD " + fmt(d) + " LEFT 120]", again: true };
+    if (shape === "star" || shape === "pentagon" || shape === "hexagon") {
+      const n = shape === "hexagon" ? 6 : 5, turn = shape === "star" ? 144 : 360 / n, side = shape === "star" ? d * 0.95 : d * 0.55;
+      return { start: polygonStart(n, side, turn), heading: 90, body: "REPEAT " + n + " [FORWARD " + fmt(side) + " RIGHT " + turn + "]", again: true };
+    }
+    if (shape === "line") return extra && extra.vertical ? { start: [0, -d / 2], heading: 180, body: "FORWARD " + fmt(d) } : { start: [-d / 2, 0], heading: 90, body: "FORWARD " + fmt(d) };
+    if (shape === "zigzag") { const s = d / 3; return { start: [-d / 2, -s * 0.433], heading: null, body: "REPEAT 3 [SETHEADING 150 FORWARD " + fmt(s) + " SETHEADING 30 FORWARD " + fmt(s) + "]" }; }
+    if (shape === "spiral") { const steps = ((extra && extra.turns) || 2) * 36; return { start: [0, 0], heading: 90, body: "REPEAT " + steps + " [FORWARD REPCOUNT * " + fmt(Math.min(0.6, 17 / steps)) + " RIGHT 10]" }; }
+    if (shape === "curve") return { start: [-d / 2, 0], heading: 0, body: "REPEAT 18 [FORWARD " + fmt(Math.PI * d / 36) + " RIGHT 10]" };
+    if (shape === "label") { const text = (extra && extra.text) || "hello"; return { start: [-text.length * 5, 6], heading: null, body: "LABEL [" + text + "]", label: true }; }
+    const s = fmt(d / 14);   // a squiggle
+    return { start: [-d / 2, 0], heading: 90, body: "REPEAT 4 [REPEAT 3 [FORWARD " + s + " RIGHT 30] REPEAT 3 [FORWARD " + s + " LEFT 30]]" };
+  }
+  function drawOne(L, shape, cx, cy, d, color, style, extra) {
+    const p = shapeParts(shape, d, style, extra);
+    L.push("SETPENCOLOR \"" + color);
+    L.push("PENUP " + at(cx + p.start[0], cy + p.start[1]) + (p.heading == null ? "" : " SETHEADING " + p.heading) + (p.label ? "" : " PENDOWN"));
+    L.push(p.body);
   }
   function drawItem(L, it, cx, cy, d, color, style) {
     const shape = it.shape, k = Math.max(1, it.count || 1);
     if (shape === "dot") {
       const gap = Math.min(30, 440 / Math.max(k, 1));
-      const x0 = cx - (k - 1) * gap / 2;
-      L.push("penUp();");
-      L.push("for (let i = 0; i < " + k + "; i++) { goTo(" + fmt(x0) + " + i * " + fmt(gap) + ", " + fmt(cy) + "); dot(14, '" + color + "'); }");
+      L.push("SETPENCOLOR \"" + color);
+      L.push("PENUP " + at(cx - (k - 1) * gap / 2, cy) + " SETHEADING 90");
+      L.push("REPEAT " + k + " [DOT 14 FORWARD " + fmt(gap) + "]");
       return;
     }
     if (shape === "house") {
@@ -1409,24 +1924,34 @@ const Pretend = (() => {
     if (shape === "sun") {
       const r = d * 0.35;
       drawOne(L, "circle", cx, cy, r * 2, color, style);
-      L.push("for (let k = 0; k < 8; k++) { penUp(); goTo(" + fmt(cx) + ", " + fmt(cy) + "); setHeading(k * 45); forward(" + fmt(r + 12) + "); penDown(); forward(22); }");
+      L.push("PENUP " + at(cx, cy) + " SETHEADING 90");
+      L.push("REPEAT 8 [PENUP FORWARD " + fmt(r + 12) + " PENDOWN FORWARD 22 PENUP BACK " + fmt(r + 34) + " RIGHT 45]");
       return;
     }
     if (shape === "flower") {
       const r = d * 0.18;
       drawOne(L, "circle", cx, cy, r * 2, color, style);
-      L.push("for (let k = 0; k < 6; k++) { penUp(); goTo(" + fmt(cx) + " + Math.cos(k * Math.PI / 3) * " + fmt(r * 2.2) + ", " + fmt(cy) + " + Math.sin(k * Math.PI / 3) * " + fmt(r * 2.2) + " - " + fmt(r) + "); setHeading(0); penDown(); for (let i = 0; i < 36; i++) { forward(" + fmt(2 * Math.PI * r / 36) + "); right(10); } }");
+      L.push("PENUP " + at(cx, cy) + " SETHEADING 90");
+      L.push("REPEAT 6 [FORWARD " + fmt(r * 2.2) + " PENDOWN CIRCLE " + fmt(r) + " PENUP BACK " + fmt(r * 2.2) + " RIGHT 60]");
       return;
     }
     if (shape === "line" && k > 1) {
-      const gap = Math.min(28, 440 / k), x0 = cx - (k - 1) * gap / 2;
-      L.push("penColor('" + color + "');");
-      L.push("for (let i = 0; i < " + k + "; i++) { penUp(); goTo(" + fmt(x0) + " + i * " + fmt(gap) + ", " + fmt(cy - d / 2) + "); penDown(); goTo(" + fmt(x0) + " + i * " + fmt(gap) + ", " + fmt(cy + d / 2) + "); }");
+      const gap = Math.min(28, 440 / k);
+      L.push("SETPENCOLOR \"" + color);
+      L.push("PENUP " + at(cx - (k - 1) * gap / 2, cy - d / 2) + " SETHEADING 180");
+      L.push("REPEAT " + k + " [PENDOWN FORWARD " + fmt(d) + " PENUP BACK " + fmt(d) + " LEFT 90 FORWARD " + fmt(gap) + " RIGHT 90]");
       return;
     }
     if (k === 1) { drawOne(L, shape, cx, cy, d, color, style, it); return; }
-    const each = Math.min(d, 400 / k * 0.8), gap = each * 1.25, x0 = cx - (k - 1) * gap / 2;
-    for (let j = 0; j < Math.min(k, 8); j++) drawOne(L, shape, x0 + j * gap, cy, each, color, style, it);
+    const each = Math.min(d, 400 / k * 0.8), gap = each * 1.25, x0 = cx - (k - 1) * gap / 2, n = Math.min(k, 8);
+    const p = shapeParts(shape, each, style, it);
+    if (p.again) {
+      L.push("SETPENCOLOR \"" + color);
+      L.push("PENUP " + at(x0 + p.start[0], cy + p.start[1]) + " SETHEADING 90 PENDOWN");
+      L.push("REPEAT " + n + " [" + p.body + " PENUP FORWARD " + fmt(gap) + " PENDOWN]");
+      return;
+    }
+    for (let j = 0; j < n; j++) drawOne(L, shape, x0 + j * gap, cy, each, color, style, it);
   }
   function artistProgram(desc, instructions) {
     const style = artistStyle(instructions);
@@ -1445,9 +1970,11 @@ const Pretend = (() => {
       const d = base(a);
       drawItem(L, a, 256, 256, d, colorOf(a, 0), style);
       const k = Math.max(3, Math.min(12, b.count || 8)), rr = d / 2 + 30;
-      if (b.shape === "line") {
-        L.push("penColor('" + colorOf(b, 1) + "');");
-        L.push("for (let k = 0; k < " + k + "; k++) { penUp(); goTo(256, 256); setHeading(k * " + fmt(360 / k) + "); forward(" + fmt(rr) + "); penDown(); forward(22); }");
+      if (b.shape === "line" || b.shape === "dot" || (b.shape === "circle" && !style.wobbly)) {
+        const mark = b.shape === "line" ? "PENDOWN FORWARD 22 PENUP BACK " + fmt(rr + 22) : (b.shape === "dot" ? "DOT 14" : "PENDOWN CIRCLE 13 PENUP") + " BACK " + fmt(rr);
+        L.push("SETPENCOLOR \"" + colorOf(b, 1));
+        L.push("PENUP " + at(256, 256) + " SETHEADING 90");
+        L.push("REPEAT " + k + " [PENUP FORWARD " + fmt(rr) + " " + mark + " RIGHT " + fmt(360 / k) + "]");
       } else for (let j = 0; j < k; j++) drawItem(L, Object.assign({}, b, { count: 1 }), 256 + Math.cos(j * 2 * Math.PI / k) * rr, 256 + Math.sin(j * 2 * Math.PI / k) * rr, 26, colorOf(b, 1), style);
     } else {
       const n = items.length;
@@ -1526,6 +2053,11 @@ const Pretend = (() => {
     const t = String(text || "").toLowerCase();
     let m;
     const colorsIn = () => { const found = []; const re = /\b(red|blue|green|yellow|orange|purple|pink|black|brown|gray|white)\b/g; let c; while ((c = re.exec(t))) if (found.indexOf(c[1]) < 0) found.push(c[1]); return found; };
+    if (/\bsecret\b/.test(t)) {
+      m = t.match(/(\d+)\s+rows/);
+      const range = t.match(/between\s+(\d+)\s+and\s+(\d+)/);
+      return { kind: "mystery", rows: m ? Math.max(1, Math.min(+m[1], 8)) : 3, lo: range ? +range[1] : 1, hi: range ? Math.max(+range[1], +range[2]) : 8 };
+    }
     if (/checker/.test(t)) {
       m = t.match(/(\d+)\s*(?:by|x|×)\s*(\d+)/);
       const cs = colorsIn();
@@ -1554,6 +2086,29 @@ const Pretend = (() => {
     else if (p.kind === "colors") { if (p.pairs.length >= 2) { p.pairs[0].n = Math.max(0, p.pairs[0].n - 1); p.pairs[1].n += 1; } else if (p.pairs.length === 1) p.pairs[0].n += 1; }
     return p;
   }
+  // A secret-row challenge: guess the middle of each row's range, then halve the range with every
+  // note that says "row 2 needs more" or "row 3 needs fewer". A row no note mentions was right.
+  function mysteryGuess(plan, notes) {
+    const lo = [], hi = [];
+    for (let i = 0; i < plan.rows; i++) { lo.push(plan.lo); hi.push(plan.hi); }
+    const mid = () => lo.map((l, i) => Math.floor((l + hi[i]) / 2));
+    let guess = mid();
+    for (const note of notes) {
+      const said = {};
+      const re = /row\s+(\d+)\s+needs\s+(more|fewer)/gi;
+      let m;
+      while ((m = re.exec(String(note)))) said[+m[1] - 1] = m[2].toLowerCase();
+      if (!Object.keys(said).length && !/too many rows/i.test(note)) continue;   // not a note about the rows
+      for (let i = 0; i < plan.rows; i++) {
+        if (said[i] === "more") lo[i] = guess[i] + 1;
+        else if (said[i] === "fewer") hi[i] = guess[i] - 1;
+        else { lo[i] = guess[i]; hi[i] = guess[i]; }
+        if (lo[i] > hi[i]) { lo[i] = plan.lo; hi[i] = plan.hi; }   // the notes disagree: start that row again
+      }
+      guess = mid();
+    }
+    return guess;
+  }
   function designerStyle(instructions) {
     const i = String(instructions || "").toLowerCase();
     return { rings: /\b(little circles|small circles|circles|rings?|hoops?|outlines?)\b/.test(i), tight: /\b(close together|tight\w*|touching|squash\w*|squeez\w*|packed|crowded)\b/.test(i), label: /\b(write the answer|label the|add a label|caption)\b/.test(i) };
@@ -1562,50 +2117,54 @@ const Pretend = (() => {
     if (plan.kind === "grid") return plan.rows === 1 ? "a row of " + plan.cols : plan.rows + " by " + plan.cols;
     if (plan.kind === "checker") return plan.rows + " by " + plan.cols;
     if (plan.kind === "triangle") return plan.counts.join(", ");
+    if (plan.kind === "mystery") return (plan.guess || []).join(", ");
     if (plan.kind === "colors") return plan.pairs.map(p => p.n + " " + p.color).join(", ");
     return "?";
   }
   function designerProgram(plan, style, original) {
     const L = [];
-    const size = style.tight ? 10 : 14;
     const spacing = n => style.tight ? 12 : Math.min(40, n > 1 ? 440 / (n - 1) : 40);
-    const pebble = (xExpr, yExpr, colorExpr, ind) => style.rings
-      ? [ind + "penColor(" + colorExpr + ");", ind + "goTo(" + xExpr + ", " + yExpr + " - 7);", ind + "setHeading(0);", ind + "penDown();", ind + "for (let i = 0; i < 12; i++) {", ind + "  forward(3.66);", ind + "  right(30);", ind + "}", ind + "penUp();"]
-      : [ind + "goTo(" + xExpr + ", " + yExpr + ");", ind + "dot(" + size + ", " + colorExpr + ");"];
-    L.push("penUp();");
+    const pebble = style.rings ? "PENDOWN CIRCLE 7 PENUP" : "DOT " + (style.tight ? 10 : 14);
     if (plan.kind === "grid" || plan.kind === "checker" || plan.kind === "unknown") {
       const rows = plan.kind === "unknown" ? 2 : plan.rows, cols = plan.kind === "unknown" ? 2 : plan.cols;
       const g = spacing(Math.max(rows, cols));
-      const x0 = 256 - (cols - 1) * g / 2, y0 = 256 - (rows - 1) * g / 2;
-      const colorExpr = plan.kind === "checker" ? "(row + col) % 2 === 0 ? '" + plan.colors[0] + "' : '" + plan.colors[1] + "'" : "'black'";
-      L.push("for (let row = 0; row < " + rows + "; row++) {");
-      L.push("  for (let col = 0; col < " + cols + "; col++) {");
-      pebble(fmt(x0) + " + col * " + fmt(g), fmt(y0) + " + row * " + fmt(g), colorExpr, "    ").forEach(l => L.push(l));
-      L.push("  }");
-      L.push("}");
-      if (plan.kind === "unknown") { L.push("goTo(240, 120);"); L.push("label('?');"); }
-    } else if (plan.kind === "triangle") {
-      const g = spacing(Math.max(...plan.counts)), rows = plan.counts.length, y0 = 256 - (rows - 1) * g / 2;
-      L.push("const counts = [" + plan.counts.join(", ") + "];");
-      L.push("for (let row = 0; row < counts.length; row++) {");
-      L.push("  for (let i = 0; i < counts[row]; i++) {");
-      pebble("256 - (counts[row] - 1) * " + fmt(g / 2) + " + i * " + fmt(g), fmt(y0) + " + row * " + fmt(g), "'black'", "    ").forEach(l => L.push(l));
-      L.push("  }");
-      L.push("}");
+      L.push("PENUP " + at(256 - (cols - 1) * g / 2, 256 - (rows - 1) * g / 2) + " SETHEADING 90");
+      const nextRow = "  BACK " + fmt(cols * g) + " RIGHT 90 FORWARD " + fmt(g) + " LEFT 90";
+      if (plan.kind === "checker") {
+        L.push("MAKE \"A \"" + plan.colors[0]);
+        L.push("MAKE \"B \"" + plan.colors[1]);
+        L.push("REPEAT " + rows + " [");
+        L.push("  REPEAT " + cols + " [");
+        L.push("    IFELSE 1 = REMAINDER REPCOUNT 2 [SETPENCOLOR :A] [SETPENCOLOR :B]");
+        L.push("    " + pebble + " FORWARD " + fmt(g));
+        L.push("  ]");
+        L.push(nextRow);
+        L.push("  MAKE \"C :A MAKE \"A :B MAKE \"B :C");
+        L.push("]");
+      } else {
+        L.push("SETPENCOLOR \"black");
+        L.push("REPEAT " + rows + " [");
+        L.push("  REPEAT " + cols + " [" + pebble + " FORWARD " + fmt(g) + "]");
+        L.push(nextRow);
+        L.push("]");
+      }
+      if (plan.kind === "unknown") L.push("SETXY -16 136 LABEL [?]");
+    } else if (plan.kind === "triangle" || plan.kind === "mystery") {
+      const counts = plan.kind === "mystery" ? plan.guess : plan.counts;
+      const g = spacing(Math.max(1, ...counts)), y0 = 256 - (counts.length - 1) * g / 2;
+      L.push("TO ROW :N");
+      L.push("  REPEAT :N [" + pebble + " FORWARD " + fmt(g) + "]");
+      L.push("END");
+      L.push("PENUP SETHEADING 90 SETPENCOLOR \"black");
+      counts.forEach((n, r) => L.push(at(256 - (n - 1) * g / 2, y0 + r * g) + " ROW " + n));
     } else if (plan.kind === "colors") {
-      const most = Math.max(1, ...plan.pairs.map(p => p.n)), g = spacing(most);
-      const y0 = 256 - (plan.pairs.length - 1) * 40 / 2;
-      plan.pairs.forEach((p, k) => {
-        const x0 = 256 - (p.n - 1) * g / 2;
-        L.push("for (let i = 0; i < " + p.n + "; i++) {");
-        pebble(fmt(x0) + " + i * " + fmt(g), fmt(y0 + k * 40), "'" + p.color + "'", "  ").forEach(l => L.push(l));
-        L.push("}");
-      });
+      const g = spacing(Math.max(1, ...plan.pairs.map(p => p.n))), y0 = 256 - (plan.pairs.length - 1) * 20;
+      L.push("PENUP SETHEADING 90");
+      plan.pairs.forEach((p, k) => L.push(at(256 - (p.n - 1) * g / 2, y0 + k * 40) + " SETPENCOLOR \"" + p.color + " REPEAT " + p.n + " [" + pebble + " FORWARD " + fmt(g) + "]"));
     }
     if (style.label) {
       const text = summaryOf(original || plan);
-      L.push("goTo(" + fmt(256 - text.length * 5) + ", 60);");
-      L.push("label('" + text + "');");
+      L.push("PENUP " + at(256 - text.length * 5, 60) + " LABEL [" + text + "]");
     }
     return L.join("\n");
   }
@@ -1670,7 +2229,8 @@ const Pretend = (() => {
       return "Look at the scenario “" + f.scenario + "” for " + f.agent + ": it expected " + f.expected + ", but the agent gave " + f.actual + ". Which line of the pseudocode decides that part of the answer?";
     }
     if (/swap|flip|switch|order|left|right|back and forth/.test(q)) return "Put two rounds side by side. Which words stayed the same, and what changed in the pictures? Which agent decides the order that things are listed in?";
-    if (/stuck|loop|settle|same|repeat/.test(q)) return "What does the Loop Spotter compare when it looks at two descriptions? Could two different pictures ever give it the same words?";
+    if (/secret|mystery|guess/.test(q)) return "How does the Designer find out about the secret? Which agent passes the clues along, and what would happen if it said less?";
+    if (/stuck|loop|settle|same|repeat/.test(q)) return "What would tell you that the pictures have stopped changing? Put two rounds side by side: which words come back? (There's a Loop Spotter in the library that watches for this: Look inside, then + Add an agent.)";
     if (/win|won|pass|cheat|judge|game/.test(q)) return "Which agent decided the Designer had won, and what did that agent actually look at? Could the Designer change something that agent looks at without meeting the challenge?";
     if (/count|eyes|dot counter/.test(q)) return "What does Dot Counter read, and what does Eyes look at? Can you think of a drawing where those two things disagree?";
     return "I'm the pretend helper, so I can only ask simple questions. Here is one: " + opener + " (Connect a model in Settings for a real conversation.)";
@@ -1682,18 +2242,24 @@ const Pretend = (() => {
     return "I'm a pretend agent, so I just repeat what I was told: “" + said + "”." + ((ctx.outputFields || []).length ? "\n" + JSON.stringify(data) : "");
   }
   const personas = {
-    artist: { id: "artist", title: "Pretend Artist", about: "A small built-in program, not an AI. It picks out number, color and shape words (circle, square, triangle, star, line, zigzag, spiral, dots, house, tree, sun, flower …) and draws them from left to right, or one on top of another. It reads its own instructions for style words: big, small, wobbly, colorful.",
+    artist: { id: "artist", title: "Pretend Artist", about: "A small built-in program, not an AI. It picks out number, color and shape words (circle, square, triangle, star, line, zigzag, spiral, dots, house, tree, sun, flower …) and writes Logo that draws them from left to right, or one on top of another, using REPEAT for anything that repeats. It reads its own instructions for style words: big, small, wobbly, colorful.",
       reply: ctx => artistProgram((ctx.message && ctx.message.text) || "", ctx.agent && ctx.agent.instructions) },
     describer: { id: "describer", title: "Pretend Describer", about: "A small built-in program, not an AI. It measures the lines of the drawing to guess shapes and colors. Its habits: it lists things starting from the right; it counts up to six exactly but says one fewer when there are more; it always counts one extra turn on a spiral.",
       reply: ctx => ctx.sees ? describePicture(ctx.render) : "I can't see pictures, so I don't know what was drawn." },
-    designer: { id: "designer", title: "Pretend Designer", about: "A small built-in program, not an AI. It reads the challenge for numbers (rows, columns, colors) and draws pebbles with dot(). On its first try it makes one typical mistake (it swaps rows and columns, turns a triangle upside down, forgets the second color, or is off by one). If it can remember a Critic's note, it gets it right next time. Style words in its instructions change how it draws: 'little circles', 'close together', 'add a label'.",
+    designer: { id: "designer", title: "Pretend Designer", about: "A small built-in program, not an AI. It reads the challenge for numbers (rows, columns, colors) and writes Logo that draws pebbles with DOT. On its first try it makes one typical mistake (it swaps rows and columns, turns a triangle upside down, forgets the second color, or is off by one). If it can remember a Critic's note, it gets it right next time. For a secret like Mystery rows, it guesses the middle number for each row, then uses each “needs more” or “needs fewer” to halve the guess, as long as it remembers the notes. Style words in its instructions change how it draws: 'little circles', 'close together', 'add a label'.",
       reply: ctx => {
         const hist = ctx.history || [];
         const firstUser = hist.find(m => m.role === "user");
         const task = (firstUser ? firstUser.content : (ctx.message && ctx.message.text)) || "";
         const attempt = 1 + hist.filter(m => m.role === "assistant").length;
-        const plan = parseTask(task);
-        return designerProgram(attempt === 1 ? firstTryMistake(plan) : plan, designerStyle(ctx.agent && ctx.agent.instructions), plan);
+        const plan = parseTask(task), style = designerStyle(ctx.agent && ctx.agent.instructions);
+        if (plan.kind === "mystery") {
+          const notes = hist.filter(m => m.role === "user").slice(1).map(m => m.content);
+          if (attempt > 1 && ctx.message) notes.push(ctx.message.text);
+          plan.guess = mysteryGuess(plan, notes);
+          return designerProgram(plan, style, plan);
+        }
+        return designerProgram(attempt === 1 ? firstTryMistake(plan) : plan, style, plan);
       } },
     eyes: { id: "eyes", title: "Pretend Eyes", about: "A small built-in program, not an AI. It counts dots and small rings as pebbles and sorts them into rows. Its habits: pebbles closer than 14 pixels look like one pebble to it, and it believes a label that says something like “3 by 5”.",
       reply: ctx => eyesReport(ctx.render, ctx.outputFields, ctx.sees) },
@@ -1704,7 +2270,7 @@ const Pretend = (() => {
     generic: { id: "generic", title: "Pretend agent", about: "This agent has no pretend program of its own, so in pretend mode it just repeats the start of what it was told.",
       reply: genericReply }
   };
-  return { personas, parseDescription, artistProgram, describePicture, parseTask, firstTryMistake, designerProgram, designerStyle, eyesReport, helperReply, numberWord };
+  return { personas, parseDescription, artistProgram, describePicture, parseTask, firstTryMistake, mysteryGuess, designerProgram, designerStyle, eyesReport, helperReply, numberWord };
 })();
 AK.Pretend = Pretend;
 
@@ -1716,7 +2282,7 @@ const MODEL_CHOICES = {
   keyless: [["claude-sonnet-4-6", "Claude Sonnet 4.6 (works through the chat proxy)"], ["claude-opus-5-5", "Claude Opus 5.5"], ["claude-sonnet-5-5", "Claude Sonnet 5.5"], ["claude-haiku-4-5", "Claude Haiku 4.5"]],
   anthropic: [["claude-opus-5-5", "Claude Opus 5.5"], ["claude-sonnet-5-5", "Claude Sonnet 5.5"], ["claude-haiku-4-5", "Claude Haiku 4.5"], ["claude-sonnet-4-6", "Claude Sonnet 4.6"]],
   gemini: [["gemini-3-flash-preview", "Gemini 3 Flash (preview)"], ["gemini-3.1-pro-preview", "Gemini 3.1 Pro (preview)"], ["gemini-2.5-flash", "Gemini 2.5 Flash"]],
-  openai: [["gpt-5.4-mini", "GPT-5.4 mini"], ["gpt-5.4", "GPT-5.4"], ["gpt-5.4-nano", "GPT-5.4 nano"]]
+  openai: [["gpt-5.4-mini", "GPT-5.4 mini"], ["gpt-5.4", "GPT-5.4"], ["gpt-5.4-nano", "GPT-5.4 nano"], ["gpt-5.6-terra", "GPT-5.6 Terra"]]
 };
 const EFFORT_RE = /^claude-(opus-5|sonnet-5|fable|opus-4-[678]|sonnet-4-6)/;
 const FALLBACK_RE = /^claude-(fable-5-1|opus-5-5|opus-5$|sonnet-5-5)/;
@@ -1750,7 +2316,7 @@ function parseReply(raw, fields, replyKind) {
       text = p.how === "whole" ? "" : (text.slice(0, p.start) + text.slice(p.end)).trim();
     } else parseError = p.ok ? "The JSON part of the reply is not an object." : p.error;
   }
-  text = replyKind === "program" ? extractProgram(text) : replyKind === "json" ? text : stripMd(text);
+  text = replyKind === "program" ? extractProgram(text) : text.trim();   // Markdown in words is kept: the page renders it
   return { text: cleanText(text, 8000), data: safeData(data) || {}, parseError };
 }
 function anthropicMessages(messages, images) {
@@ -1948,12 +2514,13 @@ function libAgent(def) {
   delete def.pseudo; delete def.code;
   LIB[def.typeId] = def;
 }
-const RINGS_3X5 = "penUp();\nfor (let row = 0; row < 3; row++) {\n  for (let col = 0; col < 5; col++) {\n    goTo(176 + col * 40, 209 + row * 40);\n    setHeading(0);\n    penDown();\n    for (let i = 0; i < 12; i++) {\n      forward(3.66);\n      right(30);\n    }\n    penUp();\n  }\n}";
+const RINGS_3X5 = "PENUP SETXY -80 40 SETHEADING 90\nREPEAT 3 [\n  REPEAT 5 [PENDOWN CIRCLE 7 PENUP FORWARD 40]\n  BACK 200 RIGHT 90 FORWARD 40 LEFT 90\n]";
 const B = "black", R = "red", U = "blue", GR = "green";
 const rowsOf = list => list.map((colors, i) => ({ y: i + 1, colors }));
 const rep = (n, c) => Array.from({ length: n }, () => c);
 libAgent({
   typeId: "row-judge", name: "Row Judge", emoji: "⚖️", gate: true, note: "gate · checks one row and how many dots are in it",
+  about: "A gate that checks for one row with the right number of dots.",
   pseudo: [
     "if there is {1} row and it has {4} dots",
     "  pass, and say \"done\"",
@@ -1984,6 +2551,7 @@ libAgent({
 });
 libAgent({
   typeId: "grid-judge", name: "Grid Judge", emoji: "⚖️", gate: true, note: "gate · checks how many rows and columns",
+  about: "A gate that checks how many rows and columns of dots there are.",
   pseudo: [
     "if rows is {3} and columns is {5}",
     "  pass, and say \"done\"",
@@ -2013,6 +2581,7 @@ libAgent({
 });
 libAgent({
   typeId: "triangle-judge", name: "Triangle Judge", emoji: "⚖️", gate: true, note: "gate · checks how many dots each row has, top to bottom",
+  about: "A gate that checks how many dots each row has, from the top row down.",
   pseudo: [
     "sort the rows from top to bottom",
     "if the rows have {1, 2, 3, 4} dots in that order",
@@ -2044,6 +2613,7 @@ libAgent({
 });
 libAgent({
   typeId: "checker-judge", name: "Checkerboard Judge", emoji: "⚖️", gate: true, note: "gate · checks the size and that no neighbors match",
+  about: "A gate that checks the size of a grid, and that no two dots next to each other share a color.",
   pseudo: [
     "if rows is {4} and columns is {4}",
     "  and no two side-by-side dots share a color",
@@ -2094,6 +2664,7 @@ libAgent({
 });
 libAgent({
   typeId: "color-judge", name: "Color Count Judge", emoji: "⚖️", gate: true, note: "gate · counts the dots of each color",
+  about: "A gate that counts the dots of each color.",
   pseudo: [
     "count the dots of each color",
     "if red is {7} and blue is {3} and there are no other dots",
@@ -2132,7 +2703,54 @@ libAgent({
   ]
 });
 libAgent({
+  typeId: "mystery-judge", name: "Mystery Judge", emoji: "🕵️", gate: true, note: "gate · keeps a secret: how many dots each row needs",
+  about: "A gate with a secret: how many dots each row should have. It only says which rows need more and which need fewer.",
+  pseudo: [
+    "the secret is {5, 2, 7} dots in the rows, from the top",
+    "compare each row with the secret",
+    "if every row matches and there are no extra rows",
+    "  pass, and say \"done\"",
+    "otherwise",
+    "  block, and say which rows need more dots and which need fewer"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const rows = (input.data.rowList || []).slice().sort((a, b) => a.y - b.y);",
+    "  const notes = [];",
+    "  for (let i = 0; i < params.secret.length; i++) {",
+    "    h.tick();",
+    "    const have = i < rows.length ? h.count(rows[i].colors) : 0;",
+    "    if (have < params.secret[i]) {",
+    "      notes.push(\"row \" + (i + 1) + \" needs more\");",
+    "    } else if (have > params.secret[i]) {",
+    "      notes.push(\"row \" + (i + 1) + \" needs fewer\");",
+    "    }",
+    "  }",
+    "  if (rows.length > params.secret.length) {",
+    "    notes.push(\"there are too many rows\");",
+    "  }",
+    "  if (notes.length === 0) {",
+    "    return { pass: true, say: \"done\" };",
+    "  } else {",
+    "    return { pass: false, say: \"Not yet: \" + notes.join(\", \") + \".\" };",
+    "  }",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [2, 2] }, { pseudo: [2, 2], js: [3, 12] }, { pseudo: [3, 3], js: [13, 16] }, { pseudo: [4, 4], js: [17, 17] }, { pseudo: [5, 5], js: [18, 18] }, { pseudo: [6, 6], js: [19, 19] }, { pseudo: [6, 6], js: [8, 8] }, { pseudo: [6, 6], js: [10, 10] }],
+  params: { secret: [5, 2, 7] },
+  slots: [{ line: 1, text: "5, 2, 7", param: "secret" }],
+  scenarios: [
+    { id: "s1", name: "the secret itself", input: { data: { rowList: rowsOf([rep(5, B), rep(2, B), rep(7, B)]) } }, expect: { pass: true, say: "done" } },
+    { id: "s2", name: "four in every row", input: { data: { rowList: rowsOf([rep(4, B), rep(4, B), rep(4, B)]) } }, expect: { pass: false, say: "Not yet: row 1 needs more, row 2 needs fewer, row 3 needs more." } },
+    { id: "s3", name: "a row is missing", input: { data: { rowList: rowsOf([rep(5, B), rep(2, B)]) } }, expect: { pass: false, sayContains: "row 3 needs more" } },
+    { id: "s4", name: "an extra row", input: { data: { rowList: rowsOf([rep(5, B), rep(2, B), rep(7, B), [B]]) } }, expect: { pass: false, sayContains: "too many rows" } },
+    { id: "s5", name: "rows listed bottom row first", input: { data: { rowList: [{ y: 3, colors: rep(7, R) }, { y: 2, colors: rep(2, U) }, { y: 1, colors: rep(5, GR) }] } }, expect: { pass: true } }
+  ]
+});
+libAgent({
   typeId: "dot-counter", name: "Dot Counter", emoji: "🔢", gate: false, note: "reads the Renderer's dot list",
+  about: "Reads the Renderer's list of dots and counts rows and columns. It never looks at the picture.",
+  listen: { from: "renderer", send: "data" },
   pseudo: [
     "round every dot's position to the nearest {10}",
     "rows is how many different heights there are",
@@ -2153,15 +2771,17 @@ libAgent({
   params: { nearest: 10 },
   slots: [{ line: 1, text: "10", param: "nearest" }],
   scenarios: [
-    { id: "s1", name: "a 3 by 5 grid of dots", program: "penUp();\nfor (let row = 0; row < 3; row++) {\n  for (let col = 0; col < 5; col++) {\n    goTo(176 + col * 40, 216 + row * 40);\n    dot(14, 'black');\n  }\n}", expect: { rows: 3, cols: 5 } },
-    { id: "s2", name: "a row of 4, with a label that says 12", program: "penUp();\nfor (let i = 0; i < 4; i++) {\n  goTo(196 + i * 40, 256);\n  dot(14, 'red');\n}\ngoTo(180, 200);\nlabel('12 dots here');", expect: { rows: 1, cols: 4 } },
+    { id: "s1", name: "a 3 by 5 grid of dots", program: "PENUP SETXY -80 40 SETHEADING 90\nREPEAT 3 [\n  REPEAT 5 [DOT 14 FORWARD 40]\n  BACK 200 RIGHT 90 FORWARD 40 LEFT 90\n]", expect: { rows: 3, cols: 5 } },
+    { id: "s2", name: "a row of 4, with a label that says 12", program: "PENUP SETXY -60 0 SETHEADING 90 SETPENCOLOR \"red\nREPEAT 4 [DOT 14 FORWARD 40]\nSETXY -76 56 LABEL [12 dots here]", expect: { rows: 1, cols: 4 } },
     { id: "s3", name: "pebbles drawn as little circles", program: RINGS_3X5, expect: { rows: 0, cols: 0 } },
-    { id: "s4", name: "a slightly wobbly row", program: "penUp();\ngoTo(200, 250);\ndot(14, 'blue');\ngoTo(240, 253);\ndot(14, 'blue');\ngoTo(280, 248);\ndot(14, 'blue');\ngoTo(320, 252);\ndot(14, 'blue');", expect: { rows: 1, cols: 4 } },
-    { id: "s5", name: "a triangle of 10", program: "const counts = [1, 2, 3, 4];\npenUp();\nfor (let row = 0; row < counts.length; row++) {\n  for (let i = 0; i < counts[row]; i++) {\n    goTo(256 - (counts[row] - 1) * 20 + i * 40, 196 + row * 40);\n    dot(14, 'black');\n  }\n}", expect: { rows: 4 } }
+    { id: "s4", name: "a slightly wobbly row", program: "PENUP SETPENCOLOR \"blue\nSETXY -56 6 DOT 14\nSETXY -16 3 DOT 14\nSETXY 24 8 DOT 14\nSETXY 64 4 DOT 14", expect: { rows: 1, cols: 4 } },
+    { id: "s5", name: "a triangle of 10", program: "TO ROW :N\n  REPEAT :N [DOT 14 FORWARD 40]\nEND\nPENUP SETHEADING 90\nSETXY 0 60 ROW 1\nSETXY -20 20 ROW 2\nSETXY -40 -20 ROW 3\nSETXY -60 -60 ROW 4", expect: { rows: 4 } }
   ]
 });
 libAgent({
   typeId: "loop-spotter", name: "Loop Spotter", emoji: "🔁", gate: false, note: "listens to the Describer",
+  about: "Listens to the Describer and says “stuck” when a description is too much like one it heard before.",
+  listen: { from: "describer", send: "text" },
   pseudo: [
     "remember the last {5} descriptions",
     "if the new one shares more than {half} its words with any of them",
@@ -2195,6 +2815,8 @@ libAgent({
 });
 libAgent({
   typeId: "tally", name: "Tally", emoji: "🧮", gate: false, note: "listens to everyone",
+  about: "Listens to everyone and counts how many times each agent spoke. It remembers its counts from one message to the next.",
+  listen: { from: "*", send: "text" },
   pseudo: [
     "count how many times each agent spoke",
     "every {5} rounds, show the counts"
@@ -2327,74 +2949,78 @@ function programAgent(id, typeId, over) {
     lastGood: null, status: "ok", statusDetail: null, shipped: true
   }, over || {});
 }
-const ARTIST_INSTRUCTIONS = "You are the Artist in a game of Telephone. You get a short description of a picture, and you write a turtle program that draws it.\n" + TURTLE_HELP + "\nReply with only the program, with no explanation.";
+const ARTIST_INSTRUCTIONS = "You are the Artist in a game of Telephone. You get a short description of a picture, and you write a Logo program that draws it.\n" + LOGO_HELP + "\nReply with only the Logo program, with no explanation.";
 const DESCRIBER_INSTRUCTIONS = "You are the Describer in a game of Telephone. You are shown a picture. Describe it in one short sentence of at most 15 words: say what shapes you see, their colors, and where they are. Reply with only the sentence.";
-const DESIGNER_INSTRUCTIONS = "You are the Designer. You get a pebble challenge, and you answer with a turtle program that draws it. Draw each pebble with dot(size, 'color'), using color names like 'red' or 'blue'. You may also write words on the picture with label('text').\n" + TURTLE_HELP + "\nIf the Critic tells you what went wrong, fix it. Reply with only the program.";
+const DESIGNER_INSTRUCTIONS = "You are the Designer. You get a pebble challenge, and you answer with a Logo program that draws it. Draw each pebble as a dot, like SETPENCOLOR \"red DOT 20, using plain color names such as red or blue. You may also write words on the picture with LABEL [some words].\n" + LOGO_HELP + "\nIf the Critic tells you what went wrong, fix it. Reply with only the Logo program.";
 const EYES_INSTRUCTIONS = "You are Eyes. You look at a picture of pebbles and report exactly what you see, even if it looks like a mistake. Count carefully. Say what you see in one sentence, then give the numbers.";
 const CRITIC_INSTRUCTIONS = "You are the Critic. The Judge rejected the Designer's picture and said why. Write one or two blunt, specific sentences telling the Designer exactly what is wrong with the picture and what to change. Talk only about the drawing.";
+const MYSTERY_TASK = "The Mystery Judge has a secret: how many pebbles each of 3 rows should have. Each row has between 1 and 8 pebbles. Draw 3 rows of pebbles, one under another. After each try, the Critic will tell you which rows need more pebbles and which need fewer.";
+// Bump this when a microworld changes: saved copies of the older version are then replaced (and can be kept as copies).
+const SEED_VERSION = 2;
 function makeTelephone() {
   return {
-    kind: "agent-kit-society", schema: 1, id: "telephone", title: "Telephone", question: "Where does it go?",
+    kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSION, id: "telephone", title: "Telephone", question: "Where does it go?",
+    intro: "Like the party game, but with pictures. The Artist turns words into a drawing, the Describer looks at the drawing and says what it sees, and those words go back to the Artist. Round after round, what happens to the picture?",
     questions: [
       "Run the same start twice. How different are the two runs?",
       "What happens if you change the Artist's style?",
-      "What changes when you move the Loop Spotter's threshold?",
-      "Can you find a start that never settles? One that settles fast?"
+      "Can you find a start that never settles? One that settles fast?",
+      "How would you know when the pictures have stopped changing?"
     ],
-    openers: ["What do you think the picture will look like after five rounds?", "Which agent do you think changes the picture the most?", "How would you know if the loop got stuck?"],
-    roundAgent: "artist", roundLimit: 8, seed: 1,
+    openers: ["What do you think the picture will look like after four rounds?", "Which agent do you think changes the picture the most?", "How would you know if the loop got stuck?"],
+    roundAgent: "artist", roundLimit: 4,
     starts: [
       { id: "sentence", label: "Start with a sentence", kind: "text", to: "artist", value: "a red circle next to a blue square", examples: ["a red house", "ten blue dots", "a green spiral", "a yellow sun", "a red circle next to a blue square", "a pink flower"] },
-      { id: "drawing", label: "Start with a drawing", kind: "program", to: "renderer", value: "penColor('green');\nfor (let i = 0; i < 3; i++) {\n  forward(120);\n  right(120);\n}" }
+      { id: "drawing", label: "Start with a drawing", kind: "program", to: "renderer", value: "SETPENCOLOR \"green\nREPEAT 3 [FORWARD 120 RIGHT 120]" }
     ],
     agents: [
-      { id: "artist", kind: "model", name: "Artist", emoji: "🎨", role: "turns a description into a turtle program", instructions: ARTIST_INSTRUCTIONS, outputFields: [], canSeeImages: false, history: "stateless", replyKind: "program", pretend: "artist", shipped: true },
+      { id: "artist", kind: "model", name: "Artist", emoji: "🎨", role: "turns a description into a Logo drawing", instructions: ARTIST_INSTRUCTIONS, outputFields: [], canSeeImages: false, history: "stateless", replyKind: "program", pretend: "artist", shipped: true },
       { id: "renderer", kind: "renderer", name: "Renderer", emoji: "🖼️", role: "runs the program and makes the picture", shipped: true },
-      { id: "describer", kind: "model", name: "Describer", emoji: "👀", role: "looks at the picture and says one sentence", instructions: DESCRIBER_INSTRUCTIONS, outputFields: [], canSeeImages: true, history: "stateless", replyKind: "prose", pretend: "describer", shipped: true },
-      programAgent("loop-spotter", "loop-spotter"),
-      programAgent("tally", "tally")
+      { id: "describer", kind: "model", name: "Describer", emoji: "👀", role: "looks at the picture and says one sentence", instructions: DESCRIBER_INSTRUCTIONS, outputFields: [], canSeeImages: true, history: "stateless", replyKind: "prose", pretend: "describer", shipped: true }
     ],
     rules: [
       { id: "t1", from: "artist", when: "always", send: "text", to: "renderer", prefix: "", enabled: true },
       { id: "t2", from: "renderer", when: "always", send: "image", to: "describer", prefix: "", enabled: true },
       { id: "t3", from: "renderer", when: "data", field: "pass", op: "=", value: "false", send: "both", to: "artist", prefix: "Your program did not run.", enabled: true },
-      { id: "t4", from: "describer", when: "always", send: "text", to: "artist", prefix: "", enabled: true },
-      { id: "t5", from: "describer", when: "always", send: "text", to: "loop-spotter", prefix: "", enabled: true },
-      { id: "t6", from: "*", when: "always", send: "text", to: "tally", prefix: "", enabled: true }
+      { id: "t4", from: "describer", when: "always", send: "text", to: "artist", prefix: "", enabled: true }
     ]
   };
 }
 function makePebbles() {
-  const soc = {
-    kind: "agent-kit-society", schema: 1, id: "pebbles", title: "Pebble Challenge", question: "Why did the Designer win?",
+  return {
+    kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSION, id: "pebbles", title: "Pebble Challenge", question: "Why did the Designer win?",
+    intro: "The Designer writes a Logo program that draws pebbles for a challenge. Eyes looks at the picture and counts, and a Judge decides whether the drawing passes. If it doesn't, the Critic tells the Designer what to fix, and the Designer tries again.",
     questions: [
       "Can you find a challenge the Designer can't meet?",
       "Can you find one Eyes gets wrong but Dot Counter gets right? Can you find the reverse?",
       "Which jobs needed intelligence, and which only needed counting?"
     ],
     openers: ["What does the Judge actually check?", "Could the Designer pass without really meeting the challenge?", "Which agent would you trust to count, and why?"],
-    roundAgent: "designer", roundLimit: 6, seed: 1,
+    roundAgent: "designer", roundLimit: 4,
     starts: [{ id: "challenge", label: "Challenge", kind: "challenge", to: "designer", value: "" }],
     challenges: [
-      { id: "row4", title: "A row of 4", task: "Draw a row of 4 pebbles.", judge: "row-judge", params: { rowsNeeded: 1, dotsNeeded: 4 }, eyesFields: [F_ROWS, F_COLS] },
-      { id: "grid3x5", title: "A 3 by 5 grid", task: "Draw a grid of pebbles with 3 rows and 5 columns.", judge: "grid-judge", params: { rowsNeeded: 3, columnsNeeded: 5 }, eyesFields: [F_ROWS, F_COLS] },
-      { id: "triangle10", title: "A triangle of 10", task: "Draw a triangle of 10 pebbles: rows of 1, 2, 3 and 4 pebbles from top to bottom.", judge: "triangle-judge", params: { counts: [1, 2, 3, 4] }, eyesFields: [F_ROWLIST] },
-      { id: "checker4", title: "A 4 by 4 checkerboard", task: "Draw a 4 by 4 checkerboard of pebbles in two colors, so that no two pebbles side by side or one above the other share a color.", judge: "checker-judge", params: { rowsNeeded: 4, columnsNeeded: 4 }, eyesFields: [F_ROWS, F_COLS, F_ROWLIST] },
-      { id: "colors73", title: "7 red and 3 blue", task: "Draw exactly 7 red pebbles and 3 blue pebbles, anywhere.", judge: "color-judge", params: { redNeeded: 7, blueNeeded: 3 }, eyesFields: [F_ROWLIST] }
+      { id: "row4", level: 1, title: "A row of 4", task: "Draw a row of 4 pebbles.", judge: "row-judge", params: { rowsNeeded: 1, dotsNeeded: 4 }, eyesFields: [F_ROWS, F_COLS] },
+      { id: "grid3x5", level: 1, title: "A 3 by 5 grid", task: "Draw a grid of pebbles with 3 rows and 5 columns.", judge: "grid-judge", params: { rowsNeeded: 3, columnsNeeded: 5 }, eyesFields: [F_ROWS, F_COLS] },
+      { id: "triangle10", level: 2, title: "A triangle of 10", task: "Draw a triangle of 10 pebbles: rows of 1, 2, 3 and 4 pebbles from top to bottom.", judge: "triangle-judge", params: { counts: [1, 2, 3, 4] }, eyesFields: [F_ROWLIST] },
+      { id: "checker4", level: 2, title: "A 4 by 4 checkerboard", task: "Draw a 4 by 4 checkerboard of pebbles in two colors, so that no two pebbles side by side or one above the other share a color.", judge: "checker-judge", params: { rowsNeeded: 4, columnsNeeded: 4 }, eyesFields: [F_ROWS, F_COLS, F_ROWLIST] },
+      { id: "colors73", level: 2, title: "7 red and 3 blue", task: "Draw exactly 7 red pebbles and 3 blue pebbles, anywhere.", judge: "color-judge", params: { redNeeded: 7, blueNeeded: 3 }, eyesFields: [F_ROWLIST] },
+      { id: "biggrid", level: 3, title: "A big grid", task: "Draw a grid of pebbles with 11 rows and 14 columns.", judge: "grid-judge", params: { rowsNeeded: 11, columnsNeeded: 14 }, eyesFields: [F_ROWS, F_COLS] },
+      { id: "mystery", level: 3, title: "Mystery rows", task: MYSTERY_TASK, judge: "mystery-judge", params: { secret: [5, 2, 7] }, eyesFields: [F_ROWLIST] }
     ],
-    challenge: "grid3x5",
+    challenge: "mystery",
     challengeWiring: { toJudge: "to-judge", fromJudge: "from-judge", reporter: "eyes" },
     variants: [{ id: "dot-counter", label: "Dot Counter counts instead of Eyes", enable: ["p4", "p6"], disable: ["p3", "p5"], on: false }],
     agents: [
-      { id: "designer", kind: "model", name: "Designer", emoji: "✏️", role: "draws the challenge as a turtle program", instructions: DESIGNER_INSTRUCTIONS, outputFields: [], canSeeImages: false, history: "full", replyKind: "program", pretend: "designer", shipped: true },
+      { id: "designer", kind: "model", name: "Designer", emoji: "✏️", role: "draws the challenge as a Logo program", instructions: DESIGNER_INSTRUCTIONS, outputFields: [], canSeeImages: false, history: "full", replyKind: "program", pretend: "designer", shipped: true },
       { id: "renderer", kind: "renderer", name: "Renderer", emoji: "🖼️", role: "runs the program and makes the picture", shipped: true },
-      { id: "eyes", kind: "model", name: "Eyes", emoji: "👁️", role: "looks at the picture and counts", instructions: EYES_INSTRUCTIONS, outputFields: [F_ROWS, F_COLS], canSeeImages: true, history: "stateless", replyKind: "prose", pretend: "eyes", shipped: true },
+      { id: "eyes", kind: "model", name: "Eyes", emoji: "👁️", role: "looks at the picture and counts", instructions: EYES_INSTRUCTIONS, outputFields: [F_ROWLIST], canSeeImages: true, history: "stateless", replyKind: "prose", pretend: "eyes", shipped: true },
       programAgent("dot-counter", "dot-counter"),
       programAgent("row-judge", "row-judge"),
       programAgent("grid-judge", "grid-judge"),
       programAgent("triangle-judge", "triangle-judge"),
       programAgent("checker-judge", "checker-judge"),
       programAgent("color-judge", "color-judge"),
+      programAgent("mystery-judge", "mystery-judge"),
       { id: "critic", kind: "model", name: "Critic", emoji: "📣", role: "tells the Designer bluntly what to fix", instructions: CRITIC_INSTRUCTIONS, outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "critic", shipped: true }
     ],
     rules: [
@@ -2402,19 +3028,27 @@ function makePebbles() {
       { id: "p2", from: "renderer", when: "data", field: "pass", op: "=", value: "false", send: "both", to: "designer", prefix: "Your program did not run.", enabled: true },
       { id: "p3", from: "renderer", when: "always", send: "image", to: "eyes", prefix: "", enabled: true },
       { id: "p4", from: "renderer", when: "always", send: "data", to: "dot-counter", prefix: "", enabled: false },
-      { id: "p5", from: "eyes", when: "always", send: "data", to: "grid-judge", prefix: "", enabled: true, tag: "to-judge" },
-      { id: "p6", from: "dot-counter", when: "always", send: "data", to: "grid-judge", prefix: "", enabled: false, tag: "to-judge" },
-      { id: "p7", from: "grid-judge", when: "data", field: "pass", op: "=", value: "false", send: "text", to: "critic", prefix: "The judge said:", enabled: true, tag: "from-judge" },
+      { id: "p5", from: "eyes", when: "always", send: "data", to: "mystery-judge", prefix: "", enabled: true, tag: "to-judge" },
+      { id: "p6", from: "dot-counter", when: "always", send: "data", to: "mystery-judge", prefix: "", enabled: false, tag: "to-judge" },
+      { id: "p7", from: "mystery-judge", when: "data", field: "pass", op: "=", value: "false", send: "text", to: "critic", prefix: "The judge said:", enabled: true, tag: "from-judge" },
       { id: "p8", from: "critic", when: "always", send: "text", to: "designer", prefix: "", enabled: true }
     ]
   };
-  return soc;
 }
 const MICROWORLDS = [{ id: "telephone", make: makeTelephone }, { id: "pebbles", make: makePebbles }];
 // What a reporter (Eyes or Dot Counter) must send for each kind of judge to work.
-const REPORTER_FIELDS = { "row-judge": [F_ROWS, F_COLS], "grid-judge": [F_ROWS, F_COLS], "triangle-judge": [F_ROWLIST], "checker-judge": [F_ROWS, F_COLS, F_ROWLIST], "color-judge": [F_ROWLIST] };
+const REPORTER_FIELDS = { "row-judge": [F_ROWS, F_COLS], "grid-judge": [F_ROWS, F_COLS], "triangle-judge": [F_ROWLIST], "checker-judge": [F_ROWS, F_COLS, F_ROWLIST], "color-judge": [F_ROWLIST], "mystery-judge": [F_ROWLIST] };
 const reporterFieldsFor = typeId => clone(REPORTER_FIELDS[typeId] || [F_ROWS, F_COLS, F_ROWLIST]);
-AK.Seeds = { makeTelephone, makePebbles, MICROWORLDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+// Agent Kit 1.0 drew in JavaScript. Saved and imported societies that still have its words get the Logo versions.
+const V1_TEXTS = [
+  ["Commands you can use: forward(n), back(n), left(degrees), right(degrees), penUp(), penDown(), penColor('red'), penWidth(n), goTo(x, y), home(), setHeading(degrees), dot(size, 'color'), label('text').\nThe canvas is 512 by 512. The turtle starts in the middle (256, 256), facing up. goTo(x, y) counts x from the left and y from the top.\nYou may use plain JavaScript loops, variables and Math. Put { } around every loop body. Do not use anything else.", LOGO_HELP],
+  ["and you write a turtle program that draws it.", "and you write a Logo program that draws it."],
+  ["Reply with only the program, with no explanation.", "Reply with only the Logo program, with no explanation."],
+  ["and you answer with a turtle program that draws it. Draw each pebble with dot(size, 'color'), using color names like 'red' or 'blue'. You may also write words on the picture with label('text').", "and you answer with a Logo program that draws it. Draw each pebble as a dot, like SETPENCOLOR \"red DOT 20, using plain color names such as red or blue. You may also write words on the picture with LABEL [some words]."],
+  ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
+  ["a turtle program", "a Logo program"]
+];
+AK.Seeds = { makeTelephone, makePebbles, MICROWORLDS, SEED_VERSION, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
 const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
@@ -2633,7 +3267,7 @@ function sanitizeSociety(raw) {
   if (!raw || typeof raw !== "object") throw new Error("This file has no society in it.");
   const d = raw.kind === "agent-kit-export" ? raw.society : raw;
   if (!d || typeof d !== "object" || !Array.isArray(d.agents)) throw new Error("This doesn't look like an Agent Kit society.");
-  const soc = { kind: "agent-kit-society", schema: 1, id: cleanId(d.id) || "imported", title: cleanName(d.title, 60) || "Imported society", question: cleanName(d.question, 200), questions: arr(d.questions, 10).map(q => cleanName(q, 300)).filter(Boolean), openers: arr(d.openers, 6).map(q => cleanName(q, 300)).filter(Boolean), roundLimit: clampInt(d.roundLimit, 1, 50, 8), seed: clampInt(d.seed, 1, 2147483647, 1), agents: [], rules: [] };
+  const soc = { kind: "agent-kit-society", schema: 1, id: cleanId(d.id) || "imported", title: cleanName(d.title, 60) || "Imported society", question: cleanName(d.question, 200), intro: cleanText(d.intro, 600).replace(/\s+/g, " ").trim(), questions: arr(d.questions, 10).map(q => cleanName(q, 300)).filter(Boolean), openers: arr(d.openers, 6).map(q => cleanName(q, 300)).filter(Boolean), roundLimit: clampInt(d.roundLimit, 1, 50, 4), agents: [], rules: [] };
   const ids = new Set();
   for (const a of d.agents.slice(0, 40)) { const s = sanitizeAgent(a, ids); if (s) { soc.agents.push(s); ids.add(s.id); } }
   if (!soc.agents.length) throw new Error("This society has no agents in it.");
@@ -2643,13 +3277,40 @@ function sanitizeSociety(raw) {
   soc.starts = arr(d.starts, 4).map(s => (s && typeof s === "object" && ids.has(s.to)) ? { id: cleanId(s.id) || "start", label: cleanName(s.label, 40) || "Start", kind: ["text", "program", "challenge"].indexOf(s.kind) >= 0 ? s.kind : "text", to: s.to, value: cleanText(s.value, 20000), examples: arr(s.examples, 12).map(x => cleanName(x, 80)).filter(Boolean) } : null).filter(Boolean);
   if (!soc.starts.length) soc.starts = [{ id: "sentence", label: "Start", kind: "text", to: soc.roundAgent, value: "" }];
   if (Array.isArray(d.challenges)) {
-    soc.challenges = arr(d.challenges, 20).map(c => (c && typeof c === "object" && ids.has(c.judge)) ? { id: cleanId(c.id) || "challenge", title: cleanName(c.title, 60) || "Challenge", task: cleanText(c.task, 400), judge: c.judge, params: sanitizeParams(c.params), eyesFields: arr(c.eyesFields, 8).map(sanitizeField).filter(Boolean) } : null).filter(Boolean);
+    soc.challenges = arr(d.challenges, 20).map(c => (c && typeof c === "object" && ids.has(c.judge)) ? Object.assign({ id: cleanId(c.id) || "challenge", title: cleanName(c.title, 60) || "Challenge", task: cleanText(c.task, 600), judge: c.judge, params: sanitizeParams(c.params), eyesFields: arr(c.eyesFields, 8).map(sanitizeField).filter(Boolean) }, c.level ? { level: clampInt(c.level, 1, 3, 1) } : {}) : null).filter(Boolean);
     soc.challenge = soc.challenges.some(c => c.id === d.challenge) ? d.challenge : (soc.challenges[0] || {}).id;
   }
   if (d.challengeWiring && typeof d.challengeWiring === "object") soc.challengeWiring = { toJudge: cleanId(d.challengeWiring.toJudge), fromJudge: cleanId(d.challengeWiring.fromJudge), reporter: ids.has(d.challengeWiring.reporter) ? d.challengeWiring.reporter : "" };
   const ruleIds = new Set(soc.rules.map(r => r.id));
   if (Array.isArray(d.variants)) soc.variants = arr(d.variants, 6).map(v => (v && typeof v === "object") ? { id: cleanId(v.id) || "variant", label: cleanName(v.label, 60), enable: arr(v.enable, 20).filter(x => ruleIds.has(x)), disable: arr(v.disable, 20).filter(x => ruleIds.has(x)), on: !!v.on } : null).filter(Boolean);
+  migrateSociety(soc);
   return soc;
+}
+// Agent Kit 1.0 drew in JavaScript: its drawings and instructions become Logo where that can be done safely.
+function migrateSociety(soc) {
+  let changed = 0;
+  const toLogo = text => { if (!Logo.looksLikeJS(text)) return null; const c = Logo.fromJS(text); if (c) changed++; return c; };
+  const reword = text => { let t = String(text == null ? "" : text); for (const [old, now] of V1_TEXTS) if (t.indexOf(old) >= 0) { t = t.split(old).join(now); changed++; } return t; };
+  for (const st of soc.starts || []) if (st.kind === "program") st.value = toLogo(st.value) || st.value;
+  for (const a of soc.agents || []) {
+    if (a.kind === "program") for (const sc of a.scenarios || []) { if (sc.program) sc.program = toLogo(sc.program) || sc.program; }
+    if (a.kind === "model") { a.instructions = reword(a.instructions); a.role = reword(a.role); }
+  }
+  return changed;
+}
+// A ready-made agent from the library, with a rule so it hears what it was made to listen to.
+function addLibraryAgent(soc, typeId) {
+  const L = LIB[typeId];
+  if (!L) return null;
+  const agent = programAgent(uniqueAgentId(soc, typeId), typeId, { shipped: false });
+  soc.agents.push(agent);
+  const rules = [];
+  if (L.listen && (L.listen.from === "*" || agentById(soc, L.listen.from))) {
+    const r = { id: newRuleId(soc), from: L.listen.from, when: "always", send: L.listen.send || "text", to: agent.id, prefix: "", enabled: true };
+    soc.rules.push(r);
+    rules.push(r);
+  }
+  return { agent, rules };
 }
 function sanitizeTrace(list) {
   return arr(list, 3000).filter(e => e && typeof e === "object").map(e => {
@@ -2661,7 +3322,7 @@ function sanitizeTrace(list) {
     if (e.message && typeof e.message === "object") o.message = { fromName: cleanName(e.message.fromName, 40), text: cleanText(e.message.text, 4000), data: safeData(e.message.data) || {} };
     if (e.response && typeof e.response === "object") o.response = { text: cleanText(e.response.text, 8000), data: safeData(e.response.data) || {} };
     if (e.call && typeof e.call === "object") o.call = { model: cleanName(e.call.model, 60), system: cleanText(e.call.system, 12000), reply: cleanText(e.call.reply, 12000), pretend: !!e.call.pretend };
-    if (e.program && typeof e.program === "object") o.program = { output: safeData(e.program.output), error: cleanText(e.program.error, 1000) };
+    if (e.program && typeof e.program === "object") o.program = { output: safeData(e.program.output), error: cleanText(e.program.error, 1000), pseudocode: cleanText(e.program.pseudocode, 3000) };
     if (e.render && typeof e.render === "object") o.render = { program: cleanText(e.render.program, 20000), error: cleanText(e.render.error, 1000) };
     o.imported = true;
     return o;
@@ -2688,7 +3349,7 @@ function importScenarios(text) {
   if (!d || d.kind !== "agent-kit-scenarios" || !Array.isArray(d.scenarios)) throw new Error("This isn't an Agent Kit scenario file.");
   return { typeId: cleanId(d.typeId), agentName: cleanName(d.agentName, 40), scenarios: arr(d.scenarios, 60).map(sanitizeScenario).filter(Boolean) };
 }
-AK.Society = { agentById, validateSociety, setParams, applyChallenge, applyVariant, duplicateAgent, deleteAgent, newRuleId, uniqueAgentId, classifyPseudoEdit, installTranslation, revertAgent, sanitizeSociety, sanitizeAgent, sanitizeScenario, exportSociety, importSociety, exportScenarios, importScenarios, AGENT_KEYS };
+AK.Society = { agentById, validateSociety, setParams, applyChallenge, applyVariant, duplicateAgent, deleteAgent, newRuleId, uniqueAgentId, classifyPseudoEdit, installTranslation, revertAgent, sanitizeSociety, sanitizeAgent, sanitizeScenario, exportSociety, importSociety, exportScenarios, importScenarios, migrateSociety, addLibraryAgent, AGENT_KEYS };
 
 /* ===== SECTION: TRANSLATOR CLIENT ===== */
 const TRANSLATOR_RULES = [
@@ -2871,7 +3532,7 @@ function createRun(society, deps) {
   const run = {
     status: "idle", stopReason: "", note: "", round: 1, roundAgentSeen: false, deliveries: 0, activations: 0,
     queue: [], trace: [], renders: {}, histories: {}, memories: {},
-    seed: clampInt(soc.seed, 1, 2147483647, 1), roundLimit: clampInt(soc.roundLimit, 1, 50, 8),
+    seed: clampInt(deps.seed, 1, 2147483647, 1), roundLimit: clampInt(soc.roundLimit, 1, 50, 4),   // the seed only matters to programs that use random numbers
     t0: now(), msgSeq: 0, renderSeq: 0, start: null
   };
   run.maxDeliveries = run.roundLimit * 25 + 50;
@@ -2913,7 +3574,8 @@ function createRun(society, deps) {
   async function activateProgram(agent, msg, entry) {
     const input = { from: msg.fromName, round: msg.round, text: msg.text || "", data: clone(msg.data || {}) };   // the round the message was sent in
     if (run.memories[agent.id] !== undefined) input.memory = clone(run.memories[agent.id]);
-    entry.program = { typeId: agent.typeId, input, params: clone(agent.params || {}), codeHash: agent.code ? agent.code.hash : null, status: agent.status };
+    const ran = agent.code ? agent.code.pseudocode : agent.pseudocode;   // the pseudocode its JavaScript was translated from
+    entry.program = { typeId: agent.typeId, input, params: clone(agent.params || {}), codeHash: agent.code ? agent.code.hash : null, status: agent.status, pseudocode: ran, slots: ran === agent.pseudocode ? clone(agent.slots || []) : [] };
     if (!agent.code || !agent.code.js) throw Object.assign(new Error(agent.name + " has no program yet: its pseudocode needs translating."), { kind: "program" });
     const res = await runtime.runProgram(agent.code.js, input, { params: agent.params || {}, seed: run.seed });
     Object.assign(entry.program, { output: res.output, ticks: res.ticks, ms: Math.round(res.ms || 0), mode: res.mode, error: res.ok ? null : res.error });
@@ -3058,17 +3720,18 @@ AK.Engine = { createRun, ruleMatches, compareValues, describeRule, composeUserTe
 
 /* ===== SECTION: HELPER (reads the society, trace and scenarios; cannot change them) ===== */
 const HELPER_SYSTEM = PREAMBLE +
-  "You are the Helper in Agent Kit, a kit where learners build societies of agents: model agents (which call an AI), programmed agents (small programs written in pseudocode and translated to JavaScript), and a Renderer that draws turtle programs. Rules wire the agents together.\n" +
+  "You are the Helper in Agent Kit, a kit where learners build societies of agents: model agents (which call an AI), programmed agents (small programs written in pseudocode and translated to JavaScript), and a Renderer that draws Logo programs. Rules wire the agents together.\n" +
   "You can read the learner's society, the latest run and the scenarios (tests), but you cannot change anything.\n" +
   "How you help: ask questions rather than giving answers. Never tell the learner the fix for a failing scenario or a broken rule; instead, ask a question that points at the evidence, such as what a scenario expected compared with what happened, or which line of pseudocode decides it. Offer the next small step the learner can almost reach on their own. Be kind and encouraging. Keep replies to two to four short sentences.";
 function describeSociety(soc) {
   if (!soc) return "(no society)";
   const nameOf = id => (id === "*" ? "anyone" : (agentById(soc, id) || { name: id }).name);
   const lines = ["Society: " + soc.title + (soc.question ? " — question: " + soc.question : ""), "Round limit: " + soc.roundLimit + ". A new round starts each time " + nameOf(soc.roundAgent) + " gets a message."];
+  if (soc.intro) lines.splice(1, 0, "About it: " + soc.intro);
   for (const a of soc.agents) {
     if (a.kind === "model") lines.push("- " + a.name + " (model agent" + (a.canSeeImages ? ", can see pictures" : "") + ", remembers " + (a.history === "full" ? "the whole run" : "nothing between messages") + "). Instructions: " + String(a.instructions || "").replace(/\s+/g, " ").slice(0, 300) + (a.outputFields && a.outputFields.length ? " Output fields: " + a.outputFields.map(f => f.name).join(", ") + "." : ""));
     else if (a.kind === "program") lines.push("- " + a.name + " (programmed agent" + (a.gate ? ", a gate" : "") + ", status " + a.status + "). Pseudocode:\n" + String(a.pseudocode).split("\n").map(l => "    " + l).join("\n") + "\n  Params: " + JSON.stringify(a.params || {}));
-    else lines.push("- " + a.name + " (the Renderer: runs turtle programs and makes pictures)");
+    else lines.push("- " + a.name + " (the Renderer: runs Logo programs and makes pictures)");
   }
   lines.push("Rules:");
   for (const r of soc.rules) lines.push("- " + (r.enabled === false ? "(off) " : "") + describeRule(r, nameOf));
@@ -3116,6 +3779,40 @@ function helperRequest(soc, trace, question, chat) {
 }
 AK.Helper = { HELPER_SYSTEM, describeSociety, describeTrace, describeScenarioResults, helperRequest };
 
+/* ===== SECTION: WORDS (data said in plain words, so the trace needn't show JSON) ===== */
+const FIELD_WORDS = { cols: "columns", rowList: "rows from the top", dots: "dots", segments: "lines", labels: "labels" };
+const fieldWords = k => FIELD_WORDS[k] || String(k).replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ").toLowerCase();
+function colorCounts(colors) {
+  const n = new Map();
+  for (const c of colors || []) n.set(String(c), (n.get(String(c)) || 0) + 1);
+  return Array.from(n, ([c, k]) => k + " " + c).join(", ") || "none";
+}
+function plainValue(v, depth) {
+  if (v === null || v === undefined || v === "") return "nothing";
+  if (typeof v === "boolean") return v ? "yes" : "no";
+  if (typeof v === "number") return fmt(v);
+  if (typeof v === "string") return "“" + (v.length > 80 ? v.slice(0, 79) + "…" : v) + "”";
+  if (Array.isArray(v)) {
+    if (!v.length) return "none";
+    if (v.every(x => x === null || typeof x !== "object")) return v.slice(0, 12).map(x => plainValue(x, depth + 1)).join(", ") + (v.length > 12 ? ", …" : "");
+    if (v.every(x => x && typeof x === "object" && Array.isArray(x.colors))) return v.slice(0, 10).map(r => "(" + colorCounts(r.colors) + ")").join(" ") + (v.length > 10 ? " …" : "");
+    if (v.every(x => x && typeof x === "object" && "x" in x && "y" in x)) return plural(v.length, "dot");
+    return plural(v.length, "item");
+  }
+  if (typeof v === "object") {
+    const keys = Object.keys(v);
+    if (!keys.length) return "nothing";
+    if (depth > 0) return plural(keys.length, "item");
+    return keys.slice(0, 10).map(k => k + " " + plainValue(v[k], depth + 1)).join(", ") + (keys.length > 10 ? ", …" : "");
+  }
+  return String(v);
+}
+// {"counts": {"Artist": 1}} becomes "counts: Artist 1". memory and say are left out: say is already words.
+function paraphrase(data) {
+  return Object.keys(data || {}).filter(k => k !== "memory" && k !== "say").map(k => fieldWords(k) + ": " + plainValue(data[k], 0)).join(" · ");
+}
+AK.Words = { paraphrase, plainValue, colorCounts };
+
 /* ===== SECTION: STORE (gzip + base64 for the tight localStorage quota) ===== */
 async function streamBytes(stream) {
   const reader = stream.getReader();
@@ -3153,7 +3850,7 @@ async function unpack(str) {
   throw new Error("The saved work is in a format this version doesn't know.");
 }
 AK.Store = { pack, unpack };
-AK.MODULES = ["util", "SafeJS", "Sandbox", "Runtime", "Geometry", "Prompts", "Pretend", "Adapters", "Library", "Slots", "Seeds", "Society", "Translator", "Scenarios", "Engine", "Helper", "Store"];
+AK.MODULES = ["util", "SafeJS", "Sandbox", "Logo", "Runtime", "Geometry", "Prompts", "Pretend", "Adapters", "Library", "Slots", "Seeds", "Society", "Translator", "Scenarios", "Engine", "Helper", "Words", "Store"];
 
 })(typeof globalThis !== "undefined" ? globalThis : window);
 </script>
@@ -3164,7 +3861,7 @@ AK.MODULES = ["util", "SafeJS", "Sandbox", "Runtime", "Geometry", "Prompts", "Pr
 (function () {
 "use strict";
 const AK = window.AK;
-const { util, Runtime, Adapters, Slots, Seeds, Society, Translator, Scenarios, Engine, Helper, Store, Prompts, Pretend, SafeJS } = AK;
+const { util, Runtime, Adapters, Slots, Seeds, Society, Translator, Scenarios, Engine, Helper, Store, Prompts, Pretend, SafeJS, Words, Logo } = AK;
 const { esc, clone, hash } = util;
 const $ = (sel, root) => (root || document).querySelector(sel);
 const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
@@ -3173,6 +3870,8 @@ const short = (s, n) => { s = String(s == null ? "" : s).replace(/\s+/g, " ").tr
 const sel = b => (b ? " selected" : "");
 const raf = window.requestAnimationFrame ? f => window.requestAnimationFrame(f) : f => setTimeout(f, 16);
 const lineCount = t => String(t || "").split("\n").filter(l => l.trim()).length;
+const plural = util.plural;
+const clip = (s, n) => { s = String(s == null ? "" : s).trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };   // like short, but keeps the lines
 
 /* ===== SECTION: ENVIRONMENT ===== */
 const ENV = (() => {
@@ -3198,9 +3897,9 @@ const app = {
   settings: defaultSettings(),
   societies: {}, order: [], activeId: "telephone",
   runs: {}, traces: {}, prevStrips: {}, log: {}, helperChat: {},
-  banners: [], saveError: "", loadError: "",
+  banners: [], saveError: "", loadError: "", replaced: [],
   adapter: null, adapterKey: "",
-  ui: { lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), expandedW: new Set(), replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
+  ui: { lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), tech: new Set(), expandedW: new Set(), replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
 };
 const soc = () => app.societies[app.activeId];
 const nameOf = (s, id) => (id === "*" ? "anyone" : id === "you" ? "You" : ((Society.agentById(s, id) || { name: id }).name));
@@ -3239,12 +3938,16 @@ async function load() {
     for (const id of d.order || []) {
       const s = d.societies && d.societies[id];
       if (!s) continue;
+      // A microworld saved by an older version is set aside; ensureSocieties brings in the new one.
+      if (isMicroworld(id) && s.seedVersion !== Seeds.SEED_VERSION) { app.replaced.push(s); continue; }
       if (Society.validateSociety(s).length === 0) app.societies[id] = s;
       else { try { app.societies[id] = Society.sanitizeSociety(s); } catch (e) { /* drop a broken one */ } }
+      if (app.societies[id]) Society.migrateSociety(app.societies[id]);
     }
     app.order = (d.order || []).filter(id => app.societies[id]);
     if (app.societies[d.activeId]) app.activeId = d.activeId;
     app.traces = d.traces || {};
+    for (const old of app.replaced) delete app.traces[old.id];
     app.helperChat = d.helperChat || {};
     for (const pair of d.translationCache || []) if (Array.isArray(pair) && pair.length === 2) Translator.TranslationCache.set(pair[0], pair[1]);
   } catch (e) { app.loadError = "The saved work couldn't be read (" + e.message + "), so the kit started fresh."; }
@@ -3266,8 +3969,8 @@ function getAdapter() {
 const liveConnection = () => app.settings.connection !== "pretend";
 
 /* ===== SECTION: PICTURES ===== */
-function paintOps(ctx, ops) {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+function paintOps(ctx, ops, scale) {
+  ctx.setTransform(scale || 1, 0, 0, scale || 1, 0, 0);   // a small canvas draws at its own size: shrinking a big one can lose thin lines
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, 512, 512);
   ctx.lineCap = "round";
@@ -3330,6 +4033,78 @@ async function paintInto(canvas, render, run) {
   if (mem && mem.program === render.program) ops = mem.ops;
   else { const r = await Runtime.runTurtle(render.program || "", { seed: render.seed || 1 }); ops = r.output && r.output.ops; }
   if (canvas.isConnected) paintOps(ctx, ops || []);
+}
+
+/* ===== SECTION: WORDS ON SCREEN (Markdown, Logo and pseudocode, shown nicely) ===== */
+// Markdown from a model, made safe: everything is escaped first, then a few marks become tags.
+// Links show only their words, so nothing a model writes can be clicked.
+function mdInline(s) {
+  return s.split(/(`[^`\n]+`)/).map((part, i) => i % 2 ? "<code>" + part.slice(1, -1) + "</code>" : part
+    .replace(/\[([^\]\n]+)\]\([^)\s]*\)/g, "$1")
+    .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
+    .replace(/__([^_\n]+)__/g, "<b>$1</b>")
+    .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?;:]|$)/g, "$1<i>$2</i>")
+    .replace(/(^|[\s(])_([^_\n]+)_(?=[\s).,!?;:]|$)/g, "$1<i>$2</i>")).join("");
+}
+function md(text, compact) {
+  const lines = esc(String(text == null ? "" : text)).replace(/\r\n?/g, "\n").split("\n");
+  const out = [];
+  let para = [], list = null;
+  const endPara = () => { if (para.length) out.push("<p>" + para.map(mdInline).join("<br>") + "</p>"); para = []; };
+  const endList = () => { if (list) out.push("<" + list.tag + ">" + list.items.map(x => "<li>" + mdInline(x) + "</li>").join("") + "</" + list.tag + ">"); list = null; };
+  const item = (tag, text) => { endPara(); if (!list || list.tag !== tag) { endList(); list = { tag, items: [] }; } list.items.push(text); };
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i];
+    let m;
+    if (/^\s*```/.test(ln)) {
+      endPara(); endList();
+      const code = [];
+      for (i++; i < lines.length && !/^\s*```/.test(lines[i]); i++) code.push(lines[i]);
+      out.push('<pre class="box">' + code.join("\n") + "</pre>");
+    } else if ((m = /^\s*#{1,6}\s+(.*)$/.exec(ln))) { endPara(); endList(); out.push('<p class="md-h">' + mdInline(m[1]) + "</p>"); }
+    else if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(ln)) { endPara(); endList(); out.push("<hr>"); }
+    else if ((m = /^\s*[-*•+]\s+(.*)$/.exec(ln))) item("ul", m[1]);
+    else if ((m = /^\s*\d+[.)]\s+(.*)$/.exec(ln))) item("ol", m[1]);
+    else if ((m = /^\s*&gt;\s?(.*)$/.exec(ln))) { endPara(); endList(); out.push("<blockquote>" + mdInline(m[1]) + "</blockquote>"); }
+    else if (!ln.trim()) { endPara(); endList(); }
+    else if (list && /^\s{2,}\S/.test(ln)) list.items[list.items.length - 1] += " " + ln.trim();
+    else { endList(); para.push(ln); }
+  }
+  endPara(); endList();
+  return '<div class="md' + (compact ? " compact" : "") + '">' + out.join("") + "</div>";
+}
+// Logo with its commands, numbers, "words and :names picked out in color. In help text that mixes
+// English and Logo, upperOnly colors only commands written in capitals, so "to" and "and" stay plain.
+let LOGO_WORDS = null;
+function logoHTML(src, upperOnly) {
+  if (!LOGO_WORDS) LOGO_WORDS = new Set(Logo.NAMES.concat(["TO", "END"]));
+  const re = /(;[^\n]*)|("[^\s\[\]();]*)|(:[^\s\[\]();,+\-*\/=<>"]+)|(\d+(?:\.\d+)?)|([\[\]])|([^\s\[\]();,+\-*\/=<>"]+)|([\s\S])/g;
+  let out = "", m;
+  const s = String(src == null ? "" : src);
+  while ((m = re.exec(s))) {
+    if (m[1]) out += '<span class="lg-c">' + esc(m[1]) + "</span>";
+    else if (m[2]) out += '<span class="lg-q">' + esc(m[2]) + "</span>";
+    else if (m[3]) out += '<span class="lg-v">' + esc(m[3]) + "</span>";
+    else if (m[4]) out += '<span class="lg-n">' + esc(m[4]) + "</span>";
+    else if (m[5]) out += '<span class="lg-b">' + esc(m[5]) + "</span>";
+    else if (m[6]) out += LOGO_WORDS.has(m[6].toUpperCase()) && (!upperOnly || m[6] === m[6].toUpperCase()) ? '<span class="lg-k">' + esc(m[6]) + "</span>" : esc(m[6]);
+    else out += esc(m[0]);
+  }
+  return out;
+}
+const logoBox = (src, cls, upperOnly) => '<pre class="box logo' + (cls ? " " + cls : "") + '">' + logoHTML(src, upperOnly) + "</pre>";
+// Read-only pseudocode, with its settings in { } picked out.
+function pseudoStaticHTML(text, slots) {
+  const pos = Slots.slotPositions(text || "", slots || []);
+  return '<div class="pseudo mini">' + String(text || "").split("\n").map((ln, li) => {
+    let html = "", last = 0;
+    for (const p of pos.filter(q => q.line === li + 1)) { const sl = slots[p.slot]; html += esc(ln.slice(last, p.col)) + '{<span class="slot ro">' + esc(sl.text) + "</span>}"; last = p.col + sl.text.length + 2; }
+    return '<div class="pl"><span class="n">' + (li + 1) + "</span><span>" + html + esc(ln.slice(last)) + "</span></div>";
+  }).join("") + "</div>";
+}
+function isProgramReply(e, s) {
+  const a = Society.agentById(s, e.agentId);
+  return !!(e.response && e.agentKind === "model" && a && a.replyKind === "program");
 }
 
 /* ===== SECTION: SMALL UI PIECES (toasts, modals, files) ===== */
@@ -3475,7 +4250,7 @@ function stripOf(trace, s) {
     const r = rounds.get(e.round) || { round: e.round, render: null, lines: [] };
     if (e.render && !e.render.error) r.render = e.render;
     else if (e.agentKind !== "renderer" && e.agentId !== s.roundAgent && e.response) {
-      const txt = String(e.response.text || "").trim();
+      const txt = util.stripMd(e.response.text || "");
       const pass = e.response.data && typeof e.response.data.pass === "boolean" ? e.response.data.pass : null;
       if (txt) r.lines.push({ emoji: e.emoji || "", text: txt, pass });
     }
@@ -3492,11 +4267,13 @@ function beginRun() {
     if (["running", "paused", "stepping", "ready"].indexOf(old.api.run.status) >= 0) old.api.stop();
     if (old.api.run.trace.length) app.prevStrips[s.id] = { start: old.startText, rounds: stripOf(old.api.run.trace, s) };
   } else if (app.traces[s.id] && app.traces[s.id].length) app.prevStrips[s.id] = { start: traceStartText(app.traces[s.id]), rounds: stripOf(app.traces[s.id], s) };
-  const api = Engine.createRun(s, { adapter: getAdapter(), runtime: Runtime, rasterize, delayMs: speedDelay() });
+  // A new seed every run: programs that pick at random pick differently, like the models do.
+  const api = Engine.createRun(s, { adapter: getAdapter(), runtime: Runtime, rasterize, delayMs: speedDelay(), seed: 1 + Math.floor(Math.random() * 2147483646) });
   const rec = { api, startText: spec.text, working: null, socId: s.id };
   app.runs[s.id] = rec;
   app.ui.replay = null;
   app.ui.expanded = new Set();
+  app.ui.tech = new Set();
   api.on((e, run) => onRunEvent(rec, e, run));
   try { api.start({ to: spec.to, text: spec.text }); }
   catch (e) { toast(e.message, "bad"); delete app.runs[s.id]; return null; }
@@ -3583,7 +4360,7 @@ function renderLeft() {
   const host = $("#colLeft");
   if (!host || !s) return;
   const showInside = app.ui.lookInside || app.ui.mobileTab === "inside";
-  let h = '<div class="card qcard"><div class="kicker">' + esc(s.title) + '</div><div class="big-q">' + esc(s.question || s.title) + '</div>' +
+  let h = '<div class="card qcard"><div class="kicker">' + esc(s.title) + '</div>' + (s.intro ? '<p class="intro">' + esc(s.intro) + '</p>' : "") + '<div class="big-q">' + esc(s.question || s.title) + '</div>' +
     (s.questions && s.questions.length ? '<ul>' + s.questions.map(q => "<li>" + esc(q) + "</li>").join("") + '</ul>' : "") +
     '<div class="row" style="margin-top:10px"><button class="btn ' + (showInside ? "" : "primary") + '" data-act="look">' + (showInside ? "Hide the inside" : "🔍 Look inside") + '</button></div></div>';
   if (showInside) h += insideHTML(s);
@@ -3620,7 +4397,7 @@ function ruleHTML(r, s) {
 }
 function insideHTML(s) {
   let h = '<div class="card"><div class="card-title"><h3>Inside ' + esc(s.title) + '</h3></div><p class="inside-note">Ordinary agents and rules — the same kinds you can make yourself. Open an agent to read or change it.</p>';
-  h += '<div class="agent-grid">' + s.agents.map(a => agentCardHTML(a, s)).join("") + '</div>';
+  h += '<div class="agent-grid">' + s.agents.map(a => agentCardHTML(a, s)).join("") + '</div><div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-agent">+ Add an agent</button></div>';
   h += '<div class="section"><h3>Rules</h3><p class="hint">When an agent responds, every rule that matches sends a message. A new round starts each time <select data-bind="roundAgent" aria-label="Round agent">' + agentOptions(s, s.roundAgent, false) + '</select> gets a message.</p><div class="rules">' + s.rules.map(r => ruleHTML(r, s)).join("") + '</div>' +
     '<div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-rule">+ Add a rule</button></div><div class="gate-note">⛔ A <b>gate</b> answers pass = true or pass = false. When it says false, its ALWAYS rules wait; only rules that check data.pass = false still fire.</div></div>';
   h += '<div class="section"><div class="row"><button class="btn tiny" data-act="export-society">⬇ Export</button><button class="btn tiny" data-act="import-society">⬆ Import</button>' +
@@ -3642,10 +4419,9 @@ function viewState(s, run, trace) {
   const verdicts = {};
   for (const e of shown) if (e.response && e.response.data && typeof e.response.data.pass === "boolean") verdicts[e.agentId] = e.response.data.pass;
   const bubbles = shown.filter(e => e.error || (e.response && String(e.response.text || "").trim())).slice(-4).reverse().map(e => {
-    const a = Society.agentById(s, e.agentId);
-    let text = e.error ? "⚠ " + e.error : "";
-    if (!e.error && e.response) text = a && a.replyKind === "program" ? "wrote a turtle program (" + lineCount(e.response.text) + " lines)" : (e.response.text || (Object.keys(e.response.data || {}).length ? "(sent data)" : "(said nothing)"));
-    return { who: (e.emoji || "") + " " + e.agentName + " ← " + (e.message ? e.message.fromName : ""), kind: e.agentKind, text, err: !!e.error, round: e.round };
+    const prog = isProgramReply(e, s);
+    const text = e.error ? "⚠ " + e.error : prog ? "wrote a Logo program (" + plural(lineCount(e.response.text), "line") + ")" : e.response.text;
+    return { who: (e.emoji || "") + " " + e.agentName + " ← " + (e.message ? e.message.fromName : ""), kind: e.agentKind, text, md: !e.error && !prog, err: !!e.error, round: e.round };
   });
   return { replay, render, renderRound, active, verdicts, bubbles, index: upto - 1, total: acts.length, currentI: replay && last ? last.i : null };
 }
@@ -3653,7 +4429,7 @@ function achipHTML(a, s, view) {
   const v = a.gate || view.verdicts[a.id] === false ? view.verdicts[a.id] : undefined;
   return '<span class="achip kind-' + a.kind + (view.active === a.id ? " active" : "") + '"><span class="e">' + esc(a.emoji) + '</span>' + esc(a.name) + (a.id === s.roundAgent ? '<span class="round-mark" title="starts each round">↻</span>' : "") + (v === true ? '<span class="v-ok" title="pass">✓</span>' : v === false ? '<span class="v-bad" title="block">✗</span>' : "") + '</span>';
 }
-function bubbleHTML(b) { return '<div class="bubble kind-' + esc(b.kind) + (b.err ? " err" : "") + '"><div class="who">R' + b.round + " · " + esc(b.who) + '</div>' + nl2br(short(b.text, 420)) + '</div>'; }
+function bubbleHTML(b) { return '<div class="bubble kind-' + esc(b.kind) + (b.err ? " err" : "") + '"><div class="who">R' + b.round + " · " + esc(b.who) + '</div>' + (b.md ? md(clip(b.text, 420), true) : nl2br(short(b.text, 420))) + '</div>'; }
 function rcardHTML(r, prev, run, view) {
   const here = view && view.replay && view.renderRound === r.round;
   return '<div class="rcard' + (prev ? " prev" : "") + (here ? " here" : "") + '"><div class="rn">Round ' + r.round + '</div>' + (r.render ? imgTag(r.render, "", "round " + r.round, prev ? null : run) : '<div class="noimg">no picture</div>') +
@@ -3664,20 +4440,32 @@ function statusLineHTML(s, rec, run) {
   const round = "Round " + run.round + " of " + run.roundLimit;
   if (run.status === "running" || run.status === "stepping") { const w = rec.working ? Society.agentById(s, rec.working) : null; return '<span class="pulse"></span>' + round + (w ? " · " + esc(w.emoji + " " + w.name) + " is working…" : ""); }
   if (run.status === "paused" || run.status === "ready") return "⏸ " + round + " · paused, " + run.queue.length + " message" + (run.queue.length === 1 ? "" : "s") + " waiting.";
-  if (run.status === "done" || run.status === "stopped") return "■ " + esc(run.note || "Finished.") + " <span class=\"muted\">(" + round + ", " + run.deliveries + " messages)</span>";
+  if (run.status === "done" || run.status === "stopped") return "■ " + esc(run.note || "Finished.") + " <span class=\"muted\">(" + round + ", " + run.deliveries + " messages)</span>" + (tooEasy(s, run) ? '<span class="nudge-inline">The Designer passed on its first try. Too easy? Try a hard challenge.</span>' : "");
   return "";
 }
-function padHTML(st) {
-  const cmds = [["forward(40);", "forward 40"], ["back(40);", "back 40"], ["left(90);", "left 90"], ["right(90);", "right 90"], ["left(30);", "left 30"], ["right(30);", "right 30"], ["penUp();", "pen up"], ["penDown();", "pen down"], ["dot(14);", "dot"]];
-  const colors = ["black", "red", "orange", "green", "blue", "purple"];
-  return '<div class="pad"><canvas id="padCanvas" width="512" height="512" aria-label="Preview of your drawing"></canvas><div><div class="cmds">' + cmds.map(c => '<button data-act="pad" data-cmd="' + esc(c[0]) + '">' + esc(c[1]) + '</button>').join("") +
-    colors.map(c => '<button class="swatch" style="background:' + c + '" data-act="pad" data-cmd="penColor(\'' + c + '\');" title="' + c + '" aria-label="' + c + '"></button>').join("") +
-    '<button data-act="pad-undo">undo</button><button data-act="pad-clear">clear</button></div><textarea class="field code" rows="6" data-bind="start-value" data-id="' + esc(st.id) + '" spellcheck="false" aria-label="Your turtle program">' + esc(st.value || "") + '</textarea><div class="hint" id="padErr"></div></div></div>';
+// A live model that meets a challenge at once has nothing to learn from the Critic.
+function tooEasy(s, run) {
+  if (!s.challenges || !liveConnection() || run.stopReason !== "done" || run.round !== 1) return false;
+  return run.trace.some(e => e.kind === "activation" && e.response && e.response.data && e.response.data.pass === true && (Society.agentById(s, e.agentId) || {}).gate);
 }
+function padHTML(st) {
+  const cmds = ["FORWARD 40", "BACK 40", "LEFT 90", "RIGHT 90", "LEFT 30", "RIGHT 30", "PENUP", "PENDOWN", "DOT 14"];
+  const colors = ["black", "red", "orange", "green", "blue", "purple"];
+  const square = "REPEAT 4 [FORWARD 40 RIGHT 90]";
+  return '<div class="pad"><canvas id="padCanvas" width="320" height="320" aria-label="Preview of your drawing"></canvas><div><div class="cmds">' + cmds.map(c => '<button data-act="pad" data-cmd="' + esc(c) + '">' + esc(c) + '</button>').join("") +
+    '<button data-act="pad" data-cmd="' + esc(square) + '" title="' + esc(square) + '">REPEAT 4 [ … ]</button>' +
+    colors.map(c => '<button class="swatch" style="background:' + c + '" data-act="pad" data-cmd="' + esc('SETPENCOLOR "' + c) + '" title="SETPENCOLOR &quot;' + c + '" aria-label="' + c + '"></button>').join("") +
+    '<button data-act="pad-undo">undo</button><button data-act="pad-clear">clear</button></div><textarea class="field code" rows="6" data-bind="start-value" data-id="' + esc(st.id) + '" spellcheck="false" aria-label="Your Logo program">' + esc(st.value || "") + '</textarea><div class="hint" id="padErr">This is Logo: every button adds one command. You can type your own too.</div></div></div>';
+}
+const LEVELS = { 1: "easy", 2: "medium", 3: "hard" };
 function challengeHTML(s) {
   const ch = (s.challenges || []).find(c => c.id === s.challenge);
-  let h = '<div class="challenges">' + (s.challenges || []).map(c => '<button class="challenge' + (c.id === s.challenge ? " on" : "") + '" data-act="challenge" data-id="' + esc(c.id) + '">' + esc(c.title) + '<span class="who">' + esc(nameOf(s, c.judge)) + '</span></button>').join("") + '<button class="challenge" data-act="invent">＋ Invent one</button></div>';
-  if (ch) h += '<p class="hint" style="margin-top:8px">The Designer is told:</p><textarea class="field" rows="2" data-bind="challenge-task" data-id="' + esc(ch.id) + '" aria-label="Challenge task">' + esc(ch.task) + '</textarea><p class="hint">The same challenge sets ' + esc(nameOf(s, ch.judge)) + '’s numbers: ' + esc(Object.keys(ch.params || {}).map(k => k + " = " + JSON.stringify(ch.params[k])).join(", ")) + '</p>';
+  let h = '<div class="challenges">' + (s.challenges || []).map(c => '<button class="challenge' + (c.id === s.challenge ? " on" : "") + '" data-act="challenge" data-id="' + esc(c.id) + '">' + esc(c.title) + '<span class="who">' + esc(nameOf(s, c.judge)) + (LEVELS[c.level] ? ' · <span class="lvl lvl' + c.level + '">' + LEVELS[c.level] + '</span>' : "") + '</span></button>').join("") + '<button class="challenge" data-act="invent">＋ Invent one</button></div>';
+  if (ch) {
+    h += '<p class="hint" style="margin-top:8px">The Designer is told:</p><textarea class="field" rows="2" data-bind="challenge-task" data-id="' + esc(ch.id) + '" aria-label="Challenge task">' + esc(ch.task) + '</textarea>';
+    const judge = Society.agentById(s, ch.judge);
+    if (judge && judge.kind === "program") h += '<p class="hint">' + esc(judge.name) + ' decides like this (the Designer never sees it):</p><button class="judge-peek" data-act="open-agent" data-id="' + esc(judge.id) + '" title="Open ' + esc(judge.name) + '">' + pseudoStaticHTML(judge.pseudocode, judge.slots) + '</button>';
+  }
   for (const v of s.variants || []) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="variant" data-id="' + esc(v.id) + '"' + (v.on ? " checked" : "") + '> ' + esc(v.label) + '</label>';
   return h;
 }
@@ -3703,13 +4491,12 @@ function renderStage() {
   const status = run ? run.status : "idle";
   const busy = status === "running" || status === "stepping";
   const live = ["running", "paused", "stepping", "ready"].indexOf(status) >= 0;
-  let h = '<div class="card stage">' + startHTML(s);
+  let h = '<div class="card stage">' + (s.intro ? '<p class="intro mobile-only">' + esc(s.intro) + '</p>' : "") + startHTML(s);
   h += '<div class="controls">' +
     (status === "running" ? '<button class="btn" data-act="pause">⏸ Pause</button>' : (status === "paused" || status === "ready") ? '<button class="btn go" data-act="resume">▶ Go on</button><button class="btn" data-act="run" title="Start again from the beginning">↺ Restart</button>' : '<button class="btn go" data-act="run"' + (busy ? " disabled" : "") + '>▶ Run</button>') +
     '<button class="btn" data-act="step"' + (busy ? " disabled" : "") + ' title="Deliver just one message">⏭ Step</button>' +
     '<button class="btn" data-act="stop"' + (live ? "" : " disabled") + '>⏹ Stop</button>' +
     '<span class="small muted">Rounds</span><input class="num" type="number" min="1" max="50" data-bind="roundLimit" value="' + s.roundLimit + '" aria-label="Round limit">' +
-    '<span class="small muted">Seed</span><input class="num" type="number" min="1" data-bind="seed" value="' + s.seed + '" aria-label="Seed"><button class="btn tiny ghost" data-act="new-seed" title="Pick a new seed: it changes h.pick and Math.random in programs">🎲</button>' +
     '<select class="small" data-bind="speed" aria-label="Speed" title="How fast messages are delivered">' + ["slow", "normal", "fast", "instant"].map(v => '<option value="' + v + '"' + sel(app.settings.speed === v) + '>' + v + '</option>').join("") + '</select></div>';
   h += '<div class="status-line">' + statusLineHTML(s, rec, run) + '</div>';
   const view = viewState(s, run, trace);
@@ -3734,12 +4521,12 @@ function paintPad() {
     const s = soc(), st = startChoice(s);
     const c = $("#padCanvas");
     if (!c || !st) return;
-    const r = await Runtime.runTurtle(st.value || "", { seed: s.seed });
+    const r = await Runtime.runTurtle(st.value || "", { seed: 1 });
     let ctx = null;
     try { ctx = c.getContext("2d"); } catch (e) { ctx = null; }
-    if (ctx) paintOps(ctx, (r.output && r.output.ops) || []);
+    if (ctx) paintOps(ctx, (r.output && r.output.ops) || [], c.width / 512);
     const err = $("#padErr");
-    if (err) err.textContent = r.ok || !String(st.value || "").trim() ? "" : "⚠ " + r.error;
+    if (err) err.textContent = r.ok || !String(st.value || "").trim() ? "This is Logo: every button adds one command. You can type your own too." : "⚠ " + r.error;
   }, 150);
 }
 
@@ -3758,7 +4545,37 @@ function callHTML(c, run, trace) {
   if (c.parsed && c.parsed.data && Object.keys(c.parsed.data).length) h += '<h4>Data read from the reply</h4>' + jsonBox(c.parsed.data);
   return h + '</div>';
 }
-function entryBodyHTML(e, s, run, trace) {
+// What an entry shows at first: the response, in words (or a picture, or Logo), and the rules it set off.
+function responseHTML(e, s, run) {
+  const resp = e.response;
+  let h = "";
+  if (e.program && e.program.pseudocode) h += '<div class="tsec"><h4>Its program</h4>' + pseudoStaticHTML(e.program.pseudocode, e.program.slots) + '</div>';
+  if (!resp) return h;
+  const a = Society.agentById(s, e.agentId);
+  const text = String(resp.text || "").trim();
+  const data = resp.data || {};
+  let body = "";
+  if (e.agentKind === "renderer") {
+    if (e.render && !e.render.error) body += imgTag(e.render, "thumb big", "the picture", run);
+    if (text) body += '<div class="said">' + esc(text) + '</div>';
+    return h + '<div class="tsec"><h4>Response</h4>' + body + '</div>';
+  }
+  const verdict = typeof data.pass === "boolean" && (data.pass === false || (a && a.gate));
+  if (verdict) body += data.pass ? '<span class="badge ok">✓ pass: the work goes on</span>' : '<span class="badge bad">✗ block: the work stops here</span>';
+  if (text) body += isProgramReply(e, s) ? logoBox(text) : '<div class="said">' + md(text) + '</div>';
+  const rest = {};
+  for (const k of Object.keys(data)) if (!(verdict && k === "pass") && k !== "memory") rest[k] = data[k];
+  const words = Words.paraphrase(rest);
+  if (words) body += text ? '<div class="also">It also sent data: ' + esc(words) + '</div>' : '<div class="said data-only"><span class="dl">In plain words. It sent data, not words:</span> ' + esc(words) + '</div>';
+  else if (!text && !verdict) body += '<p class="small muted">It said nothing.</p>';
+  return h + '<div class="tsec"><h4>Response</h4>' + body + '</div>';
+}
+function rulesHTML(e) {
+  if (!(e.fired && e.fired.length) && !(e.held && e.held.length)) return "";
+  return '<div class="tsec"><h4>Rules</h4><ul class="fired">' + (e.fired || []).map(f => '<li>→ <b>' + esc(f.toName) + '</b> gets ' + esc(f.send) + ', because ' + esc(f.reason) + '</li>').join("") + (e.held || []).map(f => '<li class="held">✋ ' + esc(f.toName) + ': ' + esc(f.reason) + '</li>').join("") + '</ul></div>';
+}
+// Everything else, for anyone who wants to see exactly what happened.
+function techHTML(e, s, run, trace) {
   const m = e.message || {};
   let h = '<div class="tsec"><h4>Message in</h4><dl class="kv"><dt>from</dt><dd>' + esc(m.fromName || "") + (m.rule ? " (rule " + esc(m.rule) + ")" : "") + '</dd><dt>sent in round</dt><dd>' + esc(m.round) + '</dd><dt>carries</dt><dd>' + esc(m.send || "text") + '</dd></dl>';
   if (m.text) h += '<pre class="box">' + esc(m.text) + '</pre>';
@@ -3772,18 +4589,33 @@ function entryBodyHTML(e, s, run, trace) {
   }
   if (e.render) {
     const r = e.render;
-    h += '<div class="tsec"><h4>The program it ran</h4><pre class="box">' + esc(r.program) + '</pre>' + (r.error ? "" : imgTag(r, "thumb", "the picture", run)) +
+    h += '<div class="tsec"><h4>The Logo program it ran</h4>' + logoBox(r.program) +
       '<dl class="kv"><dt>dots</dt><dd>' + (r.dots || []).length + '</dd><dt>line segments</dt><dd>' + esc(r.segments || 0) + '</dd><dt>labels</dt><dd>' + esc((r.labels || []).map(l => "“" + l + "”").join(", ") || "none") + '</dd><dt>steps</dt><dd>' + esc(r.ticks || 0) + '</dd></dl>' +
       ((r.dots || []).length ? '<details><summary class="small">The dot list (what Dot Counter reads)</summary>' + jsonBox(r.dots) + '</details>' : "") + '</div>';
   }
   if (e.parseError) h += '<div class="errline">Parse problem: ' + esc(e.parseError) + '</div>';
-  if (e.error) h += '<div class="errline">' + esc(e.error) + '</div>';
-  if (e.response) h += '<div class="tsec"><h4>Response</h4>' + (e.response.text ? '<pre class="box">' + esc(e.response.text) + '</pre>' : '<p class="small muted">(no words)</p>') + (e.response.data && Object.keys(e.response.data).length ? jsonBox(e.response.data) : "") + '</div>';
-  if ((e.fired && e.fired.length) || (e.held && e.held.length)) h += '<div class="tsec"><h4>Rules</h4><ul class="fired">' + (e.fired || []).map(f => '<li>→ <b>' + esc(f.toName) + '</b> gets ' + esc(f.send) + ', because ' + esc(f.reason) + '</li>').join("") + (e.held || []).map(f => '<li class="held">✋ ' + esc(f.toName) + ': ' + esc(f.reason) + '</li>').join("") + '</ul></div>';
+  if (e.response) h += '<div class="tsec"><h4>Response, exactly</h4>' + (e.response.text ? '<pre class="box">' + esc(e.response.text) + '</pre>' : '<p class="small muted">(no words)</p>') + (e.response.data && Object.keys(e.response.data).length ? '<h4>Its data (JSON)</h4>' + jsonBox(e.response.data) : "") + '</div>';
   return h;
 }
+function entryBodyHTML(e, s, run, trace) {
+  let h = responseHTML(e, s, run);
+  if (e.parseError) h += '<div class="errline">⚠ ' + esc(e.agentName) + ' was asked to send its data in a set form, and the reply didn\'t have it.</div>';
+  if (e.error) h += '<div class="errline">' + esc(e.error) + '</div>';
+  h += rulesHTML(e);
+  const open = app.ui.tech.has(e.i);
+  h += '<button class="btn tiny ghost techbtn" data-act="tech-toggle" data-i="' + e.i + '" aria-expanded="' + open + '">' + (open ? "▾ Hide the technical details" : "▸ Show full technical details") + '</button>';
+  if (open) h += '<div class="tech">' + techHTML(e, s, run, trace) + '</div>';
+  return h;
+}
+function summaryText(e, s) {
+  const resp = e.response, text = util.stripMd(resp.text || "");
+  if (isProgramReply(e, s)) return "wrote a Logo program (" + plural(lineCount(resp.text), "line") + ")";
+  if (text) return text;
+  const words = Words.paraphrase(resp.data || {});
+  return words ? "sent data: " + words : "(said nothing)";
+}
 function traceEntryHTML(e, s, run, trace, currentI) {
-  if (e.kind === "run-start") return '<div class="tentry slim"><div class="th"><span class="rb">▶</span><span class="sum">Start: <b>You → ' + esc(e.toName) + '</b>: “' + esc(short(e.text, 160)) + '”<br><span class="small muted">seed ' + esc(e.seed) + ' · ' + esc(e.roundLimit) + ' rounds · ' + esc(e.adapter) + ' · programs run ' + (e.runtime === "worker" ? "in a Worker" : "in the page") + '</span></span></div></div>';
+  if (e.kind === "run-start") return '<div class="tentry slim"><div class="th"><span class="rb">▶</span><span class="sum">Start: <b>You → ' + esc(e.toName) + '</b>: “' + esc(short(e.text, 160)) + '”<br><span class="small muted" title="' + esc("random seed " + e.seed + " · programs run " + (e.runtime === "worker" ? "in a Worker" : "in the page")) + '">' + esc(e.roundLimit) + ' rounds at most · ' + esc(e.adapter) + '</span></span></div></div>';
   if (e.kind === "run-end") return '<div class="tentry slim"><div class="th"><span class="rb">■</span><span class="sum">' + esc(e.text) + '</span></div></div>';
   if (e.kind !== "activation") return '<div class="tentry slim' + (e.kind === "error" ? " err" : "") + '"><div class="th"><span class="rb">!</span><span class="sum">' + esc(e.text || e.error || "") + '</span></div></div>';
   const open = app.ui.expanded.has(e.i);
@@ -3793,10 +4625,10 @@ function traceEntryHTML(e, s, run, trace, currentI) {
   let sum = '<b>' + esc((e.emoji || "") + " " + e.agentName) + '</b> <span class="muted">← ' + esc(e.message ? e.message.fromName : "") + '</span>';
   if (resp && resp.data && typeof resp.data.pass === "boolean" && (resp.data.pass === false || (a && a.gate))) sum = (resp.data.pass ? '<span class="badge ok">pass</span> ' : '<span class="badge bad">block</span> ') + sum;
   if (e.error) sum += '<br><span style="color:var(--bad)">⚠ ' + esc(short(e.error, 170)) + '</span>';
-  else if (quiet) sum += ' <span class="muted">said nothing' + (Object.keys(resp.data || {}).length ? " · data: " + esc(Object.keys(resp.data).join(", ")) : "") + '</span>';
-  else if (resp) sum += '<br>' + esc(short(a && a.replyKind === "program" ? "wrote a turtle program (" + lineCount(resp.text) + " lines)" : (resp.text || (Object.keys(resp.data || {}).length ? "sent data " + JSON.stringify(resp.data) : "(said nothing)")), 170));
+  else if (quiet) sum += ' <span class="muted">' + esc(short(summaryText(e, s), 120)) + '</span>';
+  else if (resp) sum += '<br>' + esc(short(summaryText(e, s), 170));
   if (e.call && e.call.pretend) sum += ' <span class="badge warn" title="Played by a small built-in program, not an AI">pretend</span>';
-  if (e.parseError) sum += ' <span class="badge bad">parse problem</span>';
+  if (e.parseError) sum += ' <span class="badge bad" title="' + esc(e.parseError) + '">data missing</span>';
   let h = '<div class="tentry kind-' + esc(e.agentKind) + (e.error ? " err" : "") + (quiet ? " quiet" : "") + (e.i === currentI ? " here" : "") + '"><button class="th" data-act="trace-toggle" data-i="' + e.i + '" aria-expanded="' + open + '"><span class="rb">R' + esc(e.round) + '</span><span class="sum">' + sum + '</span><span class="faint">' + (open ? "▾" : "▸") + '</span></button>';
   if (open) h += '<div class="tbody">' + entryBodyHTML(e, s, run, trace) + '</div>';
   return h + '</div>';
@@ -3913,7 +4745,7 @@ function modelEditorHTML(a, s) {
   const persona = Pretend.personas[a.pretend] || Pretend.personas.generic;
   let h = editorHead(a, s, "model agent");
   h += '<div class="section"><h3>Instructions</h3><p class="hint">Its system prompt: exactly what the model is told, right after the safety preamble.</p><textarea class="field" rows="9" data-bind="agent" data-field="instructions" aria-label="Instructions">' + esc(a.instructions) + '</textarea></div>';
-  h += '<div class="section"><h3>How it works</h3><div class="form-grid"><label>Its reply is</label><select class="field" data-bind="agent" data-field="replyKind"><option value="prose"' + sel(a.replyKind !== "program") + '>words</option><option value="program"' + sel(a.replyKind === "program") + '>a turtle program</option></select>' +
+  h += '<div class="section"><h3>How it works</h3><div class="form-grid"><label>Its reply is</label><select class="field" data-bind="agent" data-field="replyKind"><option value="prose"' + sel(a.replyKind !== "program") + '>words</option><option value="program"' + sel(a.replyKind === "program") + '>a Logo drawing program</option></select>' +
     '<label>Pictures</label><label class="row small"><input type="checkbox" data-bind="agent" data-field="canSeeImages"' + (a.canSeeImages ? " checked" : "") + '> it can see pictures that are sent to it</label>' +
     '<label>It remembers</label><select class="field" data-bind="agent" data-field="history"><option value="stateless"' + sel(a.history !== "full") + '>nothing: each message is new</option><option value="full"' + sel(a.history === "full") + '>the whole conversation in this run</option></select></div></div>';
   h += '<div class="section"><h3>Output fields</h3><p class="hint">Data it must send back, as JSON after its answer. Rules can test these (IF data.rows = 3), and programmed agents read them.</p><div class="fields-edit">' +
@@ -3924,7 +4756,7 @@ function modelEditorHTML(a, s) {
   return h;
 }
 function rendererEditorHTML(a, s) {
-  return editorHead(a, s, "built-in") + '<div class="section"><h3>What the Renderer does</h3><p>The Renderer is not a model. It runs the turtle program it is sent and makes a picture (white background, 512 by 512). Along with the picture it sends data:</p><ul><li><code>dots</code>: every dot drawn with <code>dot()</code>, as <code>{x, y, color}</code></li><li><code>segments</code>: how many line segments were drawn</li><li><code>labels</code>: the words written with <code>label()</code></li><li><code>pass</code>: false if the program didn\'t run (then its ALWAYS rules wait)</li></ul><h3 style="margin-top:12px">The turtle commands</h3><pre class="box">' + esc(Prompts.TURTLE_HELP) + '</pre><p class="hint">Programs are checked before they run: they can use only these commands, their own variables and Math. ' + esc(Runtime.note) + '</p></div>';
+  return editorHead(a, s, "built-in") + '<div class="section"><h3>What the Renderer does</h3><p>The Renderer is not a model. It runs the Logo program it is sent and makes a picture (white background, 512 by 512). Along with the picture it sends data:</p><ul><li><code>dots</code>: every dot drawn with <code>DOT</code>, as <code>{x, y, color}</code>, counted in pixels from the top-left corner</li><li><code>segments</code>: how many straight pieces of line were drawn</li><li><code>labels</code>: the words written with <code>LABEL</code></li><li><code>pass</code>: false if the program didn\'t run (then its ALWAYS rules wait)</li></ul><h3 style="margin-top:12px">The Logo it understands</h3><p class="hint">This is also what the Artist and the Designer are told.</p>' + logoBox(Prompts.LOGO_HELP, "", true) + '<p class="hint">Logo is never turned into JavaScript: a small interpreter reads it, so a drawing can only move the turtle. A drawing that takes more than ' + Runtime.tickLimit.toLocaleString("en-US") + ' steps is stopped. It also knows SETX, SETY, ARC, CLEARSCREEN, FOR, WHILE, RANDOM, PICK and the usual arithmetic, like SUM and SQRT.</p></div>';
 }
 function pseudoViewHTML(a) {
   const text = a.pseudocode || "";
@@ -3990,7 +4822,7 @@ function scenarioDetailHTML(a, id) {
   h += '<div class="three" style="margin-top:8px"><div><h4>Input</h4>' + jsonBox(r && r.input ? r.input : sc.input) + '</div><div><h4>Expected</h4>' + jsonBox(sc.expect) + '</div><div><h4>Actual</h4>' +
     (r ? (r.error ? '<div class="errline">' + esc(r.error) + '</div>' : jsonBox(r.output)) : '<p class="small muted">Not run yet.</p>') +
     (r && r.problems ? r.problems.map(p => '<div class="problem">' + esc(p.field) + ': expected ' + esc(JSON.stringify(p.expected)) + ', got ' + esc(JSON.stringify(p.actual)) + '</div>').join("") : "") + '</div></div>';
-  if (sc.program) h += '<div class="row" style="margin-top:8px;align-items:flex-start">' + imgTag({ program: sc.program, seed: 1 }, "thumb", "the scenario's picture", null) + '<pre class="box grow">' + esc(sc.program) + '</pre></div>';
+  if (sc.program) h += '<div class="row" style="margin-top:8px;align-items:flex-start">' + imgTag({ program: sc.program, seed: 1 }, "thumb", "the scenario's picture", null) + logoBox(sc.program, "grow") + '</div>';
   return h + '</div>';
 }
 function scenarioFormHTML(d) {
@@ -3999,7 +4831,7 @@ function scenarioFormHTML(d) {
     '<label for="scnData">Input data (JSON)</label><textarea class="field code" id="scnData" rows="4" spellcheck="false">' + esc(d.data) + '</textarea>' +
     '<label for="scnMemory">Memory (JSON, optional)</label><textarea class="field code" id="scnMemory" rows="2" spellcheck="false">' + esc(d.memory) + '</textarea>' +
     '<label for="scnFrom">From and round</label><div class="row"><input class="field" id="scnFrom" value="' + esc(d.from) + '" style="max-width:170px" aria-label="From"><input class="field" id="scnRound" type="number" value="' + esc(d.round) + '" style="max-width:90px" aria-label="Round"></div>' +
-    '<label for="scnProgram">Or a picture program</label><textarea class="field code" id="scnProgram" rows="4" spellcheck="false" placeholder="A turtle program: its dots become input.data">' + esc(d.program) + '</textarea>' +
+    '<label for="scnProgram">Or a picture program</label><textarea class="field code" id="scnProgram" rows="4" spellcheck="false" placeholder="A Logo program: its dots become input.data">' + esc(d.program) + '</textarea>' +
     '<label for="scnExpect">Expected (JSON)</label><textarea class="field code" id="scnExpect" rows="3" spellcheck="false">' + esc(d.expect) + '</textarea></div>' +
     '<p class="hint">List only the fields to check, like {"pass": false}. Use "sayContains" to check part of what it says.</p><div class="errline hidden" id="scnErr"></div><div class="row end" style="margin-top:6px"><button class="btn" data-act="scn-cancel">Cancel</button><button class="btn primary" data-act="scn-save">Save the scenario</button></div></div>';
 }
@@ -4131,12 +4963,12 @@ function renderSettings() {
     const choices = Adapters.MODEL_CHOICES[p] || [];
     h += '<div class="form-grid" style="margin-top:12px">';
     if (p !== "keyless") h += '<label for="keyIn">' + (p === "anthropic" ? "Anthropic" : p === "gemini" ? "Google" : "OpenAI") + ' key</label><input class="field" id="keyIn" type="password" autocomplete="off" data-bind="key" data-id="' + p + '" value="' + esc(st.keys[p] || "") + '" placeholder="paste your key">';
-    h += '<label>Model</label><select class="field" data-bind="model" data-id="' + p + '">' + choices.map(c => '<option value="' + esc(c[0]) + '"' + sel(st.models[p] === c[0]) + '>' + esc(c[1]) + '</option>').join("") + (choices.some(c => c[0] === st.models[p]) ? "" : '<option value="' + esc(st.models[p]) + '" selected>' + esc(st.models[p]) + '</option>') + '</select>' +
-      '<label for="modelIn">Or type a model id</label><input class="field" id="modelIn" data-bind="model-custom" data-id="' + p + '" placeholder="optional"></div>';
+    h += '<label for="modelIn">Model</label><div><input class="field" id="modelIn" data-bind="model" data-id="' + p + '" value="' + esc(st.models[p] || "") + '" spellcheck="false" autocomplete="off" placeholder="type a model name">' +
+      '<div class="picks"><span class="small muted">Or pick one:</span>' + choices.map(c => '<button class="pick' + (st.models[p] === c[0] ? " on" : "") + '" data-act="pick-model" data-id="' + p + '" data-model="' + esc(c[0]) + '" title="' + esc(c[0]) + '">' + esc(c[1]) + '</button>').join("") + '</div></div></div>';
     if (p !== "keyless") h += '<label class="row small" style="margin-top:8px"><input type="checkbox" data-bind="remember"' + (st.rememberKeys ? " checked" : "") + '> Remember my keys in this browser. Keys are never put in exported files.</label>';
     h += '<div class="row" style="margin-top:10px"><button class="btn" data-act="test-conn">Test the connection</button><span class="small" id="connResult"></span></div>';
   }
-  h += '<div class="section"><h3>How programs run here</h3><p class="small">' + esc(Runtime.note) + '</p></div>';
+  h += '<div class="section"><h3>How programs run here</h3><p class="small">' + esc(Runtime.note) + ' Drawings are Logo, read by a small interpreter, so they never run as JavaScript.</p></div>';
   h += '<div class="section"><h3>Guides</h3><div class="row"><button class="btn" data-act="guide" data-id="learner">📘 For learners</button><button class="btn" data-act="guide" data-id="teacher">📕 For teachers</button></div></div>';
   h += '<div class="section"><h3>The safety preamble</h3><p class="hint">This fixed text starts every model call, so every agent writes for young people.</p><pre class="box">' + esc(Prompts.PREAMBLE) + '</pre></div>';
   h += '<div class="section"><h3>Your work</h3><p class="hint">' + (storage ? "Everything is saved in this browser as you go." : "This page can't save in this browser, so export your society to keep it.") + '</p><div class="row"><button class="btn tiny" data-act="export-society">⬇ Export this society</button><button class="btn tiny" data-act="import-society">⬆ Import a society</button><button class="btn tiny danger" data-act="reset-all">Start over (delete everything)</button></div></div>';
@@ -4164,7 +4996,7 @@ function renderHelper() {
   const chat = app.helperChat[s.id] || [];
   host.innerHTML = '<div class="drawer" role="dialog" aria-label="Helper"><div class="dh"><h3>🤔 Helper</h3><button class="btn tiny ghost" data-act="helper-clear">Clear</button><button class="icon-btn" data-act="helper" aria-label="Close">✕</button></div><div class="log" id="helperLog">' +
     '<div class="hmsg ai">I can read your society, the last run and your scenarios, but I can\'t change anything. I\'ll mostly ask questions. Here are some to start with:</div><div class="chips">' + (s.openers || []).map(q => '<button data-act="helper-ask" data-text="' + esc(q) + '">' + esc(q) + '</button>').join("") + '</div>' +
-    chat.map(m => '<div class="hmsg ' + (m.who === "you" ? "you" : "ai") + '">' + esc(m.text) + '</div>').join("") + (app.ui.helperBusy ? '<div class="hmsg ai">…</div>' : "") +
+    chat.map(m => m.who === "you" ? '<div class="hmsg you">' + esc(m.text) + '</div>' : '<div class="hmsg ai">' + md(m.text) + '</div>').join("") + (app.ui.helperBusy ? '<div class="hmsg ai">…</div>' : "") +
     '</div><div class="ask"><textarea class="field" id="helperInput" placeholder="Ask the helper…" rows="2" aria-label="Your question"></textarea><button class="btn primary" data-act="helper-send"' + (app.ui.helperBusy ? " disabled" : "") + '>Ask</button></div></div>';
   const log = $("#helperLog");
   if (log) log.scrollTop = log.scrollHeight;
@@ -4189,7 +5021,7 @@ async function askHelper(q) {
     logWorkshop(s.id, { kind: "helper", title: "Helper (didn't answer)", status: "error", error: e.message, call: Object.assign({ adapter: adapter.id, adapterLabel: adapter.label, system: req.system, messages: req.messages }, e.trace || {}) });
     handleCallError({ errorKind: e.kind });
   }
-  chat.push({ who: "ai", text: util.cleanText(util.stripMd(text), 3000) });
+  chat.push({ who: "ai", text: util.cleanText(text, 3000) });
   if (chat.length > 40) chat.splice(0, chat.length - 40);
   app.ui.helperBusy = false;
   save();
@@ -4200,21 +5032,22 @@ function runOrLastTrace(id) { const rec = app.runs[id]; return rec ? rec.api.run
 /* ===== SECTION: GUIDES ===== */
 const GUIDES = {
   learner: { title: "📘 A guide for learners", html:
-    "<h3>What is Agent Kit?</h3><p>You build a <b>society</b>: a team of agents that pass messages to each other. <b>Model agents</b> are AIs following instructions you can read and change. <b>Programmed agents</b> are small programs written in pseudocode. The <b>Renderer</b> turns turtle programs into pictures.</p>" +
+    "<h3>What is Agent Kit?</h3><p>You build a <b>society</b>: a team of agents that pass messages to each other. <b>Model agents</b> are AIs following instructions you can read and change. <b>Programmed agents</b> are small programs written in pseudocode. The <b>Renderer</b> turns Logo programs into pictures.</p>" +
     "<h3>Start</h3><ol><li>Pick a microworld at the top: <b>Telephone</b> or <b>Pebble Challenge</b>.</li><li>Read its question card. The questions have no single right answer.</li><li>Press <b>▶ Run</b> and watch the pictures, round by round.</li></ol>" +
-    "<h3>Look inside</h3><p>“Look inside” shows every agent and every rule. Nothing is hidden. Rules say who hears what: <i>when the Artist responds, always send its text to the Renderer</i>. You can change them, add new ones, or switch them off.</p>" +
-    "<h3>The trace</h3><p>Every message is in the <b>Trace</b>. Open one to see exactly what an agent was sent and exactly what came back, including the whole prompt for model calls. After a run, <b>Replay</b> steps through it one message at a time.</p>" +
+    "<h3>Look inside</h3><p>“Look inside” shows every agent and every rule. Nothing is hidden. Rules say who hears what: <i>when the Artist responds, always send its text to the Renderer</i>. You can change them, add new ones, or switch them off. <b>+ Add an agent</b> brings in a ready-made agent from the library, like a Loop Spotter that notices when Telephone gets stuck.</p>" +
+    "<h3>The trace</h3><p>Every message is in the <b>Trace</b>. Open one to see what an agent said and where its words went next. <b>Show full technical details</b> shows exactly what it was sent and exactly what came back, including the whole prompt for model calls. After a run, <b>Replay</b> steps through it one message at a time.</p>" +
+    "<h3>Logo</h3><p>The Artist and the Designer draw in <b>Logo</b>, the turtle language: <code>FORWARD 50</code>, <code>RIGHT 90</code>, and <code>REPEAT 4 [FORWARD 50 RIGHT 90]</code> for a square. In Telephone, “Start with a drawing” lets you write Logo yourself.</p>" +
     "<h3>Programmed agents</h3><p>Open one to read its pseudocode. Numbers in { } are settings you can change right there. To change what it does, edit the pseudocode and save: the translator turns it into JavaScript. <b>Peek under the hood</b> shows both side by side; point at a line to see its partner.</p><p>Programs only work with data. If a line needs eyes or opinions (“if the drawing looks happy”), the translator will ask you what a program could count instead.</p>" +
     "<h3>Scenarios</h3><p>Scenarios are tests: an input, and what the agent should answer. They run after every change. A red one shows what was expected and what happened. Make scenarios that try to break an agent, then export them for a friend.</p>" +
     "<h3>Pretend mode</h3><p>With no connection, small built-in programs play the model agents. They have habits you can discover, and the same start always gives the same run. Settings shows how to connect a real model.</p>" +
     "<h3>Tips</h3><ul><li>Change one thing at a time.</li><li>Run the same start twice and compare.</li><li>Before you press Run, say what you think will happen.</li><li>Stuck? Ask the 🤔 Helper. It asks questions back.</li></ul>" },
   teacher: { title: "📕 A guide for teachers", html:
     "<h3>What learners do</h3><p>Learners (about 10 to 16) run, inspect, debug and change small societies of agents: language-model agents, programmed agents written in editable pseudocode, and a built-in Renderer. Everything is a glass box: every prompt, every reply, every program and every message is visible.</p>" +
-    "<h3>The two microworlds</h3><p><b>Telephone: “Where does it go?”</b> An Artist turns a sentence into a turtle program, the Renderer draws it, a Describer describes the picture, and the description goes back to the Artist. A Loop Spotter and a Tally listen in. Powerful ideas: iteration, fixed points and cycles, variance between runs.</p><p><b>Pebble Challenge: “Why did the Designer win?”</b> A Designer draws a challenge in pebbles, Eyes (a vision model) counts them, and a programmed Judge lets the work through or blocks it; a Critic tells the Designer what to fix. One click swaps Eyes for Dot Counter, a program that reads the Renderer's dot list. Powerful ideas: critics can be gamed; correlated and independent error; perception versus judgment.</p>" +
-    "<h3>Sessions that work</h3><ol><li><b>Predict, run, compare.</b> Run Telephone twice with the same start. How different are the runs? In pretend mode they are identical; with a real model they are not. Why?</li><li><b>Find the attractor.</b> Which starts settle fast, which flip back and forth, which never settle? Then change the Loop Spotter's threshold: is “stuck” a fact about the pictures or about the Loop Spotter?</li><li><b>Game the judge.</b> In Pebble Challenge, can the Designer win without meeting the challenge? Try labels, spacing and little circles. Which fooled Eyes, and which fooled Dot Counter?</li><li><b>Read and write programs.</b> Open a Judge, peek under the hood, change a number in a slot, then change a line and watch the scenarios.</li></ol>" +
+    "<h3>The two microworlds</h3><p><b>Telephone: “Where does it go?”</b> An Artist turns a sentence into a Logo program, the Renderer draws it, a Describer describes the picture, and the description goes back to the Artist. Powerful ideas: iteration, fixed points and cycles, variance between runs. Learners can later add a Loop Spotter or a Tally from the library.</p><p><b>Pebble Challenge: “Why did the Designer win?”</b> A Designer draws a challenge in pebbles, Eyes (a vision model) counts them, and a programmed Judge lets the work through or blocks it; a Critic tells the Designer what to fix. One click swaps Eyes for Dot Counter, a program that reads the Renderer's dot list. The challenges run from easy to hard: a strong model meets the easy ones at once, <i>A big grid</i> is hard for a vision model to count, and <i>Mystery rows</i> keeps a secret that only the Critic's notes reveal, a few clues at a time. Powerful ideas: critics can be gamed; correlated and independent error; perception versus judgment.</p>" +
+    "<h3>Sessions that work</h3><ol><li><b>Predict, run, compare.</b> Run Telephone twice with the same start. How different are the runs? In pretend mode they are identical; with a real model they are not. Why?</li><li><b>Find the attractor.</b> Which starts settle fast, which flip back and forth, which never settle? Then add a Loop Spotter (Look inside, then + Add an agent) and change its threshold: is “stuck” a fact about the pictures or about the Loop Spotter?</li><li><b>Game the judge.</b> In Pebble Challenge, can the Designer win without meeting the challenge? Try labels, spacing and little circles. Which fooled Eyes, and which fooled Dot Counter?</li><li><b>Read and write programs.</b> Open a Judge, peek under the hood, change a number in a slot, then change a line and watch the scenarios.</li></ol>" +
     "<h3>Seat two learners at one society</h3><p>One drives; the other predicts and writes down what happens; swap every run. Then use <b>scenario files</b> to challenge each other: each pair exports a set of scenarios designed to break the other pair's agent, the other pair imports it, and the fixing begins.</p>" +
-    "<h3>Modes and cost</h3><ul><li><b>Pretend</b>: free, offline, deterministic. Good for rehearsal and for whole-class demonstrations.</li><li><b>Claude inside a claude.ai chat</b>: no key; uses the signed-in account.</li><li><b>Your own key</b> (Anthropic, Google, OpenAI): billed to that key. The round limit and the Stop button keep runs short.</li></ul>" +
-    "<h3>Safety and privacy</h3><ul><li>Every model call starts with a fixed, visible safety preamble for a young audience.</li><li>The kit never asks for personal data.</li><li>Imported files are checked: text is cleaned, and any JavaScript in them is thrown away and translated again here.</li><li>Programs run behind a checker, a step counter and (where the page allows) a Worker.</li><li>The Helper asks questions rather than giving answers, and never states the fix for a failing scenario.</li></ul>" }
+    "<h3>Modes and cost</h3><ul><li><b>Pretend</b>: free, offline, deterministic. Good for rehearsal and for whole-class demonstrations.</li><li><b>Claude inside a claude.ai chat</b>: no key; uses the signed-in account.</li><li><b>Your own key</b> (Anthropic, Google, OpenAI): billed to that key. The round limit (4 unless you change it) and the Stop button keep runs short.</li></ul>" +
+    "<h3>Safety and privacy</h3><ul><li>Every model call starts with a fixed, visible safety preamble for a young audience.</li><li>The kit never asks for personal data.</li><li>Imported files are checked: text is cleaned, and any JavaScript in them is thrown away and translated again here.</li><li>Programs run behind a checker, a step counter and (where the page allows) a Worker. Drawings are Logo, read by an interpreter that can only move the turtle.</li><li>The Helper asks questions rather than giving answers, and never states the fix for a failing scenario.</li></ul>" }
 };
 function openGuide(which) {
   const g = GUIDES[which] || GUIDES.learner;
@@ -4250,17 +5083,17 @@ function exportSocietyFlow() {
 async function traceDocument(s, trace, run) {
   const parts = [];
   for (const e of trace) {
-    if (e.kind === "run-start") parts.push('<p class="slim">▶ Start: You → ' + esc(e.toName) + ': “' + esc(e.text) + '” · seed ' + esc(e.seed) + ' · ' + esc(e.adapter) + '</p>');
+    if (e.kind === "run-start") parts.push('<p class="slim">▶ Start: You → ' + esc(e.toName) + ': “' + esc(e.text) + '” · ' + esc(e.adapter) + '</p>');
     else if (e.kind === "run-end") parts.push('<p class="slim">■ ' + esc(e.text) + '</p>');
     else if (e.kind === "activation") {
       let img = "";
       if (e.render && !e.render.error) { const url = await imageForRender(e.render, run); if (url) img = '<img src="' + url + '" alt="the drawing">'; }
-      const said = e.error ? "⚠ " + e.error : e.response ? (e.response.text || JSON.stringify(e.response.data || {})) : "";
+      const said = e.error ? "⚠ " + e.error : e.response ? summaryText(e, s) : "";
       let body = "";
       if (e.message) body += '<h4>Message in (from ' + esc(e.message.fromName) + ')</h4><pre>' + esc(e.message.text || "") + (e.message.data && Object.keys(e.message.data).length ? "\n" + esc(JSON.stringify(e.message.data, null, 1)) : "") + '</pre>';
       if (e.call) body += '<h4>System prompt</h4><pre>' + esc(e.call.system || "") + '</pre><h4>Messages</h4>' + (e.call.messages || []).map(m => '<pre><b>' + esc(m.role) + ':</b> ' + esc(m.content) + '</pre>').join("") + '<h4>Reply' + (e.call.pretend ? " (pretend)" : "") + ' — ' + esc(e.call.model || "") + '</h4><pre>' + esc(e.call.reply || "") + '</pre>';
       if (e.program) body += '<h4>Program input</h4><pre>' + esc(JSON.stringify(e.program.input, null, 1)) + '</pre><h4>Output</h4><pre>' + esc(JSON.stringify(e.program.output, null, 1)) + '</pre>';
-      if (e.render) body += '<h4>Program drawn</h4><pre>' + esc(e.render.program) + '</pre>' + img;
+      if (e.render) body += '<h4>The Logo program it drew</h4><pre>' + esc(e.render.program) + '</pre>' + img;
       if (e.fired && e.fired.length) body += '<h4>Rules</h4><ul>' + e.fired.map(f => '<li>→ ' + esc(f.toName) + ' gets ' + esc(f.send) + ', because ' + esc(f.reason) + '</li>').join("") + '</ul>';
       parts.push('<details class="' + esc(e.agentKind) + '"><summary><b>R' + esc(e.round) + ' · ' + esc((e.emoji || "") + " " + e.agentName) + '</b> ← ' + esc(e.message ? e.message.fromName : "") + ': ' + esc(short(said, 200)) + '</summary>' + body + '</details>');
     }
@@ -4271,7 +5104,7 @@ async function traceDocument(s, trace, run) {
 
 /* ===== SECTION: ACTIONS (clicks) ===== */
 const ACTIONS = {
-  world(t) { app.activeId = t.dataset.id; app.ui.replay = null; app.ui.expanded = new Set(); save(); renderAll(); },
+  world(t) { app.activeId = t.dataset.id; app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); save(); renderAll(); },
   look() { app.ui.lookInside = !app.ui.lookInside; if (window.innerWidth <= 820) app.ui.mobileTab = app.ui.lookInside ? "inside" : "stage"; renderWorlds(); renderLeft(); },
   mtab(t) { app.ui.mobileTab = t.dataset.id; renderAll(); window.scrollTo && window.scrollTo(0, 0); },
   run() { runNow(); },
@@ -4279,7 +5112,6 @@ const ACTIONS = {
   pause() { const r = app.runs[app.activeId]; if (r) r.api.pause(); renderAll(); },
   step() { stepNow(); },
   stop() { const r = app.runs[app.activeId]; if (r) { r.api.stop(); afterRun(r); } },
-  "new-seed"() { const s = soc(); s.seed = 1 + Math.floor(Math.random() * 99999); save(); renderStage(); toast("New seed: " + s.seed + "."); },
   "start-kind"(t) { app.ui.startKind[app.activeId] = t.dataset.id; renderStage(); },
   example(t) { const st = startChoice(soc()); if (st) { st.value = t.dataset.text; save(); renderStage(); } },
   challenge(t) { const s = soc(); Society.applyChallenge(s, t.dataset.id); for (const a of s.agents) if (a.kind === "program" && a.gate) rerunScenarios(a); save(); renderAll(); },
@@ -4299,6 +5131,26 @@ const ACTIONS = {
   "trace-tab"(t) { app.ui.traceTab = t.dataset.id; renderTrace(); },
   "trace-filter"(t) { app.ui.traceFilter = t.dataset.id; renderTrace(); },
   "trace-toggle"(t) { const i = +t.dataset.i; if (app.ui.expanded.has(i)) app.ui.expanded.delete(i); else app.ui.expanded.add(i); renderTrace(); },
+  "tech-toggle"(t) { const i = +t.dataset.i; if (app.ui.tech.has(i)) app.ui.tech.delete(i); else app.ui.tech.add(i); renderTrace(); },
+  "add-agent"() { openAddAgent(); },
+  "pick-model"(t) { app.settings.models[t.dataset.id] = t.dataset.model; save(); renderSettings(); },
+  "keep-old"() {
+    for (const old of app.replaced) {
+      try {
+        const c = Society.sanitizeSociety(old);
+        c.id = uniqueSocietyId(old.id + "-old");
+        c.title = util.cleanName((old.title || "Society") + " (old version)", 60);
+        app.societies[c.id] = c;
+        app.order.push(c.id);
+      } catch (e) { /* a broken old copy is dropped */ }
+    }
+    app.replaced = [];
+    clearBanner("updated");
+    rerunAll().then(renderAll);
+    save();
+    renderAll();
+    toast("Your old versions are kept as copies, next to the new ones.");
+  },
   "workshop-toggle"(t) { const id = t.dataset.id; if (app.ui.expandedW.has(id)) app.ui.expandedW.delete(id); else app.ui.expandedW.add(id); renderTrace(); },
   "replay-start"() { setReplay(0); },
   "replay-first"() { setReplay(0); },
@@ -4375,6 +5227,25 @@ const ACTIONS = {
   "field-add"() { const a = editorAgent(); if (!a) return; a.outputFields = a.outputFields || []; let n = a.outputFields.length + 1; while (a.outputFields.some(f => f.name === "field" + n)) n++; a.outputFields.push({ name: "field" + n, type: "number", about: "" }); save(); renderEditor(); },
   "field-del"(t) { const a = editorAgent(); if (!a) return; a.outputFields.splice(+t.dataset.i, 1); save(); renderEditor(); }
 };
+function openAddAgent() {
+  const s = soc();
+  const LIB = AK.Library.LIB;
+  const listens = L => L.listen && (L.listen.from === "*" ? "A rule will send it what everyone says." : Society.agentById(s, L.listen.from) ? "A rule will send it what " + nameOf(s, L.listen.from) + " says." : "");
+  const m = openModal({ title: "Add an agent from the library", body: '<p class="hint">These are ready-made programmed agents. Each comes with its pseudocode and scenarios, and you can change it like any other agent.</p><div class="lib-list">' +
+    Object.keys(LIB).map(t => { const L = LIB[t]; return '<div class="lib-item"><div class="grow"><b>' + esc(L.emoji + " " + L.name) + '</b><div class="small muted">' + esc(L.about || L.note) + (listens(L) ? " " + esc(listens(L)) : "") + '</div></div><button class="btn tiny primary" data-add-type="' + esc(t) + '">Add</button></div>'; }).join("") + '</div>' });
+  m.body.addEventListener("click", ev => {
+    const b = ev.target.closest("[data-add-type]");
+    if (!b) return;
+    const r = Society.addLibraryAgent(s, b.dataset.addType);
+    if (!r) return;
+    m.close();
+    app.ui.lookInside = true;
+    save();
+    renderAll();
+    rerunScenarios(r.agent).then(renderLeft);
+    toast("Added " + r.agent.name + (r.rules.length ? ", and a rule that sends it what " + (r.rules[0].from === "*" ? "everyone" : nameOf(s, r.rules[0].from)) + " says." : ". It hears nothing until you add a rule for it."));
+  });
+}
 function openInvent() {
   const s = soc();
   const gates = s.agents.filter(a => a.kind === "program" && a.gate);
@@ -4408,8 +5279,7 @@ async function handleBind(t, evt) {
   switch (b) {
     case "start-value": { const st = (s.starts || []).find(x => x.id === t.dataset.id); if (st) { st.value = util.cleanText(t.value, 20000); save(); if (st.kind === "program") paintPad(); } return; }
     case "challenge-task": { const ch = (s.challenges || []).find(c => c.id === t.dataset.id); if (ch) { ch.task = util.cleanText(t.value, 400); save(); } return; }
-    case "roundLimit": if (change) { s.roundLimit = Math.max(1, Math.min(50, Math.round(+t.value) || 8)); save(); renderAll(); } return;
-    case "seed": if (change) { s.seed = Math.max(1, Math.min(2147483647, Math.round(+t.value) || 1)); save(); renderStage(); } return;
+    case "roundLimit": if (change) { s.roundLimit = Math.max(1, Math.min(50, Math.round(+t.value) || 4)); save(); renderAll(); } return;
     case "speed": { app.settings.speed = t.value; const r = app.runs[app.activeId]; if (r) r.api.setDelay(speedDelay()); save(); return; }
     case "roundAgent": if (change) { s.roundAgent = t.value; save(); renderAll(); } return;
     case "variant": { Society.applyVariant(s, t.dataset.id, t.checked); save(); renderAll(); return; }
@@ -4462,8 +5332,7 @@ async function handleBind(t, evt) {
     }
     case "conn": { if (!t.checked) return; app.settings.connection = t.value; clearBanner("keyless"); clearBanner("auth"); clearBanner("net"); save(); renderSettings(); renderAll(); return; }
     case "key": { app.settings.keys[t.dataset.id] = String(t.value).trim(); save(); return; }
-    case "model": { app.settings.models[t.dataset.id] = t.value; save(); return; }
-    case "model-custom": { if (change && t.value.trim()) { app.settings.models[t.dataset.id] = util.cleanName(t.value, 80); save(); renderSettings(); } return; }
+    case "model": { const v = util.cleanName(t.value, 80); if (v) { app.settings.models[t.dataset.id] = v; save(); if (change) renderSettings(); } return; }
     case "remember": { app.settings.rememberKeys = t.checked; save(); return; }
   }
 }
@@ -4503,6 +5372,10 @@ async function boot() {
   ensureSocieties();
   if (!storage) setBanner("storage", "warn", "<b>This page can't save your work here</b> (the browser blocks storage). Export your society to keep it.");
   if (app.loadError) setBanner("load", "warn", esc(app.loadError));
+  if (app.replaced.length) {
+    const many = app.replaced.length > 1;
+    setBanner("updated", "info", "<b>" + esc(app.replaced.map(x => x.title || x.id).join(" and ")) + (many ? " have new versions" : " has a new version") + ".</b> Drawings are in Logo now, runs are shorter, and Pebble Challenge has harder challenges. Your earlier " + (many ? "versions were" : "version was") + " set aside.", [{ act: "keep-old", label: many ? "Keep my old versions as copies" : "Keep my old version as a copy" }]);
+  }
   if (ENV.codeArtifact && app.settings.connection !== "pretend") app.settings.connection = "pretend";
   if (ENV.codeArtifact) setBanner("code-artifact", "info", "In a published artifact the model agents can only run in <b>pretend mode</b>. To use Claude without a key, open the kit inside a claude.ai chat; to use your own key, open it from GitHub Pages or a file.");
   else if (app.settings.connection === "pretend" && !app.settings.pretendNoticeSeen) setBanner("pretend-note", "info", "You're in <b>pretend mode</b>: small built-in programs play the model agents, so no AI is used and runs always come out the same. Connect a real model in ⚙️ Settings whenever you like.", [{ act: "settings", label: "Settings" }]);
@@ -4513,7 +5386,7 @@ async function boot() {
   if (app.settings.connection === "keyless" && ENV.chatArtifact) Adapters.probeAdapter(getAdapter()).then(r => { if (!r.ok) handleCallError({ errorKind: r.kind || "signedout" }); });
   window.__akReady = true;
 }
-window.__ak = { app, ENV, AK, soc, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm };
+window.__ak = { app, ENV, AK, soc, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
 window.__akBoot = boot();
 })();
 </script>

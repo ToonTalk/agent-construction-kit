@@ -10,8 +10,8 @@ export default function (T, { modelWindow }) {
   T.test("parse: words, then JSON without a fence", ["Adapters"], () => { const p = Adapters.parseReply("I see 15 pebbles.\n{\"rows\": 3, \"cols\": 5}", F); return p.data.cols === 5 && p.text === "I see 15 pebbles."; });
   T.test("parse: a missing field is a visible parse error", ["Adapters"], () => /missing: cols/.test(Adapters.parseReply('{"rows": 3}', F).parseError));
   T.test("parse: no JSON at all is a visible parse error", ["Adapters"], () => !!Adapters.parseReply("I think it is a grid.", F).parseError);
-  T.test("parse: markdown is stripped from words but never from programs", ["Adapters", "util"], () =>
-    Adapters.parseReply("**A** red *circle*", []).text === "A red circle" && Adapters.parseReply("```js\nforward(2*i*3);\n```", [], "program").text === "forward(2*i*3);");
+  T.test("parse: Markdown stays in words (the page shows it as formatting); fences come off programs", ["Adapters", "util"], () =>
+    Adapters.parseReply("**A** red *circle*", []).text === "**A** red *circle*" && Adapters.parseReply("```logo\nREPEAT 4 [FD 10 RT 90]\n```", [], "program").text === "REPEAT 4 [FD 10 RT 90]");
 
   const fake = handler => { const calls = []; w.fetch = async (url, opts) => { calls.push({ url, opts, body: JSON.parse(opts.body) }); return handler(url, opts); }; return calls; };
   const resp = (status, body) => ({ ok: status >= 200 && status < 300, status, text: async () => (typeof body === "string" ? body : JSON.stringify(body)) });
@@ -72,7 +72,8 @@ export default function (T, { modelWindow }) {
     const a = Adapters.makePretendAdapter();
     const ask = () => a.call({ system: "S", messages: [{ role: "user", content: "a red circle" }], images: [], outputFields: [], replyKind: "program", meta: { persona: "artist", agent: { instructions: "" }, message: { text: "a red circle" } } });
     const r1 = await ask(), r2 = await ask();
-    return r1.raw === r2.raw && r1.pretend && /penColor\('red'\)/.test(r1.text);
+    return r1.raw === r2.raw && r1.pretend && /SETPENCOLOR "red/.test(r1.text) && /CIRCLE/.test(r1.text);
   });
-  T.test("the safety preamble is written for a young audience", ["Prompts"], () => /aged 10 to 16/.test(Prompts.PREAMBLE) && /violence/.test(Prompts.PREAMBLE) && /romance/.test(Prompts.PREAMBLE));
+  T.test("the safety preamble is written for a young audience, and allows simple Markdown", ["Prompts"], () => /aged 10 to 16/.test(Prompts.PREAMBLE) && /violence/.test(Prompts.PREAMBLE) && /romance/.test(Prompts.PREAMBLE) && /Markdown/.test(Prompts.PREAMBLE) && !/no markdown/i.test(Prompts.PREAMBLE));
+  T.test("the Logo help asks for REPEAT instead of the same commands again and again", ["Prompts"], () => /REPEAT 4 \[FORWARD 100 RIGHT 90\]/.test(Prompts.LOGO_HELP) && /Use REPEAT whenever/.test(Prompts.LOGO_HELP) && /at 0 0/.test(Prompts.LOGO_HELP));
 }

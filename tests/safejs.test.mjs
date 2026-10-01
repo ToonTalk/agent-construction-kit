@@ -37,9 +37,6 @@ export default function (T, { modelWindow }) {
     "const words = h.words(input.text);\nconst counts = {};\nfor (const w of words) {\n  h.tick();\n  counts[w] = (counts[w] || 0) + 1;\n}\n" +
     "const best = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];\nconst { rows, cols: columns } = input.data;\n" +
     "return { say: `most: ${best}`, counts, rows, columns, total: words.length, pass: Array.isArray(words) && Number.isFinite(words.length) };")));
-  T.test("static check accepts turtle programs and rejects non-turtle names", ["SafeJS"], () =>
-    accepts("penColor('red');\nfor (let i = 0; i < 36; i++) { forward(5); right(10); }\ndot(10, 'blue');\nlabel('hi');", "turtle") &&
-    rejects("forward(10);\nfetch('x');", "turtle") && rejects("input.data;", "turtle"));
 
   T.test("instrumenter adds a step counter to loops and functions", ["SafeJS"], () => {
     const c = SafeJS.compileJS(wrap("let n = 0;\nwhile (n < 5) { n++; }\nconst f = x => x + 1;\nreturn { n: f(n) };"), "program");
