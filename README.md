@@ -20,8 +20,8 @@ Two microworlds ship with it, and each is an ordinary saved society:
 
 ## Run it
 
-- **Anywhere:** open `index.html` in a browser. It starts in **pretend mode**, where small
-  built-in programs play the model agents: free, offline and deterministic.
+- **Anywhere:** open `index.html` in a browser, then choose a model in ⚙️ Settings. On desktop
+  Chrome (138 or later), **Gemini Nano** is built in: free, and nothing leaves the computer.
 - **GitHub Pages:** https://toontalk.github.io/agent-construction-kit/ — connect Claude,
   Gemini or OpenAI with your own key in ⚙️ Settings. Each starts on its provider's cheapest
   model that can see pictures (Claude Haiku 4.5, Gemini 3.5 Flash-Lite, GPT-6 Luna).

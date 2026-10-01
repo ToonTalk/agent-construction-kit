@@ -15,6 +15,7 @@ export default function (T, { modelWindow, same, MODEL_SRC }) {
     const [a, b] = run("FORWARD 100 DOT 5\nPENUP SETXY 50 -20 DOT 5").output.dots;
     return near(a.x, 256) && near(a.y, 156) && near(b.x, 306) && near(b.y, 276);
   });
+  T.test("Logo: big dots and wide pens are drawn as big as asked", ["Logo"], () => { const r = run("SETPENSIZE 30 FORWARD 10 DOT 110"); return r.output.ops[0].w === 30 && r.output.ops[1].s === 110; });
   T.test("Logo: a dot takes the pen color", ["Logo"], () => run("SETPC \"Green DOT 10").output.dots[0].color === "green");
   T.test("Logo: REPEAT and REPCOUNT, nested", ["Logo"], () => {
     const r = run("PENUP REPEAT 3 [REPEAT 4 [DOT REPCOUNT FORWARD 10] RIGHT 90]");

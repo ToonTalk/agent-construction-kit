@@ -4,12 +4,15 @@
 
 ## State (2026-10-01)
 
-Agent Kit **1.0.2**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 and 1.0.2 follow two
-reviews of v1 (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
+Agent Kit **1.0.3**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.0.3 follow reviews
+and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
 
-- The app is the single file `index.html` (403 KB): the `ak-model` script is DOM-free, and
+- **No pretend mode** for learners (1.0.3): a real model is needed. Gemini Nano, built into desktop
+  Chrome, is a free choice. The scripted stand-ins (`connection: "pretend"`) remain only for tests.
+  Planned, not built: replays of recorded real runs.
+- The app is the single file `index.html` (413 KB): the `ak-model` script is DOM-free, and
   the `ak-ui` script is the interface. There is no build step.
 - **Drawings are Logo.** The Artist, the Designer and the drawing pad write Logo
   (`REPEAT 4 [FORWARD 50 RIGHT 90]`), and a small interpreter in the model layer runs it.
@@ -39,13 +42,13 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**270 PASS, 0 FAIL · fingerprint `7fda16058b96`** · model modules covered 19/19.
+**275 PASS, 0 FAIL · fingerprint `e37e4e98e2f2`** · model modules covered 19/19.
 
 ## Acceptance criteria (§11)
 
 | # | Status |
 |---|---|
-| 1 | Pretend: both microworlds end to end, deterministic (tested). OpenAI with a key has been run live by the user (v1, before Logo). Keyless and Anthropic-key paths are tested against a fake fetch only. |
+| 1 | Scripted stand-ins (tests only since 1.0.3): both microworlds end to end, deterministic (tested). OpenAI gpt-5.6-terra has been run live by the user and by Claude in Chrome (1.0.2). OpenAI with a key has been run live by the user (v1, before Logo). Keyless and Anthropic-key paths are tested against a fake fetch only. |
 | 2 | Every model call keeps its system prompt, messages, exact request body and raw reply, behind "Show full technical details" (tested). |
 | 3 | All 9 library programs pass all their scenarios; line maps are complete; highlighting works both ways (tested, including in the page). |
 | 4 | Dot Counter isn't fooled by labels, and is fooled by pebbles drawn with CIRCLE (both tested). |
@@ -55,7 +58,7 @@ folder is a copy without the §14 log.)
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 403 KB, under 1 MB (tested). |
+| 11 | 413 KB, under 1 MB (tested). |
 
 ## Open issues
 

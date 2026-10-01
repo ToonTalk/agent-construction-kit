@@ -51,6 +51,15 @@ export default function (T, { modelWindow }) {
     const r = await Adapters.makeAdapter({ connection: "anthropic", keys: { anthropic: "k" }, models: {} }).call(req());
     return calls.length === 2 && calls[1].body.model === "claude-sonnet-5-5" && /isn't available/.test(r.warning);
   });
+  T.test("Gemini Nano: the system prompt, earlier turns and the picture go to Chrome's built-in model", ["Adapters"], async () => {
+    const seen = {};
+    w.LanguageModel = { availability: async () => "available", create: async opts => { seen.opts = opts; return { prompt: async input => { seen.input = input; return "I see it.\n{\"rows\":2,\"cols\":3}"; }, destroy() { seen.destroyed = true; } }; } };
+    const r = await Adapters.makeAdapter({ connection: "nano" }).call(req({ messages: [{ role: "user", content: "a" }, { role: "assistant", content: "b" }, { role: "user", content: "hello" }] }));
+    const content = seen.input[0].content;
+    delete w.LanguageModel;
+    return seen.opts.initialPrompts[0].role === "system" && /^SYS/.test(seen.opts.initialPrompts[0].content) && /rows/.test(seen.opts.initialPrompts[0].content) && seen.opts.initialPrompts.length === 3 && content[0].value === "hello" && content[1].type === "image" && content[1].value instanceof w.Blob && r.data.cols === 3 && r.text === "I see it." && seen.destroyed && /Chrome/.test(r.endpoint);
+  });
+  T.test("with no model chosen, a call says to choose one", ["Adapters"], async () => { try { await Adapters.makeAdapter({ connection: "none" }).call(req()); return false; } catch (e) { return e.kind === "config" && /Settings/.test(e.message); } });
   T.test("a refusal is reported as a refusal", ["Adapters"], async () => {
     fake(() => resp(200, { content: [], stop_reason: "refusal" }));
     try { await Adapters.makeAdapter({ connection: "anthropic", keys: { anthropic: "k" }, models: {} }).call(req()); return false; } catch (e) { return e.kind === "refusal"; }

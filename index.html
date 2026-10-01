@@ -363,6 +363,9 @@ pre.box.logo{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-heigh
 .lib-list{display:flex;flex-direction:column;gap:6px}
 .lib-item{display:flex;gap:10px;align-items:center;border:1.5px solid var(--line);border-radius:12px;padding:8px 10px}
 .hmsg.ai{white-space:normal}
+.heard{background:#F3F6FA;border:1px solid var(--line);border-radius:9px;padding:6px 9px;font-size:13px;overflow-wrap:anywhere}
+.challenge .who.tests{font-style:italic}
+textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-height:1.55}
 .play-as{margin-left:auto;font-weight:700}
 .yourturn{margin-top:10px;border:2px solid var(--ok);background:var(--ok-bg);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .yourturn .yt-head{font-family:var(--display);font-weight:900;font-size:16px;color:#11532F}
@@ -392,7 +395,7 @@ pre.box.logo{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-heigh
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.0.2";
+AK.VERSION = "1.0.3";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -1022,13 +1025,13 @@ function makeTurtle(guard) {
     penUp() { guard.tick(); pen = false; },
     penDown() { guard.tick(); pen = true; },
     penColor(c) { guard.tick(); color = col(c); },
-    penWidth(n) { guard.tick(); width = Math.max(0.5, Math.min(20, num(n, 2))); },
+    penWidth(n) { guard.tick(); width = Math.max(0.5, Math.min(100, num(n, 2))); },
     goTo(nx, ny) { guard.tick(); lineTo(num(nx, x), num(ny, y)); },
     home() { guard.tick(); lineTo(256, 256); heading = -90; },
     setHeading(a) { guard.tick(); heading = num(a, 0); },
     dot(size, c) {
       guard.tick();
-      const s = Math.max(1, Math.min(60, num(size, 10)));
+      const s = Math.max(1, Math.min(1000, num(size, 10)));
       const dc = c == null ? color : col(c);
       ops.push({ t: "D", x: r2(x), y: r2(y), s: s, c: dc });
       dots.push({ x: r2(x), y: r2(y), color: dc });
@@ -2479,10 +2482,53 @@ function makePretendAdapter() {
     }
   };
 }
+// Gemini Nano, built into desktop Chrome (138 and later): free, and nothing leaves the computer.
+// The first use downloads the model, which needs a click (user activation); see nanoStatus and nanoPrepare.
+const nanoApi = () => (typeof G.LanguageModel === "function" || (G.LanguageModel && typeof G.LanguageModel.create === "function") ? G.LanguageModel : null);
+async function nanoStatus(withImages) {
+  const LM = nanoApi();
+  if (!LM) return "none";
+  try { return await LM.availability(nanoOptions(withImages)); } catch (e) { return "unavailable"; }
+}
+function nanoOptions(withImages) {
+  return { expectedInputs: withImages ? [{ type: "text", languages: ["en"] }, { type: "image" }] : [{ type: "text", languages: ["en"] }], expectedOutputs: [{ type: "text", languages: ["en"] }] };
+}
+// Called from a click: starts (or finishes) the download, reporting progress from 0 to 1.
+async function nanoPrepare(onProgress) {
+  const LM = nanoApi();
+  if (!LM) throw adapterError("This browser has no built-in Gemini Nano. It needs desktop Chrome 138 or later.", "config", null);
+  const s = await LM.create(Object.assign(nanoOptions(true), { monitor(m) { m.addEventListener("downloadprogress", e => { if (onProgress) onProgress(e.loaded); }); } }));
+  s.destroy();
+}
+function pngBlob(dataUrl) { return new Blob([b64ToBytes(String(dataUrl).split(",")[1] || "")], { type: "image/png" }); }
+async function callNano(req) {
+  const LM = nanoApi();
+  if (!LM) throw adapterError("This browser has no built-in Gemini Nano. It needs desktop Chrome 138 or later.", "config", null);
+  const system = req.system + outputInstruction(req.outputFields);
+  const images = req.images || [];
+  const earlier = req.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+  const last = req.messages[req.messages.length - 1];
+  const content = [{ type: "text", value: last.content }].concat(images.map(img => ({ type: "image", value: pngBlob(img) })));
+  const trace = { endpoint: "(none: Gemini Nano runs inside Chrome, on this computer)", headers: {}, system,
+    request: { initialPrompts: [{ role: "system", content: system }].concat(earlier), prompt: [{ role: "user", content: content.map(c => c.type === "image" ? { type: "image", value: "[PNG picture, shown as a thumbnail]" } : c) }] } };
+  const t0 = now();
+  let session = null;
+  try {
+    session = await withTimeout(LM.create(Object.assign(nanoOptions(images.length > 0), { initialPrompts: [{ role: "system", content: system }].concat(earlier), signal: req.signal })), 60000, "Gemini Nano didn't start. In Settings, press “Test the connection” to get it ready.");
+    const raw = String(await withTimeout(session.prompt([{ role: "user", content }], { signal: req.signal }), 120000, "Gemini Nano took too long to answer.") || "").trim();
+    trace.ms = now() - t0;
+    if (!raw) throw adapterError("Gemini Nano sent back an empty answer.", "empty", trace);
+    return Object.assign(trace, { raw, model: "gemini-nano (built into Chrome)", stopReason: "", warning: "" });
+  } catch (e) {
+    if (e.trace) throw e;
+    const stopped = req.signal && req.signal.aborted;
+    throw adapterError(stopped ? "Stopped." : e.kind === "timeout" ? e.message : "Gemini Nano couldn't answer: " + (e.message || e) + ". In Settings, press “Test the connection”; the first time, Chrome downloads the model.", stopped ? "stopped" : "nano", trace);
+  } finally { if (session) { try { session.destroy(); } catch (e) { /* already gone */ } } }
+}
 function makeAdapter(settings) {
   const s = settings || {};
   const models = s.models || {}, keys = s.keys || {};
-  const conn = s.connection || "pretend";
+  const conn = s.connection || "none";
   if (conn === "keyless") {
     let override = null;
     return {
@@ -2517,7 +2563,9 @@ function makeAdapter(settings) {
   };
   if (conn === "gemini") return { id: "gemini", label: "Gemini (your Google key)", call: async req => finishCall(await callGemini(req, { key: keys.gemini, model: models.gemini || DEFAULT_MODELS.gemini }), req) };
   if (conn === "openai") return { id: "openai", label: "OpenAI (your key)", call: async req => finishCall(await callOpenAI(req, { key: keys.openai, model: models.openai || DEFAULT_MODELS.openai }), req) };
-  return makePretendAdapter();
+  if (conn === "nano") return { id: "nano", label: "Gemini Nano (built into Chrome)", call: async req => finishCall(await callNano(req), req) };
+  if (conn === "pretend") return makePretendAdapter();   // scripted stand-ins: used by the tests, not offered to learners
+  return { id: "none", label: "no model yet", async call() { throw adapterError("No model is connected yet. Choose one in ⚙️ Settings.", "config", null); } };
 }
 // A validating probe, not a liveness ping: a signed-out session also "answers".
 async function probeAdapter(adapter, signal) {
@@ -2534,7 +2582,7 @@ function updateSavedModels(models) {
   for (const p of Object.keys(OLD_DEFAULT_MODELS)) if (OLD_DEFAULT_MODELS[p].indexOf(out[p]) >= 0) out[p] = DEFAULT_MODELS[p];
   return out;
 }
-AK.Adapters = { makeAdapter, makePretendAdapter, probeAdapter, parseReply, outputInstruction, anthropicMessages, redactImages, updateSavedModels, MODEL_CHOICES, DEFAULT_MODELS, KEYLESS_MODEL, ANTHROPIC_FALLBACK_MODEL, FIELD_TYPES };
+AK.Adapters = { makeAdapter, makePretendAdapter, probeAdapter, nanoStatus, nanoPrepare, parseReply, outputInstruction, anthropicMessages, redactImages, updateSavedModels, MODEL_CHOICES, DEFAULT_MODELS, KEYLESS_MODEL, ANTHROPIC_FALLBACK_MODEL, FIELD_TYPES };
 
 /* ===== SECTION: LIBRARY (shipped programmed agents — Appendix A, with hand-authored line maps) ===== */
 const LIB = {};
@@ -2741,40 +2789,51 @@ libAgent({
     "if every row matches and there are no extra rows",
     "  pass, and say \"done\"",
     "otherwise",
-    "  block, and say which rows need more dots and which need fewer"
+    "  block, and say which rows need more dots and which need fewer",
+    "pass on how many dots each row had, and what it needs"
   ],
   code: [
     "function run(input, params, h) {",
     "  const rows = (input.data.rowList || []).slice().sort((a, b) => a.y - b.y);",
+    "  const counts = [];",
+    "  const verdicts = [];",
     "  const notes = [];",
     "  for (let i = 0; i < params.secret.length; i++) {",
     "    h.tick();",
     "    const have = i < rows.length ? h.count(rows[i].colors) : 0;",
+    "    counts.push(have);",
     "    if (have < params.secret[i]) {",
+    "      verdicts.push(\"more\");",
     "      notes.push(\"row \" + (i + 1) + \" needs more\");",
     "    } else if (have > params.secret[i]) {",
+    "      verdicts.push(\"fewer\");",
     "      notes.push(\"row \" + (i + 1) + \" needs fewer\");",
+    "    } else {",
+    "      verdicts.push(\"right\");",
     "    }",
     "  }",
     "  if (rows.length > params.secret.length) {",
     "    notes.push(\"there are too many rows\");",
     "  }",
     "  if (notes.length === 0) {",
-    "    return { pass: true, say: \"done\" };",
+    "    return { pass: true, say: \"done\", counts: counts, verdicts: verdicts };",
     "  } else {",
-    "    return { pass: false, say: \"Not yet: \" + notes.join(\", \") + \".\" };",
+    "    return { pass: false, say: \"Not yet: \" + notes.join(\", \") + \".\", counts: counts, verdicts: verdicts };",
     "  }",
     "}"
   ],
-  lineMap: [{ pseudo: [1, 1], js: [2, 2] }, { pseudo: [2, 2], js: [3, 12] }, { pseudo: [3, 3], js: [13, 16] }, { pseudo: [4, 4], js: [17, 17] }, { pseudo: [5, 5], js: [18, 18] }, { pseudo: [6, 6], js: [19, 19] }, { pseudo: [6, 6], js: [8, 8] }, { pseudo: [6, 6], js: [10, 10] }],
+  lineMap: [{ pseudo: [1, 1], js: [2, 2] }, { pseudo: [2, 2], js: [3, 19] }, { pseudo: [3, 3], js: [20, 23] }, { pseudo: [4, 4], js: [24, 24] }, { pseudo: [5, 5], js: [25, 25] }, { pseudo: [6, 6], js: [26, 26] }, { pseudo: [6, 6], js: [12, 12] }, { pseudo: [6, 6], js: [15, 15] },
+    { pseudo: [7, 7], js: [9, 9] }, { pseudo: [7, 7], js: [11, 11] }, { pseudo: [7, 7], js: [14, 14] }, { pseudo: [7, 7], js: [17, 17] }],
   params: { secret: [5, 2, 7] },
   slots: [{ line: 1, text: "5, 2, 7", param: "secret" }],
+  // Written relative to the secret, so they still hold when the secret changes.
   scenarios: [
-    { id: "s1", name: "the secret itself", input: { data: { rowList: rowsOf([rep(5, B), rep(2, B), rep(7, B)]) } }, expect: { pass: true, say: "done" } },
-    { id: "s2", name: "four in every row", input: { data: { rowList: rowsOf([rep(4, B), rep(4, B), rep(4, B)]) } }, expect: { pass: false, say: "Not yet: row 1 needs more, row 2 needs fewer, row 3 needs more." } },
-    { id: "s3", name: "a row is missing", input: { data: { rowList: rowsOf([rep(5, B), rep(2, B)]) } }, expect: { pass: false, sayContains: "row 3 needs more" } },
-    { id: "s4", name: "an extra row", input: { data: { rowList: rowsOf([rep(5, B), rep(2, B), rep(7, B), [B]]) } }, expect: { pass: false, sayContains: "too many rows" } },
-    { id: "s5", name: "rows listed bottom row first", input: { data: { rowList: [{ y: 3, colors: rep(7, R) }, { y: 2, colors: rep(2, U) }, { y: 1, colors: rep(5, GR) }] } }, expect: { pass: true } }
+    { id: "s1", name: "the secret itself", fromSecret: {}, expect: { pass: true, say: "done" } },
+    { id: "s2", name: "one too many in the top row", fromSecret: { change: [[0, 1]] }, expect: { pass: false, sayContains: "row 1 needs fewer" } },
+    { id: "s3", name: "one too few in the bottom row", fromSecret: { change: [[-1, -1]] }, expect: { pass: false, sayContains: "needs more" } },
+    { id: "s4", name: "the bottom row is missing", fromSecret: { drop: 1 }, expect: { pass: false, sayContains: "needs more" } },
+    { id: "s5", name: "an extra row", fromSecret: { extra: 1 }, expect: { pass: false, sayContains: "too many rows" } },
+    { id: "s6", name: "rows listed bottom row first", fromSecret: { reverse: true }, expect: { pass: true } }
   ]
 });
 libAgent({
@@ -2987,7 +3046,7 @@ const EYES_INSTRUCTIONS = "You are Eyes. You look at a picture of pebbles and re
 const CRITIC_INSTRUCTIONS = "You are the Critic. The Judge rejected the Designer's picture and said why. Write one or two blunt, specific sentences telling the Designer exactly what is wrong with the picture and what to change. Talk only about the drawing.";
 const MYSTERY_TASK = "The Mystery Judge has a secret: how many pebbles each of 3 rows should have. Each row has between 1 and 8 pebbles. Draw 3 rows of pebbles, one under another. After each try, the Critic will tell you which rows need more pebbles and which need fewer.";
 // Bump this when a microworld changes: saved copies of the older version are then replaced (and can be kept as copies).
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 function makeTelephone() {
   return {
     kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSION, id: "telephone", title: "Telephone", question: "Where does it go?",
@@ -2996,12 +3055,6 @@ function makeTelephone() {
       "Run the same start twice. How different are the two runs?",
       "What happens if you change the Artist's style?",
       "Can you find a start that never settles? One that settles fast?",
-      "How would you know when the pictures have stopped changing?"
-    ],
-    pretendQuestions: [
-      "In pretend mode, the same start always gives the same run. Why? What would make two runs differ?",
-      "Which example starts settle at once, which flip back and forth, and which never settle?",
-      "Why does a circle next to a square keep swapping sides? Which agent's habit causes it?",
       "How would you know when the pictures have stopped changing?"
     ],
     playTemplate: "; You are the Artist. Draw what the words say.\nSETPENCOLOR \"red\nREPEAT 4 [FORWARD 80 RIGHT 90]",
@@ -3033,20 +3086,22 @@ function makePebbles() {
       "Can you find one Eyes gets wrong but Dot Counter gets right? Can you find the reverse?",
       "Which jobs needed intelligence, and which only needed counting?",
       "Why might Dot Counter count 9 columns in a picture with rows of 5, 2 and 7?",
-      "Does the Critic help? What happens without it?"
+      "Does the Critic help? What happens without it?",
+      "Eyes sometimes mentions a line nobody asked for. Where does it come from, and how would you fix it?",
+      "In Mystery rows, does the Designer search, or does it just step? What agent could you add to keep track of the clues?"
     ],
     playTemplate: "; You are the Designer. Change the numbers after ROW, then press Send.\nTO ROW :N\n  REPEAT :N [DOT 20 FORWARD 40]\nEND\nPENUP SETHEADING 90\nSETXY -140 60 ROW 4\nSETXY -140 0 ROW 4\nSETXY -140 -60 ROW 4",
     openers: ["What does the Judge actually check?", "Could the Designer pass without really meeting the challenge?", "Which agent would you trust to count, and why?"],
     roundAgent: "designer", roundLimit: 5,
     starts: [{ id: "challenge", label: "Challenge", kind: "challenge", to: "designer", value: "" }],
     challenges: [
-      { id: "row4", level: 1, title: "A row of 4", task: "Draw a row of 4 pebbles.", judge: "judge", program: "row-judge", params: { rowsNeeded: 1, dotsNeeded: 4 }, eyesFields: [F_ROWS, F_COLS] },
-      { id: "grid3x5", level: 1, title: "A 3 by 5 grid", task: "Draw a grid of pebbles with 3 rows and 5 columns.", judge: "judge", program: "grid-judge", params: { rowsNeeded: 3, columnsNeeded: 5 }, eyesFields: [F_ROWS, F_COLS] },
-      { id: "triangle10", level: 2, title: "A triangle of 10", task: "Draw a triangle of 10 pebbles: rows of 1, 2, 3 and 4 pebbles from top to bottom.", judge: "judge", program: "triangle-judge", params: { counts: [1, 2, 3, 4] }, eyesFields: [F_ROWLIST] },
-      { id: "checker4", level: 2, title: "A 4 by 4 checkerboard", task: "Draw a 4 by 4 checkerboard of pebbles in two colors, so that no two pebbles side by side or one above the other share a color.", judge: "judge", program: "checker-judge", params: { rowsNeeded: 4, columnsNeeded: 4 }, eyesFields: [F_ROWS, F_COLS, F_ROWLIST] },
-      { id: "colors73", level: 2, title: "7 red and 3 blue", task: "Draw exactly 7 red pebbles and 3 blue pebbles, anywhere.", judge: "judge", program: "color-judge", params: { redNeeded: 7, blueNeeded: 3 }, eyesFields: [F_ROWLIST] },
-      { id: "biggrid", level: 3, title: "A big grid", task: "Draw a grid of pebbles with 11 rows and 14 columns.", judge: "judge", program: "grid-judge", params: { rowsNeeded: 11, columnsNeeded: 14 }, eyesFields: [F_ROWS, F_COLS] },
-      { id: "mystery", level: 3, title: "Mystery rows", task: MYSTERY_TASK, judge: "judge", program: "mystery-judge", params: { secret: [5, 2, 7] }, eyesFields: [F_ROWLIST] }
+      { id: "row4", tests: "counting", title: "A row of 4", task: "Draw a row of 4 pebbles.", judge: "judge", program: "row-judge", params: { rowsNeeded: 1, dotsNeeded: 4 }, eyesFields: [F_ROWS, F_COLS] },
+      { id: "grid3x5", tests: "rows and columns", title: "A 3 by 5 grid", task: "Draw a grid of pebbles with 3 rows and 5 columns.", judge: "judge", program: "grid-judge", params: { rowsNeeded: 3, columnsNeeded: 5 }, eyesFields: [F_ROWS, F_COLS] },
+      { id: "triangle10", tests: "rows of different lengths", title: "A triangle of 10", task: "Draw a triangle of 10 pebbles: rows of 1, 2, 3 and 4 pebbles from top to bottom.", judge: "judge", program: "triangle-judge", params: { counts: [1, 2, 3, 4] }, eyesFields: [F_ROWLIST] },
+      { id: "checker4", tests: "colors side by side", title: "A 4 by 4 checkerboard", task: "Draw a 4 by 4 checkerboard of pebbles in two colors, so that no two pebbles side by side or one above the other share a color.", judge: "judge", program: "checker-judge", params: { rowsNeeded: 4, columnsNeeded: 4 }, eyesFields: [F_ROWS, F_COLS, F_ROWLIST] },
+      { id: "colors73", tests: "counting colors", title: "7 red and 3 blue", task: "Draw exactly 7 red pebbles and 3 blue pebbles, anywhere.", judge: "judge", program: "color-judge", params: { redNeeded: 7, blueNeeded: 3 }, eyesFields: [F_ROWLIST] },
+      { id: "biggrid", tests: "whether Eyes can count a crowd", title: "A big grid", task: "Draw a grid of pebbles with 11 rows and 14 columns.", judge: "judge", program: "grid-judge", params: { rowsNeeded: 11, columnsNeeded: 14 }, eyesFields: [F_ROWS, F_COLS] },
+      { id: "mystery", tests: "searching with clues", title: "Mystery rows", task: MYSTERY_TASK, judge: "judge", program: "mystery-judge", params: { secret: [5, 2, 7] }, eyesFields: [F_ROWLIST], random: { param: "secret", count: 3, lo: 1, hi: 8, on: true } }
     ],
     challenge: "mystery",
     challengeWiring: { toJudge: "to-judge", fromJudge: "from-judge", reporter: "eyes" },
@@ -3175,6 +3230,21 @@ function applyVariant(soc, id, on) {
   }
   return true;
 }
+// Mystery rows can draw a new secret for each run, so its difficulty isn't one lucky number.
+function randomSecret(spec, rng) {
+  const out = [];
+  for (let i = 0; i < (spec.count || 3); i++) out.push(spec.lo + Math.floor(rng() * (spec.hi - spec.lo + 1)));
+  return out;
+}
+function newSecret(soc, rng) {
+  const ch = (soc.challenges || []).find(c => c.id === soc.challenge);
+  const judge = ch && agentById(soc, ch.judge);
+  if (!ch || !ch.random || ch.random.on === false || !judge || judge.kind !== "program") return null;
+  const secret = randomSecret(ch.random, rng);
+  setParams(judge, { [ch.random.param]: secret });
+  ch.params = clone(judge.params);
+  return secret;
+}
 function uniqueAgentId(soc, base) { let id = cleanId(base) || "agent", n = 2; const b = id; while (agentById(soc, id)) id = b + "-" + n++; return id; }
 function duplicateAgent(soc, id) {
   const a = agentById(soc, id);
@@ -3254,6 +3324,14 @@ function sanitizeScenario(s) {
   if (inp.round != null) out.input.round = clampInt(inp.round, 0, 1000, 1);
   if (inp.memory !== undefined) out.input.memory = safeData(inp.memory);
   if (typeof s.program === "string") out.program = cleanText(s.program, 20000);
+  if (s.fromSecret && typeof s.fromSecret === "object") {
+    const f = s.fromSecret;
+    out.fromSecret = {};
+    if (Array.isArray(f.change)) out.fromSecret.change = f.change.slice(0, 10).filter(c => Array.isArray(c) && c.length === 2).map(c => [clampInt(c[0], -20, 20, 0), clampInt(c[1], -20, 20, 0)]);
+    if (f.drop) out.fromSecret.drop = clampInt(f.drop, 0, 20, 0);
+    if (f.extra) out.fromSecret.extra = clampInt(f.extra, 0, 50, 0);
+    if (f.reverse) out.fromSecret.reverse = true;
+  }
   out.expect = safeData(s.expect && typeof s.expect === "object" && !Array.isArray(s.expect) ? s.expect : {}) || {};
   return out;
 }
@@ -3333,11 +3411,10 @@ function sanitizeSociety(raw) {
   const used = new Set();
   soc.rules = arr(d.rules, 100).map(r => sanitizeRule(r, ids, used)).filter(Boolean);
   soc.starts = arr(d.starts, 4).map(s => (s && typeof s === "object" && ids.has(s.to)) ? { id: cleanId(s.id) || "start", label: cleanName(s.label, 40) || "Start", kind: ["text", "program", "challenge"].indexOf(s.kind) >= 0 ? s.kind : "text", to: s.to, value: cleanText(s.value, 20000), examples: arr(s.examples, 12).map(x => cleanName(x, 80)).filter(Boolean) } : null).filter(Boolean);
-  if (Array.isArray(d.pretendQuestions)) soc.pretendQuestions = arr(d.pretendQuestions, 10).map(q => cleanName(q, 300)).filter(Boolean);
   if (d.playTemplate) soc.playTemplate = cleanText(d.playTemplate, 4000);
   if (!soc.starts.length) soc.starts = [{ id: "sentence", label: "Start", kind: "text", to: soc.roundAgent, value: "" }];
   if (Array.isArray(d.challenges)) {
-    soc.challenges = arr(d.challenges, 20).map(c => (c && typeof c === "object" && ids.has(c.judge)) ? Object.assign({ id: cleanId(c.id) || "challenge", title: cleanName(c.title, 60) || "Challenge", task: cleanText(c.task, 600), judge: c.judge, params: sanitizeParams(c.params), eyesFields: arr(c.eyesFields, 8).map(sanitizeField).filter(Boolean) }, c.level ? { level: clampInt(c.level, 1, 3, 1) } : {}, LIB[c.program] ? { program: c.program } : {}) : null).filter(Boolean);   // a judge's saved edits for other challenges aren't imported
+    soc.challenges = arr(d.challenges, 20).map(c => (c && typeof c === "object" && ids.has(c.judge)) ? Object.assign({ id: cleanId(c.id) || "challenge", title: cleanName(c.title, 60) || "Challenge", task: cleanText(c.task, 600), judge: c.judge, params: sanitizeParams(c.params), eyesFields: arr(c.eyesFields, 8).map(sanitizeField).filter(Boolean) }, c.tests ? { tests: cleanName(c.tests, 60) } : {}, c.random && typeof c.random === "object" ? { random: { param: String(c.random.param || "secret").replace(/[^A-Za-z_]/g, "").slice(0, 30) || "secret", count: clampInt(c.random.count, 1, 8, 3), lo: clampInt(c.random.lo, 0, 50, 1), hi: Math.max(clampInt(c.random.lo, 0, 50, 1), clampInt(c.random.hi, 0, 50, 8)), on: c.random.on !== false } } : {}, LIB[c.program] ? { program: c.program } : {}) : null).filter(Boolean);   // a judge's saved edits for other challenges aren't imported
     soc.challenge = soc.challenges.some(c => c.id === d.challenge) ? d.challenge : (soc.challenges[0] || {}).id;
   }
   if (d.challengeWiring && typeof d.challengeWiring === "object") soc.challengeWiring = { toJudge: cleanId(d.challengeWiring.toJudge), fromJudge: cleanId(d.challengeWiring.fromJudge), reporter: ids.has(d.challengeWiring.reporter) ? d.challengeWiring.reporter : "" };
@@ -3409,7 +3486,7 @@ function importScenarios(text) {
   if (!d || d.kind !== "agent-kit-scenarios" || !Array.isArray(d.scenarios)) throw new Error("This isn't an Agent Kit scenario file.");
   return { typeId: cleanId(d.typeId), agentName: cleanName(d.agentName, 40), scenarios: arr(d.scenarios, 60).map(sanitizeScenario).filter(Boolean) };
 }
-AK.Society = { agentById, validateSociety, setParams, applyChallenge, applyVariant, duplicateAgent, deleteAgent, newRuleId, uniqueAgentId, classifyPseudoEdit, installTranslation, revertAgent, sanitizeSociety, sanitizeAgent, sanitizeScenario, exportSociety, importSociety, exportScenarios, importScenarios, migrateSociety, addLibraryAgent, AGENT_KEYS };
+AK.Society = { agentById, validateSociety, setParams, applyChallenge, applyVariant, duplicateAgent, deleteAgent, newRuleId, uniqueAgentId, classifyPseudoEdit, installTranslation, revertAgent, sanitizeSociety, sanitizeAgent, sanitizeScenario, exportSociety, importSociety, exportScenarios, importScenarios, migrateSociety, addLibraryAgent, randomSecret, newSecret, AGENT_KEYS };
 
 /* ===== SECTION: TRANSLATOR CLIENT ===== */
 const TRANSLATOR_RULES = [
@@ -3514,8 +3591,19 @@ function compareExpect(expect, output) {
   }
   return problems;
 }
+// A scenario can be written relative to the secret param: change: [[row, by]] (a negative row counts from
+// the bottom), drop: rows taken off the bottom, extra: dots in an extra row, reverse: list the rows bottom first.
+function rowsFromSecret(spec, secret) {
+  const counts = (Array.isArray(secret) ? secret : []).map(n => Math.max(0, Math.round(+n) || 0));
+  for (const [row, by] of spec.change || []) { const i = row < 0 ? counts.length + row : row; if (i >= 0 && i < counts.length) counts[i] = Math.max(0, counts[i] + by); }
+  counts.splice(Math.max(0, counts.length - (spec.drop || 0)));
+  if (spec.extra) counts.push(spec.extra);
+  const rows = counts.map((n, i) => ({ y: i + 1, colors: Array.from({ length: Math.min(n, 100) }, () => "black") }));
+  return spec.reverse ? rows.reverse() : rows;
+}
 async function runScenario(agent, sc, runtime) {
   const input = Object.assign({ text: "", data: {}, from: "You", round: 1 }, clone(sc.input || {}));
+  if (sc.fromSecret) input.data = Object.assign({}, input.data, { rowList: rowsFromSecret(sc.fromSecret, (agent.params || {}).secret) });
   let render = null;
   if (sc.program) {
     const r = await runtime.runTurtle(sc.program, { seed: 1 });
@@ -3534,7 +3622,7 @@ async function runScenarios(agent, runtime) {
   for (const sc of agent.scenarios || []) out.push(await runScenario(agent, sc, runtime));
   return out;
 }
-AK.Scenarios = { runScenario, runScenarios, compareExpect };
+AK.Scenarios = { runScenario, runScenarios, compareExpect, rowsFromSecret };
 
 /* ===== SECTION: ENGINE (message bus + rule engine + round loop, with a full trace) ===== */
 function getPath(obj, path) {
@@ -3971,7 +4059,7 @@ const PROJECT_URL = "https://github.com/ToonTalk/agent-construction-kit";
 let storage = null;
 try { const k = LS_KEY + ".probe"; localStorage.setItem(k, "1"); localStorage.removeItem(k); storage = localStorage; } catch (e) { storage = null; }
 function defaultSettings() {
-  return { connection: ENV.chatArtifact ? "keyless" : "pretend", keys: { anthropic: "", gemini: "", openai: "" }, rememberKeys: false, models: clone(Adapters.DEFAULT_MODELS), speed: "normal", pretendNoticeSeen: false };
+  return { connection: ENV.chatArtifact ? "keyless" : "none", keys: { anthropic: "", gemini: "", openai: "" }, rememberKeys: false, models: clone(Adapters.DEFAULT_MODELS), speed: "normal" };
 }
 const app = {
   settings: defaultSettings(),
@@ -4015,6 +4103,7 @@ async function load() {
     if (!d || d.schema !== 1) return;
     const st = d.settings || {};
     app.settings = Object.assign(defaultSettings(), st, { keys: Object.assign({ anthropic: "", gemini: "", openai: "" }, st.keys || {}), models: Adapters.updateSavedModels(st.models) });
+    if (app.settings.connection === "pretend") app.settings.connection = "none";   // pretend mode was dropped in 1.0.3
     for (const id of d.order || []) {
       const s = d.societies && d.societies[id];
       if (!s) continue;
@@ -4046,7 +4135,8 @@ function getAdapter() {
   if (!app.adapter || app.adapterKey !== key) { app.adapter = Adapters.makeAdapter(s); app.adapterKey = key; }
   return app.adapter;
 }
-const liveConnection = () => app.settings.connection !== "pretend";
+// "pretend" is the tests' scripted stand-in; learners only get real models.
+const liveConnection = () => ["none", "pretend"].indexOf(app.settings.connection) < 0;
 
 /* ===== SECTION: PICTURES ===== */
 function paintOps(ctx, ops, scale) {
@@ -4303,14 +4393,30 @@ function renderBanners() {
   if (app.saveError) list.push({ id: "save", kind: "warn", html: esc(app.saveError), actions: [{ act: "export-society", label: "Export" }] });
   host.innerHTML = list.map(b => '<div class="banner ' + b.kind + '" role="status"><div class="grow">' + b.html + '</div>' + b.actions.map(a => '<button class="btn tiny" data-act="' + esc(a.act) + '">' + esc(a.label) + '</button>').join("") + '<button class="icon-btn" data-act="banner-close" data-id="' + esc(b.id) + '" aria-label="Dismiss">✕</button></div>').join("");
 }
+const nanoHere = () => !!Adapters.nanoStatus && typeof window.LanguageModel !== "undefined";
+function noModelBanner() {
+  setBanner("no-model", "info", "<b>No model is connected yet</b>, so the agents can't think. Choose one in ⚙️ Settings: Claude, Gemini or OpenAI with your own key" + (nanoHere() ? ", or Gemini Nano, which is free and built into this Chrome" : "") + ".", [{ act: "settings", label: "Settings" }]);
+}
+// With no model chosen, use Gemini Nano if Chrome already has it; otherwise ask.
+async function chooseFirstModel() {
+  if (nanoHere() && await Adapters.nanoStatus(true) === "available") {
+    app.settings.connection = "nano";
+    save(); renderAll();
+    toast("Using Gemini Nano, built into Chrome. Settings has other models.");
+    return;
+  }
+  noModelBanner();
+}
 function handleCallError(entry) {
   const kind = entry && entry.errorKind;
   if (!kind) return;
   const conn = app.settings.connection;
   if (conn === "keyless" && ["signedout", "network", "timeout", "unreadable", "empty", "auth"].indexOf(kind) >= 0)
-    setBanner("keyless", "bad", "<b>Claude isn't answering here.</b> If you're signed out of claude.ai, sign in, then press your <b>browser's</b> reload button (not a button in this page). Until then, pretend mode works without any connection.", [{ act: "use-pretend", label: "Use pretend mode" }, { act: "test-conn", label: "Test again" }]);
+    setBanner("keyless", "bad", "<b>Claude isn't answering here.</b> If you're signed out of claude.ai, sign in, then press your <b>browser's</b> reload button (not a button in this page). Or choose another model in Settings.", [{ act: "settings", label: "Settings" }, { act: "test-conn", label: "Test again" }]);
   else if (kind === "auth") setBanner("auth", "bad", "<b>The model wouldn't let us in.</b> Check the API key in Settings.", [{ act: "settings", label: "Settings" }]);
-  else if (kind === "network" && conn !== "pretend") setBanner("net", "warn", "<b>Couldn't reach the model.</b> Check your connection, or switch to pretend mode.", [{ act: "use-pretend", label: "Use pretend mode" }]);
+  else if (kind === "network" && liveConnection()) setBanner("net", "warn", "<b>Couldn't reach the model.</b> Check your connection, or choose another model in Settings.", [{ act: "settings", label: "Settings" }]);
+  else if (kind === "nano") setBanner("nano", "warn", "<b>Gemini Nano isn't ready.</b> In Settings, press “Test the connection”. The first time, Chrome downloads the model.", [{ act: "settings", label: "Settings" }]);
+  else if (kind === "config") noModelBanner();
 }
 
 /* ===== SECTION: RUNS ===== */
@@ -4338,15 +4444,20 @@ function stripOf(trace, s) {
   }
   return Array.from(rounds.values()).sort((a, b) => a.round - b.round);
 }
-function beginRun() {
+function beginRun(override) {
   const s = soc();
-  const spec = startSpec(s);
+  if (app.settings.connection === "none" && s.agents.some(a => a.kind === "model")) { noModelBanner(); openSettings(); toast("Choose a model first."); return null; }
+  const spec = override || startSpec(s);
   if (!spec || !String(spec.text).trim()) { toast("Write a start first."); return null; }
   const old = app.runs[s.id];
   if (old) {
     if (["running", "paused", "stepping", "ready", "waiting"].indexOf(old.api.run.status) >= 0) old.api.stop();
     if (old.api.run.trace.length) app.prevStrips[s.id] = { start: old.startText, rounds: stripOf(old.api.run.trace, s) };
   } else if (app.traces[s.id] && app.traces[s.id].length) app.prevStrips[s.id] = { start: traceStartText(app.traces[s.id]), rounds: stripOf(app.traces[s.id], s) };
+  if (!override) {
+    const secret = Society.newSecret(s, Math.random);
+    if (secret) { const j = (s.agents || []).find(a => a.kind === "program" && a.gate && a.params && Array.isArray(a.params.secret)); if (j) rerunScenarios(j); }
+  }
   // A new seed every run: programs that pick at random pick differently, like the models do.
   const api = Engine.createRun(s, { adapter: getAdapter(), runtime: Runtime, rasterize, delayMs: speedDelay(), seed: 1 + Math.floor(Math.random() * 2147483646), playAs: app.ui.playAs[s.id] || null });
   const rec = { api, startText: spec.text, working: null, socId: s.id };
@@ -4366,8 +4477,8 @@ function afterRun(rec) {
   save();
   if (rec.socId === app.activeId) renderAll();
 }
-async function runNow() {
-  const rec = beginRun();
+async function runNow(override) {
+  const rec = beginRun(override);
   if (!rec) return null;
   await rec.api.play();
   afterRun(rec);
@@ -4416,8 +4527,8 @@ function renderWorlds() {
   const chip = $("#modeChip");
   if (chip) {
     const c = app.settings.connection;
-    const label = c === "pretend" ? "Pretend mode" : c === "keyless" ? "Claude · no key" : c === "anthropic" ? "Claude · your key" : c === "gemini" ? "Gemini · your key" : "OpenAI · your key";
-    chip.className = "mode-chip " + (c === "pretend" ? "pretend" : "live");
+    const label = c === "none" ? "No model yet" : c === "pretend" ? "Scripted stand-ins" : c === "nano" ? "Gemini Nano · in Chrome" : c === "keyless" ? "Claude · no key" : c === "anthropic" ? "Claude · your key" : c === "gemini" ? "Gemini · your key" : "OpenAI · your key";
+    chip.className = "mode-chip " + (liveConnection() ? "live" : "pretend");
     chip.innerHTML = '<span class="dot"></span>' + esc(label);
   }
   const tabs = $("#mobileTabs");
@@ -4449,8 +4560,7 @@ function renderLeft() {
   const layout = $(".layout");
   if (layout) layout.classList.toggle("inside-open", showInside);
 }
-// In pretend mode nothing is random, so a question like "run it twice" has no answer: ask others instead.
-const questionsFor = s => (!liveConnection() && s.pretendQuestions && s.pretendQuestions.length ? s.pretendQuestions : s.questions || []);
+const questionsFor = s => s.questions || [];
 function agentOptions(s, cur, withAnyone) {
   return (withAnyone ? '<option value="*"' + sel(cur === "*") + '>anyone</option>' : "") + s.agents.map(a => '<option value="' + esc(a.id) + '"' + sel(a.id === cur) + '>' + esc(a.name) + '</option>').join("");
 }
@@ -4519,13 +4629,13 @@ function rcardHTML(r, prev, run, view) {
     r.lines.slice(0, 3).map(l => '<div class="ln' + (l.pass === true ? " p-ok" : l.pass === false ? " p-bad" : "") + '">' + esc(l.emoji) + " " + esc(short(l.text, 90)) + '</div>').join("") + '</div>';
 }
 function statusLineHTML(s, rec, run) {
-  if (!run) { const t = app.traces[s.id]; return t && t.length ? "Showing the last run. Press ▶ Run for a new one." : (app.settings.connection === "pretend" ? "Ready. In pretend mode the model agents are played by small built-in programs, not AI." : "Ready."); }
+  if (!run) { const t = app.traces[s.id]; return t && t.length ? "Showing the last run. Press ▶ Run for a new one." : (app.settings.connection === "none" ? "Choose a model in ⚙️ Settings, then press ▶ Run." : "Ready."); }
   const round = "Round " + run.round + " of " + run.roundLimit;
   if (run.status === "running" || run.status === "stepping") { const w = rec.working ? Society.agentById(s, rec.working) : null; return '<span class="pulse"></span>' + round + (w ? " · " + esc(w.emoji + " " + w.name) + " is working…" : ""); }
   if (run.status === "waiting") { const w = run.waiting && run.waiting.agent; return "🙋 " + round + " · your turn" + (w ? ": you are the " + esc(w.name) : "") + "."; }
   if (run.status === "ready") return '<span class="pulse"></span>Starting…';
   if (run.status === "paused") return "⏸ " + round + " · paused, " + run.queue.length + " message" + (run.queue.length === 1 ? "" : "s") + " waiting.";
-  if (run.status === "done" || run.status === "stopped") return "■ " + esc(run.note || "Finished.") + " <span class=\"muted\">(" + round + ", " + run.deliveries + " messages)</span>" + (tooEasy(s, run) ? '<span class="nudge-inline">The Designer passed on its first try. Too easy? Try a hard challenge.</span>' : "");
+  if (run.status === "done" || run.status === "stopped") return "■ " + esc(run.note || "Finished.") + " <span class=\"muted\">(" + round + ", " + run.deliveries + " messages)</span>" + (tooEasy(s, run) ? '<span class="nudge-inline">The Designer passed on its first try. Can you invent a challenge it can’t meet?</span>' : "");
   return "";
 }
 // A live model that meets a challenge at once has nothing to learn from the Critic.
@@ -4542,15 +4652,15 @@ function padHTML(st) {
     colors.map(c => '<button class="swatch" style="background:' + c + '" data-act="pad" data-cmd="' + esc('SETPENCOLOR "' + c) + '" title="SETPENCOLOR &quot;' + c + '" aria-label="' + c + '"></button>').join("") +
     '<button data-act="pad-undo">undo</button><button data-act="pad-clear">clear</button></div><textarea class="field code" rows="6" data-bind="start-value" data-id="' + esc(st.id) + '" spellcheck="false" aria-label="Your Logo program">' + esc(st.value || "") + '</textarea><div class="hint" id="padErr">This is Logo: every button adds one command. You can type your own too.</div></div></div>';
 }
-const LEVELS = { 1: "easy", 2: "medium", 3: "hard" };
 function challengeHTML(s) {
   const ch = (s.challenges || []).find(c => c.id === s.challenge);
-  let h = '<div class="challenges">' + (s.challenges || []).map(c => '<button class="challenge' + (c.id === s.challenge ? " on" : "") + '" data-act="challenge" data-id="' + esc(c.id) + '">' + esc(c.title) + '<span class="who">' + esc(c.program && AK.Library.LIB[c.program] ? AK.Library.LIB[c.program].name : nameOf(s, c.judge)) + (LEVELS[c.level] ? ' · <span class="lvl lvl' + c.level + '">' + LEVELS[c.level] + '</span>' : "") + '</span></button>').join("") + '<button class="challenge" data-act="invent">＋ Invent one</button></div>';
+  let h = '<div class="challenges">' + (s.challenges || []).map(c => '<button class="challenge' + (c.id === s.challenge ? " on" : "") + '" data-act="challenge" data-id="' + esc(c.id) + '">' + esc(c.title) + '<span class="who">' + esc(c.program && AK.Library.LIB[c.program] ? AK.Library.LIB[c.program].name : nameOf(s, c.judge)) + '</span>' + (c.tests ? '<span class="who tests">tests ' + esc(c.tests) + '</span>' : "") + '</button>').join("") + '<button class="challenge" data-act="invent">＋ Invent one</button></div>';
   if (ch) {
     h += '<p class="hint" style="margin-top:8px">The Designer is told:</p><textarea class="field" rows="2" data-bind="challenge-task" data-id="' + esc(ch.id) + '" aria-label="Challenge task">' + esc(ch.task) + '</textarea>';
     const judge = Society.agentById(s, ch.judge);
     const prog = ch.program && AK.Library.LIB[ch.program];
     if (judge && judge.kind === "program") h += '<p class="hint">' + (prog ? "For this challenge, " + esc(judge.name) + " runs the " + esc(prog.name) + " program" : esc(judge.name) + " decides like this") + ' (the Designer never sees it):</p><button class="judge-peek" data-act="open-agent" data-id="' + esc(judge.id) + '" title="Open ' + esc(judge.name) + '">' + pseudoStaticHTML(judge.pseudocode, judge.slots) + '</button>';
+    if (ch.random) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="new-secret" data-id="' + esc(ch.id) + '"' + (ch.random.on !== false ? " checked" : "") + '> A new secret every run, so no secret is lucky</label>';
   }
   for (const v of s.variants || []) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="variant" data-id="' + esc(v.id) + '"' + (v.on ? " checked" : "") + '> ' + esc(v.label) + '</label>';
   return h;
@@ -4667,13 +4777,13 @@ function callHTML(c, run, trace) {
   return h + '</div>';
 }
 // What an entry shows at first: the response, in words (or a picture, or Logo), and the rules it set off.
-// Papert: the child can change the Logo a machine wrote, and see it drawn, without changing the run.
-function logoEditHTML(e, s) {
+// Papert: the child changes the Logo a machine wrote right where it is shown, sees it drawn,
+// and can send it to the Renderer to start a new run from there.
+function logoEditHTML(e, s, text) {
   const ed = app.ui.logoEdit;
-  if (!ed || ed.i !== e.i) return '<button class="btn tiny" data-act="logo-edit" data-i="' + e.i + '">✎ Change this drawing</button>';
-  const st = (s.starts || []).find(x => x.kind === "program");
-  return '<div class="logo-edit"><textarea class="field code" rows="7" data-bind="logo-edit" spellcheck="false" aria-label="Change the Logo">' + esc(ed.text) + '</textarea><canvas id="logoEditCanvas" width="200" height="200" aria-label="Your changed drawing"></canvas></div><div class="hint" id="logoEditErr">Your changes are drawn here. The run itself stays as it was.</div><div class="row">' +
-    (st ? '<button class="btn tiny primary" data-act="logo-use">Start a run with this drawing</button>' : "") + '<button class="btn tiny" data-act="logo-close">Done</button></div>';
+  if (!ed || ed.i !== e.i) return (text != null ? logoBox(text) : "") + '<button class="btn tiny" data-act="logo-edit" data-i="' + e.i + '">✎ Change it and see it drawn</button>';
+  return '<div class="logo-edit"><textarea class="field code logo-ta" rows="' + Math.min(18, Math.max(6, ed.text.split("\n").length + 1)) + '" data-bind="logo-edit" spellcheck="false" aria-label="Change the Logo">' + esc(ed.text) + '</textarea><canvas id="logoEditCanvas" width="200" height="200" aria-label="Your changed drawing"></canvas></div><div class="hint" id="logoEditErr">Change the Logo: the drawing on the right follows.</div>' +
+    '<div class="row"><button class="btn tiny primary" data-act="logo-run">▶ Send it to the Renderer in a new run</button><button class="btn tiny" data-act="logo-cancel">Cancel</button></div>';
 }
 function programOf(e) { return e.render ? e.render.program : (e.response && e.response.text) || ""; }
 let logoEditTimer = null;
@@ -4687,7 +4797,7 @@ function paintLogoEdit() {
     try { ctx = c.getContext("2d"); } catch (e) { ctx = null; }
     if (ctx) paintOps(ctx, (r.output && r.output.ops) || [], c.width / 512);
     const err = $("#logoEditErr");
-    if (err) err.textContent = r.ok ? "Your changes are drawn here. The run itself stays as it was." : "⚠ " + r.error;
+    if (err) err.textContent = r.ok ? "Change the Logo: the drawing on the right follows." : "⚠ " + r.error;
   }, 120);
 }
 function responseHTML(e, s, run) {
@@ -4700,14 +4810,15 @@ function responseHTML(e, s, run) {
   const data = resp.data || {};
   let body = "";
   if (e.agentKind === "renderer") {
-    if (e.render && !e.render.error) body += imgTag(e.render, "thumb big", "the picture", run);
-    if (text) body += '<div class="said">' + esc(text) + '</div>';
-    if (e.render && e.render.program) body += logoEditHTML(e, s);
+    const editing = app.ui.logoEdit && app.ui.logoEdit.i === e.i;
+    if (e.render && !e.render.error && !editing) body += imgTag(e.render, "thumb big", "the picture", run);
+    if (text && !editing) body += '<div class="said">' + esc(text) + '</div>';
+    if (e.render && e.render.program) body += logoEditHTML(e, s, null);
     return h + '<div class="tsec"><h4>Response</h4>' + body + '</div>';
   }
   const verdict = typeof data.pass === "boolean" && (data.pass === false || (a && a.gate));
   if (verdict) body += data.pass ? '<span class="badge ok">✓ pass: the work goes on</span>' : '<span class="badge bad">✗ block: the work stops here</span>';
-  if (text) body += isProgramReply(e, s) ? logoBox(text) + logoEditHTML(e, s) : '<div class="said">' + md(text) + '</div>';
+  if (text) body += isProgramReply(e, s) ? logoEditHTML(e, s, text) : '<div class="said">' + md(text) + '</div>';
   const rest = {};
   for (const k of Object.keys(data)) if (!(verdict && k === "pass") && k !== "memory") rest[k] = data[k];
   const words = Words.paraphrase(rest);
@@ -4744,8 +4855,18 @@ function techHTML(e, s, run, trace) {
   if (e.response) h += '<div class="tsec"><h4>Response, exactly</h4>' + (e.response.text ? '<pre class="box">' + esc(e.response.text) + '</pre>' : '<p class="small muted">(no words)</p>') + (e.response.data && Object.keys(e.response.data).length ? '<h4>Its data (JSON)</h4>' + jsonBox(e.response.data) : "") + '</div>';
   return h;
 }
+// What the agent was given, so its response can be read against it.
+function incomingHTML(e, s, run, trace) {
+  const m = e.message;
+  if (!m) return "";
+  let body = "";
+  if (m.text) body += e.agentKind === "renderer" ? '<div class="heard small">a Logo program (' + plural(lineCount(m.text), "line") + ')</div>' : '<div class="heard">' + md(clip(m.text, 600), true) + '</div>';
+  if (m.renderId) { const r = findRender(trace, m.renderId); if (r) body += imgTag(r, "thumb", "the picture it was sent", run); }
+  if (m.data && Object.keys(m.data).length && m.send !== "text" && m.send !== "image") { const w = Words.paraphrase(m.data); if (w) body += '<div class="heard small">Data, in plain words: ' + esc(w) + '</div>'; }
+  return body ? '<div class="tsec"><h4>It got, from ' + esc(m.fromName) + '</h4>' + body + '</div>' : "";
+}
 function entryBodyHTML(e, s, run, trace) {
-  let h = responseHTML(e, s, run);
+  let h = incomingHTML(e, s, run, trace) + responseHTML(e, s, run);
   if (e.parseError) h += '<div class="errline">⚠ ' + esc(e.agentName) + ' was asked to send its data in a set form, and the reply didn\'t have it.</div>';
   if (e.error) h += '<div class="errline">' + esc(e.error) + '</div>';
   h += rulesHTML(e);
@@ -4896,7 +5017,6 @@ function editorHead(a, s, kindLabel) {
     '<span class="grow"></span><button class="btn tiny" data-act="dup-agent" data-id="' + esc(a.id) + '">Duplicate</button>' + (!a.shipped ? '<button class="btn tiny danger" data-act="del-agent" data-id="' + esc(a.id) + '">Delete</button>' : "") + '</div>';
 }
 function modelEditorHTML(a, s) {
-  const persona = Pretend.personas[a.pretend] || Pretend.personas.generic;
   let h = editorHead(a, s, "model agent");
   h += '<div class="section"><h3>Instructions</h3><p class="hint">Its system prompt: exactly what the model is told, right after the safety preamble.</p><textarea class="field" rows="9" data-bind="agent" data-field="instructions" aria-label="Instructions">' + esc(a.instructions) + '</textarea></div>';
   h += '<div class="section"><h3>How it works</h3><div class="form-grid"><label>Its reply is</label><select class="field" data-bind="agent" data-field="replyKind"><option value="prose"' + sel(a.replyKind !== "program") + '>words</option><option value="program"' + sel(a.replyKind === "program") + '>a Logo drawing program</option></select>' +
@@ -4905,7 +5025,6 @@ function modelEditorHTML(a, s) {
   h += '<div class="section"><h3>Output fields</h3><p class="hint">Data it must send back, as JSON after its answer. Rules can test these (IF data.rows = 3), and programmed agents read them.</p><div class="fields-edit">' +
     (a.outputFields || []).map((f, i) => '<div class="frow"><input class="field" data-bind="ofield" data-i="' + i + '" data-field="name" value="' + esc(f.name) + '" placeholder="name" aria-label="Field name"><select class="field" data-bind="ofield" data-i="' + i + '" data-field="type" aria-label="Field type">' + Adapters.FIELD_TYPES.map(t => '<option' + sel(f.type === t) + '>' + t + '</option>').join("") + '</select><input class="field" data-bind="ofield" data-i="' + i + '" data-field="about" value="' + esc(f.about || "") + '" placeholder="what it means" aria-label="Field meaning"><button class="icon-btn" data-act="field-del" data-i="' + i + '" aria-label="Delete field">🗑</button></div>').join("") +
     '</div><button class="btn tiny" data-act="field-add" style="margin-top:6px">+ Add a field</button></div>';
-  h += '<div class="persona"><b>In pretend mode</b> this agent is played by <b>' + esc(persona.title) + '</b>. ' + esc(persona.about) + '</div>';
   h += '<div class="section"><h3>The safety preamble</h3><p class="hint">Every model call starts with this fixed text, before the instructions.</p><pre class="box">' + esc(Prompts.PREAMBLE) + '</pre></div>';
   return h;
 }
@@ -5105,7 +5224,7 @@ function renderSettings() {
   if (!m) return;
   const st = app.settings;
   const conns = [
-    ["pretend", "Pretend (no AI)", "Small built-in programs play the model agents. Free, works offline, and the same start always gives the same run.", true],
+    ["nano", "Gemini Nano, built into Chrome", nanoHere() ? "Free, and nothing leaves this computer. It is a small model, so it makes more mistakes. The first time, Chrome downloads it (a few GB)." : "Needs desktop Chrome 138 or later on a fairly powerful computer.", nanoHere() || st.connection === "nano"],
     ["keyless", "Claude, inside a claude.ai chat", ENV.chatArtifact ? "No key needed: it uses your claude.ai sign-in, and pictures are sent too." : "Only works when this page runs as an artifact inside a claude.ai chat." + (ENV.codeArtifact ? " A published artifact can't make these calls." : ""), ENV.chatArtifact || st.connection === "keyless"],
     ["anthropic", "Claude, with your Anthropic key", ENV.codeArtifact ? "Blocked inside published artifacts." : ENV.chatArtifact ? "Works here too; calls go straight from this page to Anthropic." : "Calls go straight from this page to Anthropic.", !ENV.codeArtifact],
     ["gemini", "Gemini, with your Google key", ENV.artifact ? "Blocked inside claude.ai artifacts: open the page from GitHub Pages or a file to use it." : "Calls go straight from this page to Google.", !ENV.artifact],
@@ -5113,7 +5232,8 @@ function renderSettings() {
   ];
   let h = '<h3 style="font-size:16px;margin-bottom:8px">How the model agents think</h3><div class="conn-list">' + conns.map(c => '<label class="conn' + (st.connection === c[0] ? " on" : "") + (c[3] ? "" : " disabled") + '"><input type="radio" name="conn" data-bind="conn" value="' + c[0] + '"' + (st.connection === c[0] ? " checked" : "") + (c[3] ? "" : " disabled") + '><span><span class="t">' + esc(c[1]) + '</span><br><span class="d">' + esc(c[2]) + '</span></span></label>').join("") + '</div>';
   const p = st.connection;
-  if (p !== "pretend") {
+  if (p === "nano") h += '<div class="row" style="margin-top:10px"><button class="btn" data-act="test-conn">Test the connection</button><span class="small" id="connResult"></span></div>';
+  else if (p !== "none" && p !== "pretend") {
     const choices = Adapters.MODEL_CHOICES[p] || [];
     h += '<div class="form-grid" style="margin-top:12px">';
     if (p !== "keyless") h += '<label for="keyIn">' + (p === "anthropic" ? "Anthropic" : p === "gemini" ? "Google" : "OpenAI") + ' key</label><input class="field" id="keyIn" type="password" autocomplete="off" data-bind="key" data-id="' + p + '" value="' + esc(st.keys[p] || "") + '" placeholder="paste your key">';
@@ -5134,8 +5254,14 @@ function renderSettings() {
 async function testConnection() {
   const out = $("#connResult");
   if (out) out.textContent = "Testing…";
+  if (app.settings.connection === "nano") {
+    // still inside the click, so Chrome may start the download
+    try { await Adapters.nanoPrepare(f => { if (out) out.textContent = "Chrome is downloading Gemini Nano: " + Math.round(f * 100) + "%"; }); }
+    catch (e) { if (out) out.textContent = "✗ " + e.message; else toast("✗ " + e.message, "bad"); return { ok: false, error: e.message }; }
+    if (out) out.textContent = "Testing…";
+  }
   const r = await Adapters.probeAdapter(getAdapter());
-  if (r.ok) { clearBanner("keyless"); clearBanner("auth"); clearBanner("net"); if (out) out.textContent = "✓ Working (" + r.model + ")."; else toast("✓ The connection works."); }
+  if (r.ok) { clearBanner("keyless"); clearBanner("auth"); clearBanner("net"); clearBanner("nano"); clearBanner("no-model"); if (out) out.textContent = "✓ Working (" + r.model + ")."; else toast("✓ The connection works."); }
   else { if (out) out.textContent = "✗ " + r.error; else toast("✗ " + r.error, "bad"); handleCallError({ errorKind: r.kind }); }
   return r;
 }
@@ -5193,14 +5319,14 @@ const GUIDES = {
     "<h3>Logo</h3><p>The Artist and the Designer draw in <b>Logo</b>, the turtle language: <code>FORWARD 50</code>, <code>RIGHT 90</code>, and <code>REPEAT 4 [FORWARD 50 RIGHT 90]</code> for a square. In Telephone, “Start with a drawing” lets you write Logo yourself.</p>" +
     "<h3>Programmed agents</h3><p>Open one to read its pseudocode. Numbers in { } are settings you can change right there. To change what it does, edit the pseudocode and save: the translator turns it into JavaScript. <b>Peek under the hood</b> shows both side by side; point at a line to see its partner.</p><p>Programs only work with data. If a line needs eyes or opinions (“if the drawing looks happy”), the translator will ask you what a program could count instead.</p>" +
     "<h3>Scenarios</h3><p>Scenarios are tests: an input, and what the agent should answer. They run after every change. A red one shows what was expected and what happened. Make scenarios that try to break an agent, then export them for a friend.</p>" +
-    "<h3>Pretend mode</h3><p>With no connection, small built-in programs play the model agents. They have habits you can discover, and the same start always gives the same run. Settings shows how to connect a real model.</p>" +
+    "<h3>Models</h3><p>The model agents need a model to think with. Settings lets you choose: Claude, Gemini or OpenAI with a key, Claude with no key inside a claude.ai chat, or Gemini Nano, which is free and built into desktop Chrome.</p>" +
     "<h3>Tips</h3><ul><li>Change one thing at a time.</li><li>Run the same start twice and compare.</li><li>Before you press Run, say what you think will happen.</li><li>Stuck? Ask the 🤔 Helper. It asks questions back.</li></ul>" },
   teacher: { title: "📕 A guide for teachers", html:
     "<h3>What learners do</h3><p>Learners (about 10 to 16) run, inspect, debug and change small societies of agents: language-model agents, programmed agents written in editable pseudocode, and a built-in Renderer. Everything is a glass box: every prompt, every reply, every program and every message is visible.</p>" +
     "<h3>The two microworlds</h3><p><b>Telephone: “Where does it go?”</b> An Artist turns a sentence into a Logo program, the Renderer draws it, a Describer describes the picture, and the description goes back to the Artist. Powerful ideas: iteration, fixed points and cycles, variance between runs. Learners can later add a Loop Spotter or a Tally from the library.</p><p><b>Pebble Challenge: “Why did the Designer win?”</b> A Designer draws a challenge in pebbles, Eyes (a vision model) counts them, and a programmed Judge lets the work through or blocks it; a Critic tells the Designer what to fix. Each challenge gives the one Judge its program, shown on the stage. One click swaps Eyes for Dot Counter, a program that reads the Renderer's dot list; another takes the Critic out, so the Judge's words go straight to the Designer. The challenges run from easy to hard: a strong model meets the easy ones at once, <i>A big grid</i> is hard for a vision model to count, and <i>Mystery rows</i> keeps a secret that only the Critic's notes reveal, a few clues at a time. Powerful ideas: critics can be gamed; correlated and independent error; perception versus judgment.</p>" +
-    "<h3>Sessions that work</h3><ol><li><b>Predict, run, compare.</b> Run Telephone twice with the same start. How different are the runs? In pretend mode they are identical; with a real model they are not. Why?</li><li><b>Find the attractor.</b> Which starts settle fast, which flip back and forth, which never settle? Then add a Loop Spotter (Look inside, then + Add an agent) and change its threshold: is “stuck” a fact about the pictures or about the Loop Spotter?</li><li><b>Game the judge.</b> In Pebble Challenge, can the Designer win without meeting the challenge? Try labels, spacing and little circles. Which fooled Eyes, and which fooled Dot Counter?</li><li><b>Read and write programs.</b> Open a Judge, peek under the hood, change a number in a slot, then change a line and watch the scenarios.</li><li><b>Play the machine's game.</b> Tick “You be the Designer” and solve Mystery rows yourself, then compare your tries with the model's. In Telephone, “You be the Artist” lets a learner draw in Logo from the Describer's words.</li><li><b>Does the Critic help?</b> Run the same challenge with and without the Critic. If nothing gets worse, what was the Critic for?</li></ol>" +
+    "<h3>Sessions that work</h3><ol><li><b>Predict, run, compare.</b> Run Telephone twice with the same start. How different are the runs? Why?</li><li><b>Find the attractor.</b> Which starts settle fast, which flip back and forth, which never settle? Then add a Loop Spotter (Look inside, then + Add an agent) and change its threshold: is “stuck” a fact about the pictures or about the Loop Spotter?</li><li><b>Game the judge.</b> In Pebble Challenge, can the Designer win without meeting the challenge? Try labels, spacing and little circles. Which fooled Eyes, and which fooled Dot Counter?</li><li><b>Read and write programs.</b> Open a Judge, peek under the hood, change a number in a slot, then change a line and watch the scenarios.</li><li><b>Play the machine's game.</b> Tick “You be the Designer” and solve Mystery rows yourself, then compare your tries with the model's. In Telephone, “You be the Artist” lets a learner draw in Logo from the Describer's words.</li><li><b>Does the Critic help?</b> Run the same challenge with and without the Critic. If nothing gets worse, what was the Critic for?</li></ol>" +
     "<h3>Seat two learners at one society</h3><p>One drives; the other predicts and writes down what happens; swap every run. Then use <b>scenario files</b> to challenge each other: each pair exports a set of scenarios designed to break the other pair's agent, the other pair imports it, and the fixing begins.</p>" +
-    "<h3>Modes and cost</h3><ul><li><b>Pretend</b>: free, offline, deterministic. Good for rehearsal and for whole-class demonstrations.</li><li><b>Claude inside a claude.ai chat</b>: no key; uses the signed-in account.</li><li><b>Your own key</b> (Anthropic, Google, OpenAI): billed to that key. Each starts on its provider's cheapest model that can see pictures (Claude Haiku 4.5, Gemini 3.5 Flash-Lite, GPT-6 Luna); Settings lists stronger ones. The round limit and the Stop button keep runs short.</li></ul>" +
+    "<h3>Modes and cost</h3><ul><li><b>Gemini Nano, built into desktop Chrome</b>: free, and nothing leaves the computer. A small model, so it makes more mistakes, which can be worth discussing.</li><li><b>Claude inside a claude.ai chat</b>: no key; uses the signed-in account.</li><li><b>Your own key</b> (Anthropic, Google, OpenAI): billed to that key. Each starts on its provider's cheapest model that can see pictures (Claude Haiku 4.5, Gemini 3.5 Flash-Lite, GPT-6 Luna); Settings lists stronger ones. The round limit and the Stop button keep runs short.</li></ul>" +
     "<h3>Safety and privacy</h3><ul><li>Every model call starts with a fixed, visible safety preamble for a young audience.</li><li>The kit never asks for personal data.</li><li>Imported files are checked: text is cleaned, and any JavaScript in them is thrown away and translated again here.</li><li>Programs run behind a checker, a step counter and (where the page allows) a Worker. Drawings are Logo, read by an interpreter that can only move the turtle.</li><li>The Helper asks questions rather than giving answers, and never states the fix for a failing scenario.</li></ul>" }
 };
 function openGuide(which) {
@@ -5303,15 +5429,14 @@ const ACTIONS = {
     app.ui.logoEdit = { i, text: programOf(e) };
     renderTrace();
   },
-  "logo-close"() { app.ui.logoEdit = null; renderTrace(); },
-  "logo-use"() {
-    const s = soc(), st = (s.starts || []).find(x => x.kind === "program");
-    if (!st || !app.ui.logoEdit) return;
-    st.value = app.ui.logoEdit.text;
-    app.ui.startKind[s.id] = st.id;
+  "logo-cancel"() { app.ui.logoEdit = null; renderTrace(); },
+  async "logo-run"() {
+    const s = soc(), r = s.agents.find(a => a.kind === "renderer");
+    if (!r || !app.ui.logoEdit) return;
+    const text = app.ui.logoEdit.text;
     app.ui.logoEdit = null;
-    save(); renderStage(); renderTrace();
-    toast("Your drawing is the start now. Press ▶ Run.");
+    toast("A new run starts with your drawing at the " + r.name + ".");
+    await runNow({ to: r.id, text });
   },
   async "your-send"() {
     const s = soc(), rec = app.runs[s.id];
@@ -5379,8 +5504,7 @@ const ACTIONS = {
   "helper-ask"(t) { askHelper(t.dataset.text); },
   "helper-send"() { const i = $("#helperInput"); if (i) { const q = i.value; i.value = ""; askHelper(q); } },
   "helper-clear"() { app.helperChat[app.activeId] = []; save(); renderHelper(); },
-  "banner-close"(t) { clearBanner(t.dataset.id); if (t.dataset.id === "save") { app.saveError = ""; renderBanners(); } if (t.dataset.id === "pretend-note") { app.settings.pretendNoticeSeen = true; save(); } },
-  "use-pretend"() { app.settings.connection = "pretend"; clearBanner("keyless"); clearBanner("net"); save(); renderAll(); toast("Pretend mode is on."); },
+  "banner-close"(t) { clearBanner(t.dataset.id); if (t.dataset.id === "save") { app.saveError = ""; renderBanners(); } },
   "test-conn"() { testConnection(); },
   "copy-link"() { copyText(PROJECT_URL); },
   // agent editor
@@ -5477,6 +5601,7 @@ async function handleBind(t, evt) {
     case "speed": { app.settings.speed = t.value; const r = app.runs[app.activeId]; if (r) r.api.setDelay(speedDelay()); save(); return; }
     case "roundAgent": if (change) { s.roundAgent = t.value; save(); renderAll(); } return;
     case "variant": { Society.applyVariant(s, t.dataset.id, t.checked); save(); renderAll(); return; }
+    case "new-secret": { const ch = (s.challenges || []).find(c => c.id === t.dataset.id); if (ch && ch.random) { ch.random.on = t.checked; save(); } return; }
     case "play-as": {
       app.ui.playAs[s.id] = t.checked ? s.roundAgent : null;
       renderStage();
@@ -5579,9 +5704,8 @@ async function boot() {
     const many = app.replaced.length > 1;
     setBanner("updated", "info", "<b>" + esc(app.replaced.map(x => x.title || x.id).join(" and ")) + (many ? " have new versions" : " has a new version") + ".</b> Drawings are in Logo now, runs are shorter, and Pebble Challenge has harder challenges. Your earlier " + (many ? "versions were" : "version was") + " set aside.", [{ act: "keep-old", label: many ? "Keep my old versions as copies" : "Keep my old version as a copy" }]);
   }
-  if (ENV.codeArtifact && app.settings.connection !== "pretend") app.settings.connection = "pretend";
-  if (ENV.codeArtifact) setBanner("code-artifact", "info", "In a published artifact the model agents can only run in <b>pretend mode</b>. To use Claude without a key, open the kit inside a claude.ai chat; to use your own key, open it from GitHub Pages or a file.");
-  else if (app.settings.connection === "pretend" && !app.settings.pretendNoticeSeen) setBanner("pretend-note", "info", "You're in <b>pretend mode</b>: small built-in programs play the model agents, so no AI is used and runs always come out the same. Connect a real model in ⚙️ Settings whenever you like.", [{ act: "settings", label: "Settings" }]);
+  if (ENV.codeArtifact) { app.settings.connection = "none"; setBanner("code-artifact", "info", "A published artifact can't reach a model, so the agents can't think here. Open the kit inside a claude.ai chat to use Claude without a key, or from GitHub Pages to use your own key or Gemini Nano."); }
+  else if (app.settings.connection === "none") chooseFirstModel();
   renderAll();
   await Runtime.probe();
   await rerunAll();

@@ -46,7 +46,6 @@ export default function (T, { modelWindow, same }) {
     const r = await run(s, { to: "artist", text: "a red house" });
     return t.rules[0].from === "*" && texts(r, "tally").some(x => /^After 5 rounds/.test(x));
   });
-  T.test("Telephone: pretend mode has its own questions, since every pretend run is the same", ["Seeds"], () => { const s = Seeds.makeTelephone(); return s.pretendQuestions.length === 4 && /always gives the same run/.test(s.pretendQuestions[0]) && !/same start twice/.test(s.pretendQuestions.join(" ")); });
   T.test("the Renderer counts shapes, not the little lines inside a circle", ["Engine"], async () => {
     const r = await tel("a red circle next to a blue square");
     return r.trace.find(e => e.agentId === "renderer").response.text === "I drew 2 shapes and 0 dots.";
@@ -65,7 +64,19 @@ export default function (T, { modelWindow, same }) {
       return r.stopReason === "done" && v[v.length - 1] === "done" && !r.trace.some(e => e.error);
     });
   }
-  T.test("Pebble: the challenges run from easy to hard, starting on Mystery rows", ["Seeds"], () => { const s = pebbles(); return same(s.challenges.map(c => c.level), [1, 1, 2, 2, 2, 3, 3]) && s.challenge === "mystery" && s.roundLimit === 5; });
+  T.test("Pebble: each challenge says what it tests, starting on Mystery rows", ["Seeds"], () => { const s = pebbles(); return s.challenges.every(c => c.tests && !("level" in c)) && s.challenge === "mystery" && s.roundLimit === 5 && s.challenges.find(c => c.id === "mystery").random.on === true; });
+  T.test("Pebble: Mystery rows can draw a new secret, and the Judge's scenarios still pass", ["Society", "Scenarios"], async () => {
+    const s = pebbles();
+    let k = 0;
+    const secret = Society.newSecret(s, () => [0.99, 0, 0.99][k++ % 3]);
+    const j = Society.agentById(s, "judge");
+    const res = await Scenarios.runScenarios(j, Runtime);
+    return same(secret, [8, 1, 8]) && same(j.params.secret, [8, 1, 8]) && /\{8, 1, 8\}/.test(j.pseudocode) && same(s.challenges.find(c => c.id === "mystery").params.secret, [8, 1, 8]) && res.every(r => r.ok) && res.length === 6;
+  });
+  T.test("Pebble: the Mystery Judge passes on each row's count and verdict, for an agent a learner might add", ["Library", "Scenarios"], async () => {
+    const r = await Scenarios.runScenario(Society.agentById(pebbles(), "judge"), { id: "x", input: { data: { rowList: [{ y: 1, colors: ["red", "red", "red", "red"] }, { y: 2, colors: ["red", "red"] }] } }, expect: {} }, Runtime);
+    return same(r.output.counts, [4, 2, 0]) && same(r.output.verdicts, ["more", "right", "more"]);
+  });
   T.test("Pebble: one Judge, whose program changes with the challenge, so the rules never move", ["Society", "Seeds"], () => {
     const s = pebbles();
     const judges = s.agents.filter(a => a.gate);

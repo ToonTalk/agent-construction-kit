@@ -39,7 +39,7 @@ async function pageWindow(opts = {}) {
   vc.on("error", (...a) => errors.push(a.map(String).join(" ")));
   const dom = new JSDOM(HTML, {
     runScripts: "dangerously", pretendToBeVisual: true, url: "http://localhost/index.html", virtualConsole: vc,
-    beforeParse(w) { if (opts.storage) for (const [k, v] of Object.entries(opts.storage)) w.localStorage.setItem(k, v); }
+    beforeParse(w) { if (opts.storage) for (const [k, v] of Object.entries(opts.storage)) w.localStorage.setItem(k, v); if (opts.before) opts.before(w); }
   });
   await dom.window.__akBoot;
   return { w: dom.window, errors, dom };

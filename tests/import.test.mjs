@@ -70,7 +70,7 @@ export default function (T, { modelWindow }) {
   T.test("exports never contain API keys", ["Society"], () => !/sk-secret/.test(Society.exportSociety(Seeds.makeTelephone(), [{ kind: "activation", call: { headers: { "x-api-key": "sk-secret" } } }])));
   T.test("introductions and challenge levels survive export and import", ["Society"], () => {
     const s = Society.importSociety(Society.exportSociety(Seeds.makePebbles(), null)).society;
-    return /Designer writes a Logo program/.test(s.intro) && s.challenges.find(c => c.id === "mystery").level === 3 && s.challenges.find(c => c.id === "grid3x5").program === "grid-judge" && !("seed" in s) && /ROW 4/.test(s.playTemplate);
+    return /Designer writes a Logo program/.test(s.intro) && s.challenges.find(c => c.id === "mystery").tests === "searching with clues" && s.challenges.find(c => c.id === "mystery").random.hi === 8 && s.challenges.find(c => c.id === "grid3x5").program === "grid-judge" && !("seed" in s) && /ROW 4/.test(s.playTemplate);
   });
   T.test("a file from Agent Kit 1.0 gets Logo instead of its JavaScript drawings", ["Society", "Logo"], () => {
     const d = JSON.parse(Society.exportSociety(Seeds.makeTelephone(), null));

@@ -1,7 +1,14 @@
 // The whole page in jsdom: boot, look inside, a pretend run, the trace, the editor, settings, imports, exports, saving.
 export default function (T, { pageWindow }) {
   let P = null;
-  const page = async () => (P = P || await pageWindow());
+  // Learners always use a real model; the tests use the scripted stand-ins, and a fixed Mystery secret.
+  const boot = async opts => {
+    const p = await pageWindow(opts);
+    p.w.__ak.app.settings.connection = "pretend";
+    p.w.__ak.app.societies.pebbles.challenges.find(c => c.id === "mystery").random.on = false;
+    return p;
+  };
+  const page = async () => (P = P || await boot());
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const click = (w, sel) => { const el = w.document.querySelector(sel); if (!el) throw new Error("missing " + sel); el.click(); return el; };
   const entry = (w, re) => Array.from(w.document.querySelectorAll('[data-act="trace-toggle"]')).find(b => re.test(b.textContent));
@@ -50,7 +57,7 @@ export default function (T, { pageWindow }) {
     return /wrote a Logo program/.test(t.textContent) && !!pre && /REPEAT 4/.test(pre.textContent) && !!pre.querySelector(".lg-k");
   });
   T.test("data with no words is said in plain words, marked as not the literal reply", ["Words", "Library"], async () => {
-    const { w } = await pageWindow();
+    const { w } = await boot();
     w.AK.Society.addLibraryAgent(w.__ak.soc(), "tally");
     w.__ak.app.settings.speed = "instant";
     await w.__ak.runNow();
@@ -64,12 +71,12 @@ export default function (T, { pageWindow }) {
     d.innerHTML = w.__ak.md("**Big** idea:\n- one\n- two <img src=x onerror=alert(1)>\n\n[a link](https://example.com)");
     return d.querySelector("b").textContent === "Big" && d.querySelectorAll("li").length === 2 && !d.querySelector("img") && !d.querySelector("a") && /a link/.test(d.textContent) && /<img/.test(d.textContent);
   });
-  T.test("Pebble Challenge shows the levels, and the judge's pseudocode on the stage", ["Seeds", "Library"], async () => {
+  T.test("Pebble Challenge says what each challenge tests, and shows the judge's pseudocode on the stage", ["Seeds", "Library"], async () => {
     const { w } = await page();
     click(w, '[data-act="world"][data-id="pebbles"]');
     const st = w.document.querySelector(".stage");
     const peek = st.querySelector(".judge-peek");
-    return !!peek && /the secret is \{5, 2, 7\}/.test(peek.textContent) && st.querySelectorAll(".lvl3").length === 2 && /Mystery rows/.test(st.querySelector(".challenge.on").textContent) && /Eyes looks at the picture/.test(w.document.querySelector(".qcard .intro").textContent);
+    return !!peek && /the secret is \{5, 2, 7\}/.test(peek.textContent) && /tests searching with clues/.test(st.textContent) && !!st.querySelector('[data-bind="new-secret"]') && /Mystery rows/.test(st.querySelector(".challenge.on").textContent) && /Eyes looks at the picture/.test(w.document.querySelector(".qcard .intro").textContent);
   });
   T.test("a judge's trace entry shows its pseudocode, not JavaScript", ["Engine"], async () => {
     const { w } = await page();
@@ -79,7 +86,7 @@ export default function (T, { pageWindow }) {
     return /the secret is/.test(body.textContent) && !/function run/.test(body.textContent) && /block: the work stops here/.test(body.textContent) && /row 1 needs more/.test(body.textContent);
   });
   T.test("when a live model passes on its first try, the stage suggests a harder challenge", ["Engine"], async () => {
-    const { w } = await pageWindow();
+    const { w } = await boot();
     const app = w.__ak.app;
     click(w, '[data-act="world"][data-id="pebbles"]');
     click(w, '[data-act="challenge"][data-id="row4"]');
@@ -88,7 +95,7 @@ export default function (T, { pageWindow }) {
     app.adapterKey = JSON.stringify([app.settings.connection, app.settings.models, app.settings.keys]);
     app.settings.speed = "instant";
     const rec = await w.__ak.runNow();
-    return rec.api.run.round === 1 && /Too easy\? Try a hard challenge/.test(w.document.querySelector(".status-line").textContent);
+    return rec.api.run.round === 1 && /passed on its first try\. Can you invent a challenge it can’t meet\?/.test(w.document.querySelector(".status-line").textContent);
   });
   T.test("replay steps through a finished run", ["Engine"], async () => {
     const { w } = await page();
@@ -192,7 +199,7 @@ export default function (T, { pageWindow }) {
     return /aged 10 to 16/.test(t) && /step counter/.test(t) && /Drawings are Logo/.test(t);
   });
   T.test("a learner can play the Designer: the run waits for them, and the Judge answers", ["Engine"], async () => {
-    const { w } = await pageWindow();
+    const { w } = await boot();
     click(w, '[data-act="world"][data-id="pebbles"]');
     const box = w.document.querySelector('[data-bind="play-as"]');
     box.checked = true;
@@ -210,8 +217,8 @@ export default function (T, { pageWindow }) {
     const said = run.trace.filter(e => e.agentId === "judge").map(e => e.response.text);
     return waiting && said[0] === "done" && run.status === "done" && !w.document.querySelector(".yourturn") && /\byou\b/.test(entry(w, /Designer ← You/).textContent);
   });
-  T.test("the Artist's Logo can be changed in the trace, redrawn, and used as a start", ["Logo"], async () => {
-    const { w } = await pageWindow();
+  T.test("the Artist's Logo is changed right where it is shown, redrawn, and sent to the Renderer", ["Logo"], async () => {
+    const { w } = await boot();
     w.__ak.app.settings.speed = "instant";
     await w.__ak.runNow();
     const t = open(w, /Artist ← You/);
@@ -219,16 +226,29 @@ export default function (T, { pageWindow }) {
     const ta = w.document.querySelector('[data-bind="logo-edit"]');
     ta.value = "SETPENCOLOR \"green\nREPEAT 5 [FORWARD 100 RIGHT 144]";
     ta.dispatchEvent(new w.Event("input", { bubbles: true }));
-    const shown = !!w.document.querySelector("#logoEditCanvas");
-    click(w, '[data-act="logo-use"]');
-    const st = w.__ak.soc().starts.find(x => x.id === "drawing");
-    return shown && /REPEAT 5 \[FORWARD 100 RIGHT 144\]/.test(st.value) && w.__ak.app.ui.startKind.telephone === "drawing" && !w.document.querySelector('[data-bind="logo-edit"]');
+    const inPlace = !!w.document.querySelector("#logoEditCanvas") && !entry(w, /Artist ← You/).closest(".tentry").querySelector("pre.logo");
+    click(w, '[data-act="logo-run"]');
+    await sleep(300);
+    const run = w.__ak.app.runs.telephone.api.run;
+    const first = run.trace.find(e => e.kind === "activation");
+    return inPlace && first.agentId === "renderer" && /REPEAT 5/.test(first.message.text) && /star/.test(run.trace.find(e => e.agentId === "describer").response.text) && !w.document.querySelector('[data-bind="logo-edit"]');
   });
-  T.test("pretend mode asks questions that pretend mode can answer", ["Seeds"], async () => {
+  T.test("there is no pretend mode: with no model, Run asks for one, and Gemini Nano is offered when Chrome has it", ["Adapters"], async () => {
+    const { w } = await pageWindow();
+    const none = w.__ak.app.settings.connection === "none" && /No model is connected yet/.test(w.document.querySelector("#banners").textContent);
+    const rec = await w.__ak.runNow();
+    const settings = w.__ak.app.ui.settingsModal.body.textContent;
+    const p2 = await pageWindow({ before(win) { win.LanguageModel = { availability: async () => "available", create: async () => ({ prompt: async () => "hi", destroy() {} }) }; } });
+    await sleep(30);
+    return none && rec === null && !/Pretend/.test(settings) && /Gemini Nano/.test(settings) && p2.w.__ak.app.settings.connection === "nano";
+  });
+  T.test("the trace shows what an agent got, as well as what it said", ["Engine"], async () => {
     const { w } = await page();
     click(w, '[data-act="world"][data-id="telephone"]');
-    const q = w.document.querySelector(".qcard ul").textContent;
-    return /always gives the same run/.test(q) && !/Run the same start twice/.test(q);
+    w.__ak.app.settings.speed = "instant";
+    await w.__ak.runNow();
+    const body = open(w, /R2.*Artist ← Describer/).querySelector(".tbody");
+    return /It got, from Describer/.test(body.textContent) && /next to a/.test(body.querySelector(".heard").textContent);
   });
   T.test("the drawing pad writes Logo", ["Logo"], async () => {
     const { w } = await page();

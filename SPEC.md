@@ -265,6 +265,16 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **Pretend-mode questions** (Vygotsky): pretend runs never vary, so in pretend mode Telephone's card asks questions pretend mode can answer (`pretendQuestions`).
   - Small fixes: the Renderer counts shapes ("I drew 2 shapes"), not the 36 short lines of a circle; rules read in English ("Renderer gets the words, always"); a starting run says "Starting…" rather than "paused".
   - Suite: 270 PASS, fingerprint `7fda16058b96`.
+- 2026-10-01 — **Revision 1.0.3, after the first runs with a real model** (gpt-5.6-terra, by the reviewer and by Claude in Chrome).
+  - **Pretend mode is gone for learners** (supersedes criterion 1's pretend mode). Its stand-ins taught the wrong lesson: the pretend Designer searched better than the real model, and the pretend Describer's swap is something no real model did. With no model chosen, the app asks for one (Run opens Settings). The scripted stand-ins stay inside the code as the test suite's double. **Later, not now:** replays of recorded real runs, free and offline, where every message really came from a model.
+  - **Gemini Nano, built into desktop Chrome** (138 and later), is a connection: free, and nothing leaves the computer. It takes pictures. "Test the connection" (a click) lets Chrome download it; when Chrome already has it and no model is chosen, the app picks it.
+  - **The trace shows what each agent got** ("It got, from Describer: …") above what it said.
+  - **Logo is changed in place** in the trace, with the drawing beside it, and "Send it to the Renderer in a new run" starts a run from the Renderer with the changed program (replacing 1.0.2's separate panel).
+  - **DOT and SETPENSIZE** no longer stop at 60 and 20, which had made `DOT 110` and `DOT 75` the same size.
+  - **Mystery rows:** Terra stepped each row by one instead of searching, so a secret near 4 passed and {8, 1, 8} failed. The secret is now new each run (a switch keeps it fixed). The Mystery Judge's scenarios are written relative to its secret (`fromSecret`), so they hold for any secret. It also passes on each row's count and verdict, so a learner could build a notebook agent that keeps the clues (Minsky); a question invites that.
+  - **Challenges say what they test** instead of easy, medium or hard (Kay: the "hard" big grid was easy for Terra's vision), and the first-try message asks "Can you invent a challenge it can't meet?".
+  - A question points at the stray line a Designer draws when its first SETXY comes before PENUP. It stays in, as a bug for a child to find (Papert).
+  - Suite: 275 PASS, fingerprint `e37e4e98e2f2`.
 
 ---
 
