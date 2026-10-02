@@ -159,6 +159,8 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .full-text{white-space:normal;max-height:70vh;overflow:auto}pre.full-text{white-space:pre-wrap}
 img.zoomable{cursor:zoom-in}img.zoomable:hover,img.zoomable:focus{outline:2px solid var(--accent);outline-offset:1px}
 .zoom{display:flex;justify-content:center}.zoom img{width:min(100%, 72vh, 768px);height:auto;aspect-ratio:1/1;border:1px solid var(--line);border-radius:10px;background:#fff}
+.world.needs{opacity:.5;border-style:dashed}.world.needs.on{opacity:.75}
+.needs-note{background:var(--warn-bg);color:#6B4A0A;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -422,7 +424,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.2.3";
+AK.VERSION = "1.2.4";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -3535,6 +3537,8 @@ const MYSTERY_TASK = "The Mystery Judge has a secret: how many pebbles each of 3
 const SEED_VERSION = 5;   // the newest; each microworld has its own, so one that didn't change isn't replaced
 const SEED_VERSIONS = { telephone: 4, pebbles: 7, secret: 6, lost: 6, story: 3, eyes3: 1, fool: 1, helpers: 1, jokes: 2 };   // "you" is reserved for the start
 const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, which follow its settings; the Critic talks only about the pebbles; and Eyes ignores stray lines, as the Judge does.", secret: "The Keeper's own secret is 83 now, and you can type a secret on the stage.", lost: "The Finder can say “nothing”, and there's a question about a toy robot.", story: "A Book keeps the whole story, and when the run ends an Editor tells it again. Compare them: what did the Editor change?" };
+// What a microworld needs before it can run. Small Helper, Big Helper compares two models, so it needs two.
+const WORLD_NEEDS = { helpers: { models: 2, why: "It compares a small model with a big one, so it needs two models, and only one is set up." } };
 // Which model suits each microworld, from testing with Gemini Nano (October 2026). strong: agents a small model lets down.
 const MODEL_ADVICE = {
   telephone: { text: "Which model? One that writes Logo and sees pictures well. Gemini Nano usually fails here before there is anything to study.", strong: ["artist", "describer"] },
@@ -3881,7 +3885,7 @@ const V1_TEXTS = [
   ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
   ["a turtle program", "a Logo program"]
 ];
-AK.Seeds = { makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+AK.Seeds = { makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
 const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
@@ -4808,7 +4812,8 @@ const HELPER_SYSTEM = PREAMBLE +
   "- An agent called You is the learner: the run waits for their answer.\n" +
   "- A rule can come from You (“when You start the run, send your words to …”), so the start reaches more than one agent. A rule can also say “when the run ends”: then the agent's last message is sent on, once, at the very end (Story Chain's Book sends the whole story to the Editor that way).\n" +
   "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
-  "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.";
+  "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.\n" +
+  "- Small Helper, Big Helper needs two models; with only one set up, its button is grayed with a 🔒 and it can't run until a grown-up adds another in Settings, under More models.";
 function describeSociety(soc) {
   if (!soc) return "(no society)";
   const nameOf = id => (id === "*" ? "anyone" : (agentById(soc, id) || { name: id }).name);
@@ -5029,6 +5034,13 @@ function adapterForRef(r) {
 function refOfAgent(a) { const refs = modelRefs(); return (a && a.model && refs.find(r => r.key === a.model)) || refs[0] || null; }
 function adapterFor(a) { const refs = modelRefs(), r = refOfAgent(a); return r && refs.length && r.key !== refs[0].key ? adapterForRef(r) : getAdapter(); }
 const shortModel = label => String(label || "").replace(/^(Claude|Gemini|OpenAI) /, "");
+// Why this society can't run yet ("" if it can): a microworld that needs more models than are set up.
+function unmetNeed(s) {
+  const need = s && isMicroworld(s.id) && Seeds.WORLD_NEEDS[s.id];
+  if (!need || !need.models) return "";
+  const have = modelRefs().length;
+  return have >= need.models ? "" : have ? need.why : "It needs two models, and none is set up yet.";
+}
 const app = {
   settings: defaultSettings(),
   societies: {}, order: [], activeId: "telephone",
@@ -5418,6 +5430,8 @@ function stripOf(trace, s) {
 function beginRun(override) {
   const s = soc();
   if (app.settings.connection === "none" && s.agents.some(a => a.kind === "model")) { noModelBanner(); openSettings(); toast("Choose a model first."); return null; }
+  const why = unmetNeed(s);
+  if (why) { toast(why); return null; }
   const spec = override || startSpec(s);
   if (!spec || !String(spec.text).trim()) { toast("Write a start first."); return null; }
   const old = app.runs[s.id];
@@ -5496,7 +5510,7 @@ function shellHTML() {
 function renderWorlds() {
   const host = $("#worlds");
   const compact = app.order.length > 5;   // with many, the question shows for the chosen one and on hover
-  if (host) host.innerHTML = '<span class="worlds-list">' + app.order.map(id => { const s = app.societies[id], on = id === app.activeId; return '<button class="world' + (on ? " on" : "") + '" data-act="world" data-id="' + esc(id) + '"' + (s.question ? ' title="' + esc(s.question) + '"' : "") + '>' + esc(s.title) + (s.question && (!compact || on) ? '<span class="q">' + esc(s.question) + '</span>' : "") + '</button>'; }).join("") + '<button class="world add" data-act="new-society" title="Start a society of your own">＋ New society</button></span>';
+  if (host) host.innerHTML = '<span class="worlds-list">' + app.order.map(id => { const s = app.societies[id], on = id === app.activeId; const why = unmetNeed(s); return '<button class="world' + (on ? " on" : "") + (why ? " needs" : "") + '" data-act="world" data-id="' + esc(id) + '"' + (s.question || why ? ' title="' + esc(why ? why + " A grown-up can add another in ⚙️ Settings, under More models." : s.question) + '"' : "") + '>' + (why ? '<span class="lock" aria-hidden="true">🔒 </span>' : "") + esc(s.title) + (s.question && (!compact || on) ? '<span class="q">' + esc(s.question) + '</span>' : "") + '</button>'; }).join("") + '<button class="world add" data-act="new-society" title="Start a society of your own">＋ New society</button></span>';
   const chip = $("#modeChip");
   if (chip) {
     const c = app.settings.connection;
@@ -5751,9 +5765,11 @@ function renderStage() {
   const busy = status === "running" || status === "stepping";
   const live = ["running", "paused", "stepping", "ready", "waiting"].indexOf(status) >= 0;
   let h = '<div class="card stage">' + (s.intro ? '<p class="intro mobile-only">' + esc(s.intro) + '</p>' : "") + startHTML(s);
+  const why = unmetNeed(s);
+  if (why) h += '<div class="needs-note">🔒 <b>' + esc(s.title) + ' can’t run yet.</b> ' + esc(why) + ' A grown-up can add another in ⚙️ Settings, under “More models”. <button class="btn tiny" data-act="settings">Settings</button></div>';
   h += '<div class="controls">' +
-    (status === "running" ? '<button class="btn" data-act="pause">⏸ Pause</button>' : '<button class="btn go" data-act="run"' + (busy ? " disabled" : "") + ' title="' + (status === "paused" || status === "ready" ? "Go on from here" : "Start a run") + '">▶ Run</button>') +
-    '<button class="btn" data-act="step"' + (busy || status === "waiting" ? " disabled" : "") + ' title="Deliver just one message">⏭ Step</button>' +
+    (status === "running" ? '<button class="btn" data-act="pause">⏸ Pause</button>' : '<button class="btn go" data-act="run"' + (busy || why ? " disabled" : "") + ' title="' + (status === "paused" || status === "ready" ? "Go on from here" : "Start a run") + '">▶ Run</button>') +
+    '<button class="btn" data-act="step"' + (busy || status === "waiting" || why ? " disabled" : "") + ' title="Deliver just one message">⏭ Step</button>' +
     '<button class="btn" data-act="stop"' + (live ? "" : " disabled") + '>⏹ Stop</button>' +
     '<button class="btn" data-act="reset"' + (run || trace.length ? "" : " disabled") + ' title="Clear this run, so ▶ Run starts from the beginning">↺ Reset</button>' +
     '<span class="small muted">Rounds</span><input class="num" type="number" min="1" max="50" data-bind="roundLimit" value="' + s.roundLimit + '" aria-label="Round limit">' +

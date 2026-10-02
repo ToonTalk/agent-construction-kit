@@ -354,6 +354,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **Story Chain's question about the Editor** is now Minsky's: “Compare the Book with the Editor's story. What did the Editor leave out, or make up? Which one is more like your own memory?” The Book is a record; the Editor reconstructs, and a good Editor hides the gaps.
   - **A Logo program is shown once, in color**, in the trace's technical details and in the exported web page (which colors Logo now, in Renderer entries and in model replies that are programs). **Pictures in the exported page open full size** with a click, using CSS only: the page still has no scripts. It also shows the picture an agent was sent, and the start's other recipients, the last-round note and the ending.
   - Suite: 420 PASS, fingerprint `dc9ee4fe0959`.
+- 2026-10-02 — **Revision 1.2.4.** Small Helper, Big Helper needs two models (`Seeds.WORLD_NEEDS`). With fewer set up, its button is grayed with a 🔒 and its tooltip says why; it still opens, so it can be read, but the stage says “can't run yet”, why, and where a grown-up adds a model (with a Settings button), and ▶ Run and ⏭ Step are off. Adding a second model unlocks it at once. The Helper knows.
+  - Suite: 421 PASS, fingerprint `dd66b8f46992`.
 
 ---
 

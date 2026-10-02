@@ -132,10 +132,23 @@ export default function (T, { modelWindow, pageWindow, same }) {
   });
   T.test("page: Small Helper, Big Helper starts from a challenge, sent to the Escalator", ["Seeds"], async () => {
     const { w: pw } = await boot();
+    pw.__ak.app.settings.extra = [{ connection: "gemini", model: "gemini-3.8-flash" }];   // it needs two models
     pw.document.querySelector('[data-act="world"][data-id="helpers"]').click();
     const rec = await pw.__ak.runNow();
     await sleep(30);
     const first = rec.api.run.trace.find(e => e.kind === "activation");
     return first.agentId === "escalator" && /Draw a grid of pebbles with 3 rows and 5 columns/.test(first.message.text) && !!pw.document.querySelector(".challenges");
+  });
+  T.test("page: Small Helper, Big Helper is grayed, says why, and won't run until there are two models", ["Adapters", "Seeds"], async () => {
+    const { w: pw } = await boot();
+    const btn = () => pw.document.querySelector('.world[data-id="helpers"]');
+    const grayed = btn().classList.contains("needs") && /two models/.test(btn().title) && /More models/.test(btn().title) && !pw.document.querySelector('.world[data-id="pebbles"]').classList.contains("needs");
+    btn().click();
+    const note = pw.document.querySelector(".needs-note");
+    const run = pw.document.querySelector('.controls [data-act="run"]');
+    const refused = (await pw.__ak.runNow()) === null && !pw.__ak.app.runs.helpers;
+    pw.__ak.app.settings.extra = [{ connection: "gemini", model: "gemini-3.8-flash" }];
+    pw.__ak.renderAll();
+    return grayed && !!note && /can’t run yet/.test(note.textContent) && run.disabled && refused && !btn().classList.contains("needs") && !pw.document.querySelector(".needs-note") && !pw.document.querySelector('.controls [data-act="run"]').disabled;
   });
 }
