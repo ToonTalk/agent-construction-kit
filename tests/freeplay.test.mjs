@@ -210,4 +210,27 @@ export default function (T, { modelWindow, pageWindow, same }) {
     return comments.every(e => { const pic = r.trace.find(x => x.render && x.render.renderId === e.message.renderId); return pic && pic.round === e.round; }) &&
       pics.every(n => acts(r, "describer").some(e => e.round === n)) && acts(r, "artist").length > acts(r, "describer").length - 1;
   });
+  T.test("page: an agent's emoji is a button that opens a picker; a pick or your own emoji is used at once", ["Society"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="story"]').click();
+    pw.__ak.openAgent("writer-a");
+    pw.document.querySelector('.ed-head [data-act="emoji-pick"]').click();
+    let picker = Array.from(pw.document.querySelectorAll(".modal-body")).pop();
+    const many = picker.querySelectorAll(".emoji-pick").length >= 60;
+    picker.querySelector('[data-emoji="🦉"]').click();
+    const a = pw.__ak.soc().agents.find(x => x.id === "writer-a");
+    const picked = a.emoji === "🦉" && pw.document.querySelector('.ed-head .emoji-btn').textContent === "🦉" && /🦉/.test(pw.document.querySelector('.agent-strip [data-id="writer-a"]').textContent);
+    pw.document.querySelector('.ed-head [data-act="emoji-pick"]').click();
+    picker = Array.from(pw.document.querySelectorAll(".modal-body")).pop();
+    picker.querySelector("#emojiOwn").value = "🧑‍🎨";
+    picker.querySelector("[data-emoji-own]").click();
+    return many && picked && a.emoji === "🧑‍🎨";
+  });
+  T.test("page: Export and Import are always at the top, not only in Look inside", ["Store"], async () => {
+    const { w: pw } = await boot();
+    pw.__ak.app.ui.lookInside = false;
+    pw.__ak.renderAll();
+    const top = pw.document.querySelector(".top-actions");
+    return !!top.querySelector('[data-act="export-society"]') && !!top.querySelector('[data-act="import-society"]');
+  });
 }

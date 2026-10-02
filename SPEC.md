@@ -363,6 +363,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 423 PASS, fingerprint `be859ea41ff0`.
 - 2026-10-02 — **Revision 1.3.1.** A message now belongs to the round of the work it answers. Before, it was stamped with whatever round the run had reached, so when the round agent got two messages in a row (Ken added an agent that commented on each picture and sent its comment to the Artist, as the Describer does), the Renderer drew round 2's picture after round 3 had begun, and both comments on it were filed under round 3: round 2 showed a picture with no comments. The two rounds per cycle are real (each message to the round agent starts a round); only the labels were wrong.
   - Suite: 424 PASS, fingerprint `547b1e524b19`.
+- 2026-10-02 — **Revision 1.3.2** (Ken's requests). An agent's emoji, at the top of its editor, is a button that opens a picker: about 90 emoji in four groups (people and jobs, tools and judges, animals, everything else), or type or paste any other. **⬇ Export** and **⬆ Import** are always at the top of the page, next to Guides and Settings, not only in Look inside. The learner guide and the Helper mention both.
+  - Suite: 426 PASS, fingerprint `632dd72b6b38`.
 
 ---
 
