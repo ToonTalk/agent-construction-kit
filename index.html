@@ -157,6 +157,8 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .about-edit{margin:6px 0 10px;padding:8px 10px;border:1.5px solid var(--line);border-radius:12px;background:#fff}.about-edit summary{cursor:pointer}.about-edit .form-grid{grid-template-columns:1fr;gap:4px}.about-edit .form-grid label{margin-top:6px}.about-edit .row{flex-wrap:wrap}
 .more{display:inline-block;margin-left:2px;padding:0 6px;border-radius:8px;background:var(--accent-bg);color:var(--accent);font-weight:800;cursor:pointer;line-height:1.35}.more:hover,.more:focus{outline:2px solid var(--accent);outline-offset:1px}
 .full-text{white-space:normal;max-height:70vh;overflow:auto}pre.full-text{white-space:pre-wrap}
+img.zoomable{cursor:zoom-in}img.zoomable:hover,img.zoomable:focus{outline:2px solid var(--accent);outline-offset:1px}
+.zoom{display:flex;justify-content:center}.zoom img{width:min(100%, 72vh, 768px);height:auto;aspect-ratio:1/1;border:1px solid var(--line);border-radius:10px;background:#fff}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -420,7 +422,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.2.1";
+AK.VERSION = "1.2.2";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -5146,7 +5148,7 @@ function imgTag(render, cls, alt, run) {
   if (!render) return "";
   const id = "im" + (++imgSeq);
   imgJobs.set(id, { render, run });
-  return '<img class="' + esc(cls || "") + '" data-img="' + id + '" alt="' + esc(alt || "a drawing") + '">';
+  return '<img class="zoomable ' + esc(cls || "") + '" data-img="' + id + '" alt="' + esc(alt || "a drawing") + '" role="button" tabindex="0" data-act="zoom-img" title="Click to see it full size">';
 }
 function hydrateImages(root) {
   for (const img of $$("img[data-img]", root)) {
@@ -5875,7 +5877,7 @@ function responseHTML(e, s, run) {
   let body = "";
   if (e.agentKind === "renderer") {
     const editing = app.ui.logoEdit && app.ui.logoEdit.i === e.i;
-    if (e.render && !e.render.error && !editing) body += imgTag(e.render, "thumb big", "the picture", run);
+    if (e.render && !e.render.error && !editing) body += imgTag(e.render, "thumb big", "the " + e.agentName + "’s picture, round " + e.round, run);
     if (text && !editing) body += '<div class="said">' + esc(text) + '</div>';
     if (e.render && e.render.program) body += logoEditHTML(e, s, null);
     return h + '<div class="tsec"><h4>Response</h4>' + body + '</div>';
@@ -6709,6 +6711,14 @@ const ACTIONS = {
   "export-society"() { exportSocietyFlow(); },
   "import-society"() { pickFile(".json,application/json", text => { importSocietyText(text).catch(e => toast("Couldn't import: " + e.message, "bad")); }); },
   "new-society"() { openNewSociety(); },
+  "zoom-img"(t) {
+    if (!t.src) { toast("This picture can't be shown in this browser."); return; }
+    const alt = t.getAttribute("alt") || "the picture";
+    const m = openModal({ title: alt.charAt(0).toUpperCase() + alt.slice(1), wide: true, body: '<div class="zoom"><img alt=""></div>' });
+    const big = m.body.querySelector("img");
+    big.src = t.src;
+    big.alt = alt;
+  },
   "show-full"(t) {
     const full = t.dataset.full || "";
     openModal({ title: t.dataset.title || "All of it", wide: full.length > 600, body: t.dataset.pre ? '<pre class="box full-text">' + esc(full) + '</pre>' : '<div class="full-text">' + md(full) + '</div>' });
@@ -7017,7 +7027,7 @@ function wire() {
   document.addEventListener("keydown", e => {
     const t = e.target;
     if (e.key === "Enter" && t.classList && t.classList.contains("slot")) { e.preventDefault(); t.blur(); }
-    if ((e.key === "Enter" || e.key === " ") && t.classList && t.classList.contains("more")) { e.preventDefault(); e.stopPropagation(); t.click(); }
+    if ((e.key === "Enter" || e.key === " ") && t.classList && (t.classList.contains("more") || t.classList.contains("zoomable"))) { e.preventDefault(); e.stopPropagation(); t.click(); }
     if (e.key === "Enter" && !e.shiftKey && t.id === "helperInput") { e.preventDefault(); const q = t.value; t.value = ""; askHelper(q); }
   });
   let rt = null;

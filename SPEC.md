@@ -345,6 +345,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 416 PASS, fingerprint `d1f12462b4a1`.
 - 2026-10-02 — **Revision 1.2.1.** Wherever the screen cuts text short, its “…” is a button (Ken's request) that opens the whole text in a window: speech bubbles, the round-by-round cards, trace entries (where it opens the text without opening the entry), what an agent got, problems, the start, Workshop titles, data said in plain words (it shows all of the data), and very long JSON. It works from the keyboard too, and cuts happen at a word. The exported web page keeps its own fold-outs.
   - Suite: 417 PASS, fingerprint `5759d2519a9f`.
+- 2026-10-02 — **Revision 1.2.2.** Every small picture (the trace, what an agent got, the round-by-round cards, scenarios, the test bench, your turn) opens full size in a window when clicked, or with Enter from the keyboard (Ken's request). The window is named for the picture, like “The Renderer's picture, round 2”.
+  - Suite: 418 PASS, fingerprint `6dd9fa4f2871`.
 
 ---
 

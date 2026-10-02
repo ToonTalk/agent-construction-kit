@@ -148,4 +148,20 @@ export default function (T, { modelWindow, pageWindow, same }) {
     k.dispatchEvent(new pw.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     return story.length > 420 && whole && opened && !!pw.document.querySelector(".modal .full-text") && k.getAttribute("role") === "button" && k.tabIndex === 0;
   });
+  T.test("page: pictures in the trace (and elsewhere) open full size", ["Engine"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="telephone"]').click();
+    await pw.__ak.runNow();
+    await sleep(40);
+    const head = Array.from(pw.document.querySelectorAll('[data-act="trace-toggle"]')).find(b => /Renderer/.test(b.textContent));
+    head.click();
+    await sleep(20);
+    const img = pw.document.querySelector(".tbody img.zoomable");
+    if (!img) throw new Error("no picture in the Renderer's entry");
+    const all = Array.from(pw.document.querySelectorAll("img[alt]")).filter(x => !x.closest(".modal"));
+    img.src = "data:image/png;base64,iVBORw0KGgo=";   // jsdom draws nothing, so give it a picture
+    img.click();
+    const big = pw.document.querySelector(".modal .zoom img");
+    return all.every(x => x.classList.contains("zoomable") && x.dataset.act === "zoom-img" && x.tabIndex === 0) && !!big && big.src === img.src;
+  });
 }
