@@ -311,6 +311,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **The Helper knows the kit.** Its system prompt has a short list of facts (Look inside, rules, models, “You be the …”, Run/Step/Reset, scenarios, the test bench) and says to answer how-to questions plainly, never claiming something can't be done when a fact says how. Each request has a MODELS section: what is set up, which agent uses which, and where to change it.
   - The question card's Gemini Nano warning points to the Models row when a stronger model is already set up, and asks a grown-up to add one in Settings only when none is.
   - Suite: 341 PASS, fingerprint `a6cad6ff1ff8`.
+- 2026-10-02 — **Revision 1.0.11.** Every agent's editor has a **Connections** section: the agents that can send it a message, as the usual agent buttons (each opens that agent; hovering shows the rule; a sender whose rules are all off is faded and says “rule off”; “You, at the start” when a start goes to it; “anyone” for rules from anyone), and its own rules (WHEN it responds …), editable exactly as in Look inside, with “+ Add a rule for …”. Rule changes in either place redraw both. The Helper's facts mention it.
+  - Suite: 342 PASS, fingerprint `ead67a66481a`.
 
 ---
 

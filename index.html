@@ -145,6 +145,7 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .bubbles.wide{min-height:60px}
 .send-group{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.send-parts{display:inline-flex;gap:3px}.sendp{display:inline-flex;align-items:center;gap:3px;border:1.5px solid var(--line);border-radius:999px;padding:1px 8px 1px 5px;font-size:12px;cursor:pointer;background:#fff;color:var(--ink-soft)}.sendp.on{border-color:var(--accent);background:var(--accent-bg);color:var(--ink)}.sendp input{margin:0}
 .models-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:8px 0 2px}.mpick{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--ink-soft)}.mpick select{font-size:12.5px;max-width:200px}
+.conn-in{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.achip.off{opacity:.55}.achip.you{border-color:#F2C9A8}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -408,7 +409,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.0.10";
+AK.VERSION = "1.0.11";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -4292,7 +4293,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "How you help: ask questions rather than giving answers. Never tell the learner the fix for a failing scenario or a broken rule; instead, ask a question that points at the evidence, such as what a scenario expected compared with what happened, or which line of pseudocode decides it. Offer the next small step the learner can almost reach on their own. Be kind and encouraging. Keep replies to two to four short sentences.\n" +
   "But when the learner asks how to do something in the kit itself (where a button is, how to change a setting), tell them plainly, using the facts below, then you may ask a question. Never say something can't be done if a fact below says how.\n" +
   "Facts about the kit:\n" +
-  "- 🔍 Look inside shows every agent and every rule. Click an agent (there, or its button on the stage) to open its editor and change it.\n" +
+  "- 🔍 Look inside shows every agent and every rule. Click an agent (there, or its button on the stage) to open its editor and change it. An agent's editor also shows its Connections: which agents can send it messages, and its own rules, which can be changed there.\n" +
   "- A rule says WHEN an agent responds, and IF something is true, SEND its words, its data and/or its picture (three checkboxes) TO another agent.\n" +
   "- Models: a grown-up adds models (and any keys) in ⚙️ Settings. When more than one model is set up, the learner chooses which model each AI agent uses without Settings: in the Models row on the stage, under the agent buttons, or in the agent's editor under “Its model”. The MODELS section below says what is set up now.\n" +
   "- “You be the …” on the stage lets the learner take an agent's place in the run.\n" +
@@ -5050,6 +5051,8 @@ function ruleHTML(r, s) {
   h += '<input type="text" class="w-pre" ' + b("prefix") + ' value="' + esc(r.prefix || "") + '" placeholder="prefix (optional)" aria-label="Prefix">';
   return h + '<button class="icon-btn del" data-act="del-rule" data-id="' + esc(r.id) + '" title="Delete this rule" aria-label="Delete rule">🗑</button></div>';
 }
+// Rules show in Look inside and in each agent's editor, so both are drawn again.
+function rulesChanged() { renderLeft(); if (app.ui.editor) renderEditor(); }
 function insideHTML(s) {
   let h = '<div class="card"><div class="card-title"><h3>Inside ' + esc(s.title) + '</h3></div><p class="inside-note">Ordinary agents and rules — the same kinds you can make yourself. Open an agent to read or change it.</p>';
   h += '<div class="agent-grid">' + s.agents.map(a => agentCardHTML(a, s)).join("") + '</div><div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-agent">+ Add an agent</button></div>';
@@ -5494,6 +5497,28 @@ function renderEditor() {
   wirePeek(m.body, a);
   if (focusId) { const f = document.getElementById(focusId); if (f && f.focus) f.focus(); }
 }
+// Who can send this agent a message, and the rules that say where its responses go.
+function connectionsHTML(a, s) {
+  const intoIt = s.rules.filter(r => r.to === a.id);
+  const senders = new Map();   // agent id (or "*") → the rules from it
+  for (const r of intoIt) { const k = r.from; if (!senders.has(k)) senders.set(k, []); senders.get(k).push(r); }
+  const tip = rs => rs.map(r => Engine.describeRule(r, id => nameOf(s, id)) + (r.enabled === false ? " (this rule is off)" : "")).join("\n");
+  const chip = (k, rs) => {
+    const off = rs.every(r => r.enabled === false);
+    if (k === "*") return '<span class="achip' + (off ? " off" : "") + '" title="' + esc(tip(rs)) + '"><span class="e">✳️</span>anyone</span>';
+    const b = Society.agentById(s, k);
+    if (!b) return "";
+    return '<button class="achip kind-' + b.kind + (off ? " off" : "") + '" data-act="open-agent" data-id="' + esc(b.id) + '" title="' + esc(tip(rs) + "\nClick to open " + b.name) + '"><span class="e">' + esc(b.emoji) + '</span>' + esc(b.name) + (off ? '<span class="small muted" style="margin-left:4px">rule off</span>' : "") + '</button>';
+  };
+  const starts = (s.starts || []).filter(st => st.to === a.id);
+  let h = '<div class="section links"><h3>Connections</h3><div class="conn-in"><span class="small muted">It can get messages from</span>' +
+    (starts.length ? '<span class="achip you" title="' + esc("The start: " + starts.map(st => st.label).join(", ")) + '"><span class="e">🙋</span>You, at the start</span>' : "") +
+    Array.from(senders, ([k, rs]) => chip(k, rs)).join("") + (!starts.length && !senders.size ? '<span class="small">nobody yet: no rule sends to it</span>' : "") + '</div>';
+  const own = s.rules.filter(r => r.from === a.id || r.from === "*");
+  h += '<p class="hint" style="margin-top:10px">Its rules: when ' + esc(a.name) + ' responds, these decide who gets a message.' + (a.gate ? " It is a gate: when it says pass = false, its ALWAYS rules wait." : "") + '</p><div class="rules">' + (own.length ? own.map(r => ruleHTML(r, s)).join("") : '<p class="small muted">None yet, so nobody hears what it says.</p>') + '</div>' +
+    '<div class="row" style="margin-top:6px"><button class="btn tiny" data-act="add-rule-from" data-id="' + esc(a.id) + '">+ Add a rule for ' + esc(a.name) + '</button></div></div>';
+  return h;
+}
 function editorHead(a, s, kindLabel) {
   return '<div class="ed-head"><input class="field emoji-in" data-bind="agent" data-field="emoji" value="' + esc(a.emoji) + '" aria-label="Emoji"><input class="field name-in" data-bind="agent" data-field="name" value="' + esc(a.name) + '" aria-label="Name">' +
     '<span class="badge ' + a.kind + '">' + kindLabel + '</span>' + (a.gate ? '<span class="badge gate">gate</span>' : "") + (a.id === s.roundAgent ? '<span class="badge plain">↻ starts each round</span>' : "") + (a.copyOf ? '<span class="badge plain">copy of ' + esc(nameOf(s, a.copyOf)) + '</span>' : "") +
@@ -5502,6 +5527,7 @@ function editorHead(a, s, kindLabel) {
 function modelEditorHTML(a, s) {
   let h = editorHead(a, s, "model agent");
   h += '<div class="section"><h3>Instructions</h3><p class="hint">Its system prompt: exactly what the model is told, right after the safety preamble.</p><textarea class="field" rows="9" data-bind="agent" data-field="instructions" aria-label="Instructions">' + esc(a.instructions) + '</textarea></div>';
+  h += connectionsHTML(a, s);
   h += '<div class="section"><h3>How it works</h3><div class="form-grid"><label>Its reply is</label><select class="field" data-bind="agent" data-field="replyKind"><option value="prose"' + sel(a.replyKind !== "program") + '>words</option><option value="program"' + sel(a.replyKind === "program") + '>a Logo drawing program</option></select>' +
     '<label>Pictures</label><label class="row small"><input type="checkbox" data-bind="agent" data-field="canSeeImages"' + (a.canSeeImages ? " checked" : "") + '> it can see pictures that are sent to it</label>' +
     '<label>It remembers</label><select class="field" data-bind="agent" data-field="history"><option value="stateless"' + sel(a.history !== "full") + '>nothing: each message is new</option><option value="full"' + sel(a.history === "full") + '>the whole conversation in this run</option></select>' + agentModelHTML(a) + '</div></div>';
@@ -5538,7 +5564,7 @@ function agentModelHTML(a) {
     (missing ? '<option value="' + esc(own) + '" selected>' + esc(own) + ' (not set up here, so it uses the main model)</option>' : "") + '</select>';
 }
 function rendererEditorHTML(a, s) {
-  return editorHead(a, s, "built-in") + '<div class="section"><h3>What the Renderer does</h3><p>The Renderer is not a model. It runs the Logo program it is sent and makes a picture (white background, 512 by 512). Along with the picture it sends data:</p><ul><li><code>dots</code>: every dot drawn with <code>DOT</code>, as <code>{x, y, color}</code>, counted in pixels from the top-left corner</li><li><code>segments</code>: how many straight pieces of line were drawn</li><li><code>labels</code>: the words written with <code>LABEL</code></li><li><code>pass</code>: false if the program didn\'t run (then its ALWAYS rules wait)</li></ul><h3 style="margin-top:12px">The Logo it understands</h3><p class="hint">This is also what the Artist and the Designer are told.</p>' + logoBox(Prompts.LOGO_HELP, "", true) + '<p class="hint">Logo is never turned into JavaScript: a small interpreter reads it, so a drawing can only move the turtle. A drawing that takes more than ' + Runtime.tickLimit.toLocaleString("en-US") + ' steps is stopped. It also knows SETX, SETY, ARC, CLEARSCREEN, FOR, WHILE, RANDOM, PICK and the usual arithmetic, like SUM and SQRT.</p></div>';
+  return editorHead(a, s, "built-in") + connectionsHTML(a, s) + '<div class="section"><h3>What the Renderer does</h3><p>The Renderer is not a model. It runs the Logo program it is sent and makes a picture (white background, 512 by 512). Along with the picture it sends data:</p><ul><li><code>dots</code>: every dot drawn with <code>DOT</code>, as <code>{x, y, color}</code>, counted in pixels from the top-left corner</li><li><code>segments</code>: how many straight pieces of line were drawn</li><li><code>labels</code>: the words written with <code>LABEL</code></li><li><code>pass</code>: false if the program didn\'t run (then its ALWAYS rules wait)</li></ul><h3 style="margin-top:12px">The Logo it understands</h3><p class="hint">This is also what the Artist and the Designer are told.</p>' + logoBox(Prompts.LOGO_HELP, "", true) + '<p class="hint">Logo is never turned into JavaScript: a small interpreter reads it, so a drawing can only move the turtle. A drawing that takes more than ' + Runtime.tickLimit.toLocaleString("en-US") + ' steps is stopped. It also knows SETX, SETY, ARC, CLEARSCREEN, FOR, WHILE, RANDOM, PICK and the usual arithmetic, like SUM and SQRT.</p></div>';
 }
 function pseudoViewHTML(a) {
   const text = a.pseudocode || "";
@@ -5640,7 +5666,7 @@ function programEditorHTML(a, s) {
     if (keys.length) h += '<div class="params">' + keys.map(k => '<span class="param"><code>params.' + esc(k) + '</code><input data-bind="param" data-param="' + esc(k) + '" value="' + esc(Slots.formatSlotValue(a.params[k])) + '" aria-label="' + esc(k) + '"></span>').join("") + '</div>';
   }
   if (String(ed.mode === "edit" ? ed.draft : a.pseudocode).split("\n").filter(l => l.trim()).length > 8) h += '<div class="nudge">This agent is getting long. Could it be two agents?</div>';
-  h += '</div>' + peekHTML(a) + scenariosHTML(a);
+  h += '</div>' + connectionsHTML(a, s) + peekHTML(a) + scenariosHTML(a);
   return h;
 }
 
@@ -5962,8 +5988,15 @@ const ACTIONS = {
     if (!(await uiConfirm("Delete " + a.name + "? Its rules go too.", { title: "Delete an agent?", ok: "Delete", danger: true }))) return;
     Society.deleteAgent(s, a.id); if (app.ui.editorModal) app.ui.editorModal.close(); save(); renderAll();
   },
-  "add-rule"() { const s = soc(); s.rules.push({ id: Society.newRuleId(s), from: s.agents[0].id, when: "always", send: "text", to: s.agents[Math.min(1, s.agents.length - 1)].id, prefix: "", enabled: true }); save(); renderLeft(); },
-  "del-rule"(t) { const s = soc(); s.rules = s.rules.filter(r => r.id !== t.dataset.id); save(); renderLeft(); },
+  "add-rule"() { const s = soc(); s.rules.push({ id: Society.newRuleId(s), from: s.agents[0].id, when: "always", send: "text", to: s.agents[Math.min(1, s.agents.length - 1)].id, prefix: "", enabled: true }); save(); rulesChanged(); },
+  "add-rule-from"(t) {
+    const s = soc(), a = Society.agentById(s, t.dataset.id);
+    if (!a) return;
+    const other = s.agents.find(x => x.id !== a.id) || a;
+    s.rules.push({ id: Society.newRuleId(s), from: a.id, when: "always", send: "text", to: other.id, prefix: "", enabled: true });
+    save(); rulesChanged();
+  },
+  "del-rule"(t) { const s = soc(); s.rules = s.rules.filter(r => r.id !== t.dataset.id); save(); rulesChanged(); },
   "trace-tab"(t) { app.ui.traceTab = t.dataset.id; renderTrace(); },
   "trace-filter"(t) { app.ui.traceFilter = t.dataset.id; renderTrace(); },
   "trace-toggle"(t) { const i = +t.dataset.i; if (app.ui.expanded.has(i)) app.ui.expanded.delete(i); else app.ui.expanded.add(i); renderTrace(); },
@@ -6231,7 +6264,7 @@ async function handleBind(t, evt) {
       P[t.dataset.part] = t.checked;
       const next = Society.normSend(Object.keys(P).filter(k => P[k]).join("+"));
       if (next) r.send = next; else toast("A rule has to send something: the words, the data or the picture.");
-      save(); renderLeft();
+      save(); rulesChanged();
       return;
     }
     case "rule": {
@@ -6245,7 +6278,7 @@ async function handleBind(t, evt) {
       else if (f === "prefix") r.prefix = util.cleanText(t.value, 200);
       else if (change) r[f] = t.value;
       save();
-      if (change && ["enabled", "when", "from", "to", "send", "op"].indexOf(f) >= 0) renderLeft();
+      if (change && ["enabled", "when", "from", "to", "send", "op"].indexOf(f) >= 0) rulesChanged();
       return;
     }
     case "agent": {

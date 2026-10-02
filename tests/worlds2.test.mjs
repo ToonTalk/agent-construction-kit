@@ -349,4 +349,25 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const two = pw.document.querySelector(".qcard .warnline").textContent;
     return /grown-up can add/.test(alone) && /Models row on the stage/.test(two) && !/Settings/.test(two);
   });
+  T.test("page: an agent's editor shows who can send it messages, as agent buttons, and its own rules, editable there", ["Society"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="telephone"]').click();
+    pw.__ak.openAgent("artist");
+    const m = () => pw.document.querySelector(".modal-body");
+    const senders = Array.from(m().querySelectorAll(".conn-in .achip")).map(x => x.textContent);
+    const buttons = m().querySelectorAll('.conn-in button.achip[data-act="open-agent"]').length;
+    const ownRules = Array.from(m().querySelectorAll(".links .rule")).length;
+    const s = pw.__ak.soc();
+    // change its rule's SEND from the editor
+    const box = m().querySelector('.links [data-bind="rule-send"][data-id="t1"][data-part="data"]');
+    box.checked = true;
+    box.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    const changed = s.rules.find(r => r.id === "t1").send === "text+data" && m().querySelector('.links [data-bind="rule-send"][data-id="t1"][data-part="data"]').checked;
+    m().querySelector('[data-act="add-rule-from"]').click();
+    const added = s.rules.filter(r => r.from === "artist").length === 2 && m().querySelectorAll(".links .rule").length === 2;
+    // the sender buttons open that agent
+    m().querySelector('.conn-in button.achip[data-id="describer"]').click();
+    const opened = /Describer/.test(pw.document.querySelector(".modal-head h2").textContent);
+    return senders.some(x => /You, at the start/.test(x)) && senders.some(x => /Renderer/.test(x)) && senders.some(x => /Describer/.test(x)) && buttons === 2 && ownRules === 1 && changed && added && opened;
+  });
 }
