@@ -17,7 +17,7 @@ export default function (T, { pageWindow }) {
   T.test("the page boots with no errors", ["util"], async () => {
     const { w, errors } = await page();
     if (errors.length) throw new Error(errors.join(" | "));
-    return w.__akReady === true && w.document.querySelectorAll(".world").length === 9;
+    return w.__akReady === true && w.document.querySelectorAll(".world:not(.add)").length === 9 && !!w.document.querySelector(".world.add");
   });
   T.test("the question card starts with a short introduction", ["Seeds"], async () => {
     const { w } = await page();

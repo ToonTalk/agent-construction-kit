@@ -335,6 +335,14 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **New kit feature: the call counter.** After a run, each AI agent's button says how many model calls it made and how long they took.
   - Dot Counter also passes on `count`, how many dots in all. New library programs: Name Keeper, Vote, Referee, Escalator, Collector, Scorekeeper (19 in all). Each microworld's card says which model suits it. The Helper knows about collecting, You and the call counter.
   - Suite: 398 PASS, fingerprint `d7bb46eb93fe`.
+- 2026-10-02 — **Revision 1.2.0: free play, and rules about the start and the end** (Ken asked how a learner makes a new microworld, and whether an agent could assemble Story Chain's whole story).
+  - **＋ New society**, after the microworld buttons: start **from scratch** (one AI agent, and You with the start) or **copy the current microworld** under a new name. Your own society's **name, question, introduction, questions to explore, start name, start target and example starts** are edited in Look inside (“About this society”). Microworlds stay as they ship and say how to make your own.
+  - **+ Add an agent** also adds **a new AI agent** (which opens for its instructions) and **a Renderer** (when there isn't one), above the library programs.
+  - **Rules from You:** “When You start the run, send your words to Book.” The start reaches every agent such a rule names, so one start can go to more than one agent. The trace's start line names them all.
+  - **“When the run ends” rules:** “When the run ends, send Book's last words to Editor.” When a run is about to finish (nothing left to deliver, or the round limit), each such rule sends that agent's last response on, once; the trace says so (“The run is ending, so …”), the messages are delivered, and the run finishes with its original reason. A stopped run has no ending. Decided against: rules or agents that read the trace itself, which would let an agent see messages no rule sent it.
+  - **Book**, a new library program with memory: it keeps every sentence it is sent, in order, and says the whole story so far. **Story Chain** now has a Book (it hears You's first sentence and every writer) and an **Editor** that gets the Book's last words when the run ends and tells the story again.
+  - Joke Workshop's You agent has the id `rater`: `you` is reserved for the start.
+  - Suite: 416 PASS, fingerprint `d1f12462b4a1`.
 
 ---
 

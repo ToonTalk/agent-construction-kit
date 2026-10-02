@@ -152,6 +152,9 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .rule-editing{border:1.5px dashed var(--accent);border-radius:12px;padding:6px}.rule-editing .rule{border:0;margin:0}
 .achip .calls{font-size:10.5px;font-weight:600;color:var(--ink-faint);margin-left:3px}
 .yt-ask{margin:8px 0 4px;font-weight:700}
+.world.add{border-style:dashed;color:var(--ink-soft)}.worlds-list{display:contents}
+.new-choices{display:grid;gap:4px;margin-top:12px}.new-choices .hint{margin:0 0 8px}
+.about-edit{margin:6px 0 10px;padding:8px 10px;border:1.5px solid var(--line);border-radius:12px;background:#fff}.about-edit summary{cursor:pointer}.about-edit .form-grid{grid-template-columns:1fr;gap:4px}.about-edit .form-grid label{margin-top:6px}.about-edit .row{flex-wrap:wrap}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -415,7 +418,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.1.0";
+AK.VERSION = "1.2.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -2347,6 +2350,8 @@ const Pretend = (() => {
         const n = hist.filter(x => x.role === "assistant").length;
         return ["Why did the " + topic + " cross the road? To get to the other side!", "What do you call a " + topic + " that tells jokes? A pun-guin!", "Why was the " + topic + " so good at school? It was outstanding in its field!"][n % 3];
       } },
+    editor: { id: "editor", title: "Pretend Editor", about: "Used by the tests. It hands back the story it was given, with a heading.",
+      reply: ctx => "The whole story: " + String((ctx.message && ctx.message.text) || "") },
     jokecritic: { id: "jokecritic", title: "Pretend joke critic", about: "Used by the tests. The Surprise critic always says to save the funny word for last; any other critic says to use shorter words.",
       reply: ctx => (/surprise/i.test((ctx.agent && ctx.agent.name) || "") ? "Save the funny word for the very end." : "Use shorter words, so a young child gets it at once.") },
     generic: { id: "generic", title: "Pretend agent", about: "This agent has no pretend program of its own, so in pretend mode it just repeats the start of what it was told.",
@@ -3280,6 +3285,34 @@ libAgent({
   ]
 });
 libAgent({
+  typeId: "book", name: "Book", emoji: "📕", gate: false, note: "keeps every sentence it is sent, in order",
+  about: "Keeps every sentence it is sent, in order, and says the whole story so far. Its last message is the complete story.",
+  pseudo: [
+    "if nothing was sent, say the story as it is",
+    "otherwise add the new sentence to the end of the story",
+    "say the whole story so far, and remember it"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const story = input.memory || [];",
+    "  if (h.count(input.text) === 0) {",
+    "    return { sentences: story.length, say: story.join(\" \"), memory: story };",
+    "  }",
+    "  const now = story.concat([input.text]);",
+    "  return { sentences: now.length, say: now.join(\" \"), memory: now };",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [2, 5] }, { pseudo: [2, 2], js: [6, 6] }, { pseudo: [3, 3], js: [7, 7] }],
+  params: {},
+  slots: [],
+  scenarios: [
+    { id: "s1", name: "the first sentence", input: { text: "Once upon a time, a dragon called Pip lived by the sea." }, expect: { sentences: 1, say: "Once upon a time, a dragon called Pip lived by the sea." } },
+    { id: "s2", name: "the next sentence goes on the end", input: { text: "Then Pip found a shell.", memory: ["Once upon a time, a dragon called Pip lived by the sea."] }, expect: { sentences: 2, say: "Once upon a time, a dragon called Pip lived by the sea. Then Pip found a shell." } },
+    { id: "s3", name: "an empty message changes nothing", input: { text: "", memory: ["One.", "Two."] }, expect: { sentences: 2, say: "One. Two." } },
+    { id: "s4", name: "nothing yet", input: { text: "" }, expect: { sentences: 0, say: "" } }
+  ]
+});
+libAgent({
   typeId: "dot-counter", name: "Dot Counter", emoji: "🔢", gate: false, note: "reads the Renderer's dot list",
   about: "Reads the Renderer's list of dots and counts rows and columns. It never looks at the picture.",
   listen: { from: "renderer", send: "data" },
@@ -3496,8 +3529,8 @@ const CRITIC_INSTRUCTIONS = "You are the Critic. The Designer drew pebbles (dots
 const MYSTERY_TASK = "The Mystery Judge has a secret: how many pebbles each of 3 rows should have. Each row has between 1 and 8 pebbles. Draw 3 rows of pebbles, one under another. After each try, the Critic will tell you which rows need more pebbles and which need fewer.";
 // Bump this when a microworld changes: saved copies of the older version are then replaced (and can be kept as copies).
 const SEED_VERSION = 5;   // the newest; each microworld has its own, so one that didn't change isn't replaced
-const SEED_VERSIONS = { telephone: 4, pebbles: 7, secret: 6, lost: 6, story: 1, eyes3: 1, fool: 1, helpers: 1, jokes: 1 };
-const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, which follow its settings; the Critic talks only about the pebbles; and Eyes ignores stray lines, as the Judge does.", secret: "The Keeper's own secret is 83 now, and you can type a secret on the stage.", lost: "The Finder can say “nothing”, and there's a question about a toy robot." };
+const SEED_VERSIONS = { telephone: 4, pebbles: 7, secret: 6, lost: 6, story: 2, eyes3: 1, fool: 1, helpers: 1, jokes: 2 };   // "you" is reserved for the start
+const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, which follow its settings; the Critic talks only about the pebbles; and Eyes ignores stray lines, as the Judge does.", secret: "The Keeper's own secret is 83 now, and you can type a secret on the stage.", lost: "The Finder can say “nothing”, and there's a question about a toy robot.", story: "A Book keeps the whole story, and when the run ends an Editor tells it again." };
 // Which model suits each microworld, from testing with Gemini Nano (October 2026). strong: agents a small model lets down.
 const MODEL_ADVICE = {
   telephone: { text: "Which model? One that writes Logo and sees pictures well. Gemini Nano usually fails here before there is anything to study.", strong: ["artist", "describer"] },
@@ -3671,14 +3704,17 @@ function makeStoryChain() {
       "How many rounds until Pip disappears? Turn memory on for one writer. What changes?",
       "Give one writer the whole story and the others only the last sentence. Who keeps it on track?",
       "Can you add a rule so the Name Keeper's warning goes back to the next writer? Does the story recover?",
-      "The Name Keeper says “where did Pip go?” when a writer says “she”. Is the Name Keeper wrong, or the writer?"
+      "The Name Keeper says “where did Pip go?” when a writer says “she”. Is the Name Keeper wrong, or the writer?",
+      "The Book remembers every sentence, but each writer sees only one. When the run ends, does the Editor's story make sense?"
     ],
     openers: ["What does Writer B know about the story when it writes?", "How could the Name Keeper be fooled?", "What would you need to remember to keep a story on track?"],
     roundAgent: "writer-a", roundLimit: 4,
     starts: [{ id: "start", label: "The first sentence", kind: "text", to: "writer-a", value: "Once upon a time, a friendly dragon called Pip lived in a cave by the sea.", examples: ["Once upon a time, a friendly dragon called Pip lived in a cave by the sea.", "A lost robot called Pip woke up in a field of flowers."] }],
     variants: [{ id: "a-remembers", label: "Writer A remembers everything it has read and written", enable: [], disable: [], set: [{ agent: "writer-a", field: "history", on: "full", off: "stateless" }], on: false }],
-    agents: [writer("writer-a", "Writer A", "🖋️"), writer("writer-b", "Writer B", "✒️"), writer("writer-c", "Writer C", "🖊️"), programAgent("name-keeper", "name-keeper")],
-    rules: [to("c1", "writer-a", "writer-b"), to("c2", "writer-b", "writer-c"), to("c3", "writer-c", "writer-a"), to("c4", "writer-a", "name-keeper"), to("c5", "writer-b", "name-keeper"), to("c6", "writer-c", "name-keeper")]
+    agents: [writer("writer-a", "Writer A", "🖋️"), writer("writer-b", "Writer B", "✒️"), writer("writer-c", "Writer C", "🖊️"), programAgent("name-keeper", "name-keeper"), programAgent("book", "book"),
+      { id: "editor", kind: "model", name: "Editor", emoji: "📖", role: "tells the whole story again, when the run ends", instructions: "You are the Editor. You get a story that several writers wrote one sentence at a time. Tell it again as one short, well-told story for children, keeping everything that happens and the hero's name. Reply with only the story.", outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "editor", shipped: true }],
+    rules: [to("c0", "you", "book"), to("c1", "writer-a", "writer-b"), to("c2", "writer-b", "writer-c"), to("c3", "writer-c", "writer-a"), to("c4", "writer-a", "name-keeper"), to("c5", "writer-b", "name-keeper"), to("c6", "writer-c", "name-keeper"),
+      to("c7", "writer-a", "book"), to("c8", "writer-b", "book"), to("c9", "writer-c", "book"), Object.assign(to("c10", "book", "editor"), { when: "end" })]
   };
 }
 function makeThreeEyes() {
@@ -3801,19 +3837,30 @@ function makeJokeWorkshop() {
     variants: [{ id: "no-critics", label: "No critics: the Joker hears only your rating", enable: ["j8"], disable: ["j3", "j4"], on: false }],
     agents: [
       { id: "joker", kind: "model", name: "Joker", emoji: "🤡", role: "writes a joke, and rewrites it from notes", instructions: "You are the Joker. You write short, kind jokes for children aged 10 to 16. When you get notes or a rating, rewrite your joke to make it funnier. Reply with only the joke.", outputFields: [], canSeeImages: false, history: "full", replyKind: "prose", pretend: "joker", shipped: true },
-      { id: "you", kind: "model", human: true, name: "You", emoji: "🙋", role: "rates each joke", instructions: "Rate this joke from 1 (not funny) to 5 (very funny). Say why, if you like.", outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "generic", shipped: true },
+      { id: "rater", kind: "model", human: true, name: "You", emoji: "🙋", role: "rates each joke", instructions: "Rate this joke from 1 (not funny) to 5 (very funny). Say why, if you like.", outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "generic", shipped: true },
       critic("critic-clear", "Critic: Clear", "🔍", "is it easy to understand?"),
       critic("critic-surprise", "Critic: Surprise", "🎁", "is the ending a surprise?"),
       programAgent("notes", "collector", { name: "Notes", emoji: "🧺", role: "waits for both critics, then passes their notes on together" }),
       programAgent("scorekeeper", "scorekeeper")
     ],
     rules: [
-      r("j1", "joker", "you"), r("j2", "you", "scorekeeper"),
+      r("j1", "joker", "rater"), r("j2", "rater", "scorekeeper"),
       r("j3", "joker", "critic-clear"), r("j4", "joker", "critic-surprise"),
       r("j5", "critic-clear", "notes"), r("j6", "critic-surprise", "notes"),
       r("j7", "notes", "joker", { prefix: "Notes from the critics:" }),
-      r("j8", "you", "joker", { prefix: "Your joke got this rating:", enabled: false })
+      r("j8", "rater", "joker", { prefix: "Your joke got this rating:", enabled: false })
     ]
+  };
+}
+// Free play: one AI agent and you. Everything else is added in Look inside.
+function makeBlank(title) {
+  return {
+    kind: "agent-kit-society", schema: 1, id: "mine", title: title || "My society", question: "", intro: "", questions: [],
+    openers: ["What should your first agent do?", "Who should hear what it says?", "How will you know if it worked?"],
+    roundAgent: "agent", roundLimit: 4,
+    starts: [{ id: "start", label: "Start", kind: "text", to: "agent", value: "Hello! What can you do?" }],
+    agents: [{ id: "agent", kind: "model", name: "Agent", emoji: "🤖", role: "follows the instructions you write", instructions: "You are a friendly agent. Answer in one or two short sentences.", outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "generic" }],
+    rules: []
   };
 }
 // In teaching order (agent-kit-microworlds.md): the first two, then the seven designs.
@@ -3830,7 +3877,7 @@ const V1_TEXTS = [
   ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
   ["a turtle program", "a Logo program"]
 ];
-AK.Seeds = { makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+AK.Seeds = { makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
 const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
@@ -3852,6 +3899,8 @@ function sendWords(send, the) {   // "words and data", or with the: "the words a
   const w = SEND_PARTS.filter(k => sendParts(send)[k]).map(k => (the ? "the " : "") + SEND_WORDS[k]);
   return w.length <= 1 ? (w[0] || "nothing") : w.slice(0, -1).join(", ") + " and " + w[w.length - 1];
 }
+// "end": when the run ends, the agent's last response is sent on (once). A rule from "you" fires at the start.
+const RULE_WHENS = ["always", "data", "text", "end"];
 function validateSociety(soc) {
   const errors = [];
   if (!soc || !Array.isArray(soc.agents) || !Array.isArray(soc.rules)) return ["not a society"];
@@ -3874,9 +3923,9 @@ function validateSociety(soc) {
     }
   }
   for (const r of soc.rules) {
-    if (!(r.from === "*" || ids.has(r.from))) errors.push("rule " + r.id + " comes from an unknown agent");
+    if (!(r.from === "*" || r.from === "you" || ids.has(r.from))) errors.push("rule " + r.id + " comes from an unknown agent");
     if (!ids.has(r.to)) errors.push("rule " + r.id + " goes to an unknown agent");
-    if (["always", "data", "text"].indexOf(r.when) < 0) errors.push("rule " + r.id + " has a bad condition");
+    if (RULE_WHENS.indexOf(r.when) < 0) errors.push("rule " + r.id + " has a bad condition");
     if (!normSend(r.send)) errors.push("rule " + r.id + " sends something unknown");
     if (r.when === "data" && ["=", "!=", "<", ">", "<=", ">="].indexOf(r.op) < 0) errors.push("rule " + r.id + " has a bad comparison");
   }
@@ -4048,10 +4097,10 @@ function sanitizeScenario(s) {
 }
 function sanitizeRule(r, ids, used) {
   if (!r || typeof r !== "object") return null;
-  const from = r.from === "*" ? "*" : (ids.has(r.from) ? r.from : null);
+  const from = r.from === "*" || r.from === "you" ? r.from : (ids.has(r.from) ? r.from : null);
   const to = ids.has(r.to) ? r.to : null;
   if (!from || !to) return null;
-  const when = ["always", "data", "text"].indexOf(r.when) >= 0 ? r.when : "always";
+  const when = RULE_WHENS.indexOf(r.when) >= 0 ? r.when : "always";
   let id = cleanId(r.id) || "r1", n = 2;
   const base = id;
   while (used.has(id)) id = base + "-" + n++;
@@ -4381,6 +4430,7 @@ function compareValues(actual, op, raw) {
   return op === "<" ? a < b : op === ">" ? a > b : op === "<=" ? a <= b : op === ">=" ? a >= b : false;
 }
 function ruleMatches(rule, response) {
+  if (rule.when === "end") return { match: false, reason: "" };   // only when the run ends
   if (rule.when === "always") return { match: true, reason: "ALWAYS" };
   if (rule.when === "text") {   // one word, or several separated by commas: any of them will do
     const said = String(response.text || "").toLowerCase();
@@ -4395,6 +4445,8 @@ function ruleMatches(rule, response) {
   return { match: false, reason: "" };
 }
 function describeRule(rule, nameOf) {
+  if (rule.when === "end") return "WHEN the run ends SEND " + (rule.from === "*" ? "the last" : nameOf(rule.from) + "'s last") + " " + sendWords(rule.send) + " TO " + nameOf(rule.to) + (rule.prefix ? " (prefix “" + rule.prefix + "”)" : "");
+  if (rule.from === "you") return "WHEN You start the run SEND your " + sendWords(rule.send) + " TO " + nameOf(rule.to) + (rule.prefix ? " (prefix “" + rule.prefix + "”)" : "");
   const cond = rule.when === "always" ? "ALWAYS" : rule.when === "text" ? "IF text contains “" + (rule.word || "") + "”" : "IF data." + (rule.field || "") + " " + (rule.op || "=") + " " + (rule.value || "");
   return "WHEN " + (rule.from === "*" ? "anyone" : nameOf(rule.from)) + " responds " + cond + " SEND " + sendWords(rule.send) + " TO " + nameOf(rule.to) + (rule.prefix ? " (prefix “" + rule.prefix + "”)" : "");
 }
@@ -4437,7 +4489,9 @@ function createRun(society, deps) {
     run.status = "ready";
     const msg = makeMessage("you", to, { text: cleanText(spec.text || "", 20000), data: safeData(spec.data || {}) || {}, send: spec.data ? "text+data" : "text" });
     run.queue.push(msg);
-    addTrace({ kind: "run-start", title: soc.title, to, toName: nameOf(to), text: msg.text, seed: run.seed, roundLimit: run.roundLimit, adapter: deps.adapter ? deps.adapter.label : "", runtime: runtime.mode, round: 1 });
+    const also = [];   // rules from You: the start goes to them too
+    for (const r of soc.rules) if (r.enabled !== false && r.from === "you" && r.when !== "end" && byId(r.to)) { run.queue.push(buildMessage(r, { id: "you", name: "You" }, { text: msg.text, data: msg.data })); also.push(nameOf(r.to)); }
+    addTrace({ kind: "run-start", title: soc.title, to, toName: nameOf(to), also, text: msg.text, seed: run.seed, roundLimit: run.roundLimit, adapter: deps.adapter ? deps.adapter.label : "", runtime: runtime.mode, round: 1 });
   }
   async function activateModel(agent, msg, entry) {
     if (!deps.adapter) throw Object.assign(new Error("No model connection is set up."), { kind: "config" });
@@ -4512,6 +4566,24 @@ function createRun(society, deps) {
       entry.fired.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), send: rule.send, reason: cond.reason, messageId: msg.id, rule: describeRule(rule, nameOf) });
     }
   }
+  // When the run is about to end, rules that say "when the run ends" send an agent's last response on, once.
+  function beginEnding(reason, note) {
+    if (run.ending) return false;
+    run.ending = { reason, note };
+    const fired = [];
+    for (const rule of soc.rules) {
+      if (rule.enabled === false || rule.when !== "end" || !byId(rule.to)) continue;
+      let last = null;
+      for (let k = run.trace.length - 1; k >= 0 && !last; k--) { const e = run.trace[k]; if (e.kind === "activation" && e.response && (rule.from === "*" || e.agentId === rule.from)) last = e; }
+      if (!last) continue;
+      const from = byId(last.agentId) || { id: last.agentId, name: last.agentName };
+      const msg = buildMessage(rule, from, last.response);
+      run.queue.push(msg);
+      fired.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), fromName: from.name, send: rule.send, reason: "the run is ending", messageId: msg.id, rule: describeRule(rule, nameOf) });
+    }
+    if (fired.length) addTrace({ kind: "ending", round: run.round, fired, text: "The run is ending, so " + fired.map(f => f.fromName + "’s last " + sendWords(f.send) + " go to " + f.toName).join("; ") + "." });
+    return fired.length > 0;
+  }
   function finish(reason, note) {
     if (run.status === "done" || run.status === "stopped") return;
     run.status = reason === "stopped" ? "stopped" : "done";
@@ -4532,15 +4604,23 @@ function createRun(society, deps) {
       // Nothing left to deliver: a collector still waiting runs on what it has (an answer went missing).
       const waiting = Object.keys(run.collected).find(id => run.collected[id].length);
       if (waiting) { run.queue.push(collectedMessage(waiting, run.collected[waiting], true)); run.collected[waiting] = []; return true; }
-      finish("done", "Finished: no rule sent another message.");
+      if (beginEnding("done", "Finished: no rule sent another message.")) return true;
+      finish(run.ending.reason, run.ending.note);
       return false;
     }
     const agent = byId(msg.to);
     if (!agent) { addTrace({ kind: "error", text: "A message went to “" + msg.to + "”, but there is no agent with that name.", round: run.round }); return true; }
     const isRoundAgent = agent.id === soc.roundAgent;
-    if (isRoundAgent) {
+    if (isRoundAgent && !run.ending) {
       if (run.activations > 0) run.round++;        // every visit to the round agent after the first delivery starts a new round
-      if (run.round > run.roundLimit) { run.round = run.roundLimit; finish("round-limit", "Reached the round limit (" + run.roundLimit + ")."); return false; }
+      if (run.round > run.roundLimit) {
+        run.round = run.roundLimit;
+        const note = "Reached the round limit (" + run.roundLimit + ").";
+        run.queue.length = 0;
+        if (beginEnding("round-limit", note)) return true;
+        finish("round-limit", note);
+        return false;
+      }
     }
     if (++run.deliveries > run.maxDeliveries) { finish("too-many", "Stopped after " + run.maxDeliveries + " messages: the rules may be sending messages around in circles."); return false; }
     if (agent.kind === "program" && agent.collect && !msg.collected) {
@@ -4722,6 +4802,8 @@ const HELPER_SYSTEM = PREAMBLE +
   "- Scenarios are tests for a programmed agent, in its editor. A model agent that counts pictures has a test bench in its editor.\n" +
   "- A collecting program (like Vote or Referee) waits until it has heard several messages (its {wait} number), then runs once on all of them. If an answer never comes, it runs on what it has at the end.\n" +
   "- An agent called You is the learner: the run waits for their answer.\n" +
+  "- A rule can come from You (“when You start the run, send your words to …”), so the start reaches more than one agent. A rule can also say “when the run ends”: then the agent's last message is sent on, once, at the very end (Story Chain's Book sends the whole story to the Editor that way).\n" +
+  "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
   "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.";
 function describeSociety(soc) {
   if (!soc) return "(no society)";
@@ -5397,7 +5479,7 @@ function shellHTML() {
 function renderWorlds() {
   const host = $("#worlds");
   const compact = app.order.length > 5;   // with many, the question shows for the chosen one and on hover
-  if (host) host.innerHTML = app.order.map(id => { const s = app.societies[id], on = id === app.activeId; return '<button class="world' + (on ? " on" : "") + '" data-act="world" data-id="' + esc(id) + '"' + (s.question ? ' title="' + esc(s.question) + '"' : "") + '>' + esc(s.title) + (s.question && (!compact || on) ? '<span class="q">' + esc(s.question) + '</span>' : "") + '</button>'; }).join("");
+  if (host) host.innerHTML = '<span class="worlds-list">' + app.order.map(id => { const s = app.societies[id], on = id === app.activeId; return '<button class="world' + (on ? " on" : "") + '" data-act="world" data-id="' + esc(id) + '"' + (s.question ? ' title="' + esc(s.question) + '"' : "") + '>' + esc(s.title) + (s.question && (!compact || on) ? '<span class="q">' + esc(s.question) + '</span>' : "") + '</button>'; }).join("") + '<button class="world add" data-act="new-society" title="Start a society of your own">＋ New society</button></span>';
   const chip = $("#modeChip");
   if (chip) {
     const c = app.settings.connection;
@@ -5471,8 +5553,8 @@ function ruleHTML(r, s) {
   const opt = (v, cur, label) => '<option value="' + esc(v) + '"' + sel(v === cur) + '>' + esc(label) + '</option>';
   const b = f => 'data-bind="rule" data-id="' + esc(r.id) + '" data-field="' + f + '"';
   let h = '<div class="rule' + (r.enabled === false ? " off" : "") + '"><input type="checkbox" ' + b("enabled") + (r.enabled !== false ? " checked" : "") + ' title="This rule is on" aria-label="Rule on or off">';
-  h += '<span class="kw">WHEN</span><select ' + b("from") + ' aria-label="From">' + agentOptions(s, r.from, true) + '</select><span class="kw">RESPONDS</span>';
-  h += '<select ' + b("when") + ' aria-label="Condition">' + opt("always", r.when, "ALWAYS") + opt("data", r.when, "IF data.…") + opt("text", r.when, "IF text contains…") + '</select>';
+  h += '<span class="kw">WHEN</span><select ' + b("from") + ' aria-label="From">' + '<option value="you"' + sel(r.from === "you") + '>You (the start)</option>' + agentOptions(s, r.from, true) + '</select><span class="kw">RESPONDS</span>';
+  h += '<select ' + b("when") + ' aria-label="Condition">' + opt("always", r.when, "ALWAYS") + opt("data", r.when, "IF data.…") + opt("text", r.when, "IF text contains…") + opt("end", r.when, "LAST, WHEN THE RUN ENDS") + '</select>';
   if (r.when === "data") h += '<input type="text" class="w-field" ' + b("field") + ' value="' + esc(r.field || "") + '" placeholder="field" aria-label="Field"><select ' + b("op") + ' aria-label="Comparison">' + ["=", "!=", "<", ">", "<=", ">="].map(o => opt(o, r.op || "=", o)).join("") + '</select><input type="text" class="w-val" ' + b("value") + ' value="' + esc(r.value == null ? "" : r.value) + '" placeholder="value" aria-label="Value">';
   if (r.when === "text") h += '<input type="text" class="w-val" ' + b("word") + ' value="' + esc(r.word || "") + '" placeholder="word" aria-label="Word">';
   const P = Society.sendParts(r.send);
@@ -5484,6 +5566,7 @@ function ruleHTML(r, s) {
 function rulesChanged() { renderLeft(); if (app.ui.editor) renderEditor(); }
 function agentBtnHTML(s, id) {
   if (id === "*") return '<span class="achip"><span class="e">✳️</span>anyone</span>';
+  if (id === "you") return '<span class="achip you" title="You, with the start"><span class="e">🙋</span>You</span>';
   const a = Society.agentById(s, id);
   if (!a) return '<span class="achip off">' + esc(id) + '</span>';
   return '<button class="achip kind-' + a.kind + '" data-act="open-agent" data-id="' + esc(a.id) + '" title="Open ' + esc(a.name) + '"><span class="e">' + esc(a.emoji) + '</span>' + esc(a.name) + '</button>';
@@ -5494,7 +5577,10 @@ function ruleSentenceHTML(r, s) {
   let cond = "";
   if (r.when === "data") cond = "if its data says <b>" + esc(r.field || "?") + "</b> " + (OP_WORDS[r.op || "="] || esc(r.op)) + " <b>" + esc(r.value == null ? "" : r.value) + "</b>";
   if (r.when === "text") { const ws = String(r.word || "").split(",").map(w => w.trim()).filter(Boolean); cond = ws.length ? "if its words contain " + ws.map(q).join(ws.length > 2 ? ", " : " or ").replace(/, (?=[^,]*$)/, ", or ") : "if its words contain (no word yet)"; }
-  return "When " + agentBtnHTML(s, r.from) + " responds, " + (cond ? cond + ", " : "") + "send its " + esc(Society.sendWords(r.send)) + " to " + agentBtnHTML(s, r.to) + (r.prefix ? ", starting with " + q(r.prefix) : "") + (/[.!?]\s*$/.test(r.prefix || "") ? "" : ".");
+  const end = (r.prefix ? ", starting with " + q(r.prefix) : "") + (/[.!?]\s*$/.test(r.prefix || "") ? "" : ".");
+  if (r.when === "end") return "When the run ends, send " + (r.from === "*" ? "the last " : agentBtnHTML(s, r.from) + "’s last ") + esc(Society.sendWords(r.send)) + " to " + agentBtnHTML(s, r.to) + end;
+  if (r.from === "you") return "When " + agentBtnHTML(s, "you") + " start the run, send your " + esc(Society.sendWords(r.send)) + " to " + agentBtnHTML(s, r.to) + end;
+  return "When " + agentBtnHTML(s, r.from) + " responds, " + (cond ? cond + ", " : "") + "send its " + esc(Society.sendWords(r.send)) + " to " + agentBtnHTML(s, r.to) + end;
 }
 function variantsInsideHTML(s) {
   if (!(s.variants || []).length) return "";
@@ -5507,8 +5593,23 @@ function ruleView(r, s) {
   if (app.ui.editingRules.has(r.id)) return '<div class="rule-editing">' + ruleHTML(r, s) + '<div class="row end"><button class="btn tiny primary" data-act="rule-done" data-id="' + esc(r.id) + '">✓ Done</button></div></div>';
   return '<div class="rule-read' + (r.enabled === false ? " off" : "") + '"><input type="checkbox" class="rule-on" data-bind="rule" data-id="' + esc(r.id) + '" data-field="enabled"' + (r.enabled !== false ? " checked" : "") + ' title="' + (r.enabled !== false ? "This rule is on. Untick it to switch it off." : "This rule is off. Tick it to switch it on.") + '" aria-label="Rule on or off"><span class="sentence">' + ruleSentenceHTML(r, s) + (r.enabled === false ? ' <span class="badge plain">switched off</span>' : "") + '</span><button class="btn tiny" data-act="rule-edit" data-id="' + esc(r.id) + '" title="Change this rule">✎ Edit</button></div>';
 }
+function aboutEditHTML(s) {
+  if (isMicroworld(s.id)) return '<p class="hint">To change its name, question or introduction, make your own: <b>＋ New society</b>, then “Copy ' + esc(s.title) + '”.</p>';
+  const st = (s.starts || [])[0];
+  const f = (field, val) => 'data-bind="soc-field" data-field="' + field + '" aria-label="' + field + '"';
+  let h = '<details class="about-edit"' + (s.question || s.intro ? "" : " open") + '><summary><b>About this society</b> <span class="small muted">its name, question, introduction and start</span></summary><div class="form-grid" style="margin-top:8px">' +
+    '<label>Name</label><input class="field" ' + f("title") + ' value="' + esc(s.title) + '" maxlength="60">' +
+    '<label>Its question</label><input class="field" ' + f("question") + ' value="' + esc(s.question || "") + '" placeholder="Like “Where does it go?”" maxlength="200">' +
+    '<label>Introduction</label><textarea class="field" rows="2" ' + f("intro") + ' placeholder="Two or three sentences: what happens here?">' + esc(s.intro || "") + '</textarea>' +
+    '<label>Questions to explore</label><textarea class="field" rows="3" ' + f("questions") + ' placeholder="One question on each line">' + esc((s.questions || []).join("\n")) + '</textarea>';
+  if (st) {
+    h += '<label>The start</label><div class="row"><input class="field" style="max-width:180px" data-bind="start-field" data-id="' + esc(st.id) + '" data-field="label" value="' + esc(st.label || "") + '" aria-label="The start\'s name"><span class="small muted">goes to</span><select class="field" style="max-width:180px" data-bind="start-field" data-id="' + esc(st.id) + '" data-field="to" aria-label="The start goes to">' + agentOptions(s, st.to, false) + '</select></div>';
+    if (st.kind === "text") h += '<label>Example starts</label><textarea class="field" rows="2" data-bind="start-field" data-id="' + esc(st.id) + '" data-field="examples" placeholder="One example on each line: they become buttons under the start">' + esc((st.examples || []).join("\n")) + '</textarea>';
+  }
+  return h + '</div></details>';
+}
 function insideHTML(s) {
-  let h = '<div class="card"><div class="card-title"><h3>Inside ' + esc(s.title) + '</h3></div><p class="inside-note">Ordinary agents and rules — the same kinds you can make yourself. Open an agent to read or change it.</p>';
+  let h = '<div class="card"><div class="card-title"><h3>Inside ' + esc(s.title) + '</h3></div><p class="inside-note">Ordinary agents and rules — the same kinds you can make yourself. Open an agent to read or change it.</p>' + aboutEditHTML(s);
   h += '<div class="agent-grid">' + s.agents.map(a => agentCardHTML(a, s)).join("") + '</div><div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-agent">+ Add an agent</button></div>';
   h += '<div class="section"><h3>Rules</h3><p class="hint">When an agent responds, every rule that matches sends a message. A new round starts each time ' + (app.ui.editingRound ? '<select data-bind="roundAgent" aria-label="Round agent">' + agentOptions(s, s.roundAgent, false) + '</select> gets a message. <button class="btn tiny primary" data-act="round-done">✓ Done</button>' : agentBtnHTML(s, s.roundAgent) + ' gets a message. <button class="btn tiny" data-act="round-edit" title="Choose which agent starts each round">✎ Change</button>') + '</p>' + variantsInsideHTML(s) + '<div class="rules">' + s.rules.map(r => ruleView(r, s)).join("") + '</div>' +
     '<div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-rule">+ Add a rule</button></div><div class="gate-note">⛔ A <b>gate</b> (like a Judge) says whether <b>pass</b> is true or false. When its data says pass is false, only its rules that say “if its data says <b>pass</b> is <b>false</b>” send anything; its other rules wait.</div></div>';
@@ -5832,7 +5933,8 @@ function summaryText(e, s) {
   return words ? "sent data: " + words : "(said nothing)";
 }
 function traceEntryHTML(e, s, run, trace, currentI) {
-  if (e.kind === "run-start") return '<div class="tentry slim"><div class="th"><span class="rb">▶</span><span class="sum">Start: <b>You → ' + esc(e.toName) + '</b>: “' + esc(short(e.text, 160)) + '”<br><span class="small muted" title="' + esc("random seed " + e.seed + " · programs run " + (e.runtime === "worker" ? "in a Worker" : "in the page")) + '">' + esc(e.roundLimit) + ' rounds at most · ' + esc(e.adapter) + '</span></span></div></div>';
+  if (e.kind === "ending") return '<div class="tentry slim"><div class="th"><span class="rb">⏳</span><span class="sum">' + esc(e.text) + '</span></div></div>';
+  if (e.kind === "run-start") return '<div class="tentry slim"><div class="th"><span class="rb">▶</span><span class="sum">Start: <b>You → ' + esc([e.toName].concat(e.also || []).join(", ")) + '</b>: “' + esc(short(e.text, 160)) + '”<br><span class="small muted" title="' + esc("random seed " + e.seed + " · programs run " + (e.runtime === "worker" ? "in a Worker" : "in the page")) + '">' + esc(e.roundLimit) + ' rounds at most · ' + esc(e.adapter) + '</span></span></div></div>';
   if (e.kind === "run-end") return '<div class="tentry slim"><div class="th"><span class="rb">■</span><span class="sum">' + esc(e.text) + '</span></div></div>';
   if (e.kind !== "activation") return '<div class="tentry slim' + (e.kind === "error" ? " err" : "") + '"><div class="th"><span class="rb">!</span><span class="sum">' + esc(e.text || e.error || "") + '</span></div></div>';
   const open = app.ui.expanded.has(e.i);
@@ -5975,9 +6077,12 @@ function connectionsHTML(a, s) {
     return '<button class="achip kind-' + b.kind + (off ? " off" : "") + '" data-act="open-agent" data-id="' + esc(b.id) + '" title="' + esc(tip(rs) + "\nClick to open " + b.name) + '"><span class="e">' + esc(b.emoji) + '</span>' + esc(b.name) + (off ? '<span class="small muted" style="margin-left:4px">rule off</span>' : "") + '</button>';
   };
   const starts = (s.starts || []).filter(st => st.to === a.id);
+  const fromYou = senders.get("you") || [];
+  senders.delete("you");
+  const youOn = starts.length || fromYou.some(r => r.enabled !== false);
   let h = '<div class="section links"><h3>Connections</h3><div class="conn-in"><span class="small muted">It can get messages from</span>' +
-    (starts.length ? '<span class="achip you" title="' + esc("The start: " + starts.map(st => st.label).join(", ")) + '"><span class="e">🙋</span>You, at the start</span>' : "") +
-    Array.from(senders, ([k, rs]) => chip(k, rs)).join("") + (!starts.length && !senders.size ? '<span class="small">nobody yet: no rule sends to it</span>' : "") + '</div>';
+    (starts.length || fromYou.length ? '<span class="achip you' + (youOn ? "" : " off") + '" title="' + esc(starts.length ? "The start: " + starts.map(st => st.label).join(", ") : tip(fromYou)) + '"><span class="e">🙋</span>You, at the start</span>' : "") +
+    Array.from(senders, ([k, rs]) => chip(k, rs)).join("") + (!starts.length && !fromYou.length && !senders.size ? '<span class="small">nobody yet: no rule sends to it</span>' : "") + '</div>';
   const own = s.rules.filter(r => r.from === a.id || r.from === "*");
   h += '<p class="hint" style="margin-top:10px">Its rules: when ' + esc(a.name) + ' responds, these decide who gets a message.' + (a.gate ? " It is a gate: when its data says pass is false, only its rules that check for that send anything; the others wait." : "") + '</p><div class="rules">' + (own.length ? own.map(r => ruleView(r, s)).join("") : '<p class="small muted">None yet, so nobody hears what it says.</p>') + '</div>' +
     '<div class="row" style="margin-top:6px"><button class="btn tiny" data-act="add-rule-from" data-id="' + esc(a.id) + '">+ Add a rule for ' + esc(a.name) + '</button></div></div>';
@@ -6589,6 +6694,7 @@ const ACTIONS = {
   async "export-trace"() { const s = soc(); const rec = app.runs[s.id]; const trace = runOrLastTrace(s.id); if (!trace.length) return; toast("Making the web page…"); offerFile("agent-kit-" + s.id + "-trace.html", await traceDocument(s, trace, rec ? rec.api.run : null), "text/html"); },
   "export-society"() { exportSocietyFlow(); },
   "import-society"() { pickFile(".json,application/json", text => { importSocietyText(text).catch(e => toast("Couldn't import: " + e.message, "bad")); }); },
+  "new-society"() { openNewSociety(); },
   "save-copy"() { const s = soc(); const c = clone(s); c.id = uniqueSocietyId(s.id + "-copy"); c.title = util.cleanName(s.title + " (copy)", 60); app.societies[c.id] = c; app.order.push(c.id); app.activeId = c.id; rerunAll().then(renderAll); save(); renderAll(); toast("Saved a copy."); },
   async "reset-world"() {
     const s = soc();
@@ -6658,13 +6764,49 @@ const ACTIONS = {
   "field-add"() { const a = editorAgent(); if (!a) return; a.outputFields = a.outputFields || []; let n = a.outputFields.length + 1; while (a.outputFields.some(f => f.name === "field" + n)) n++; a.outputFields.push({ name: "field" + n, type: "number", about: "" }); save(); renderEditor(); },
   "field-del"(t) { const a = editorAgent(); if (!a) return; a.outputFields.splice(+t.dataset.i, 1); save(); renderEditor(); }
 };
+function openNewSociety() {
+  const s = soc();
+  const m = openModal({ title: "＋ A new society", body: '<div class="form-grid"><label for="newSocName">Its name</label><input class="field" id="newSocName" value="My society" maxlength="60"></div>' +
+    '<div class="new-choices"><button class="btn primary" data-new="blank">Start from scratch</button><p class="hint">One AI agent, and you with the start. Add agents and rules in Look inside.</p>' +
+    '<button class="btn" data-new="copy">Copy ' + esc(s.title) + '</button><p class="hint">Everything in ' + esc(s.title) + ', to change as you like.</p></div>' });
+  m.body.addEventListener("click", ev => {
+    const b = ev.target.closest("[data-new]");
+    if (!b) return;
+    const name = util.cleanName($("#newSocName", m.body).value, 60) || "My society";
+    const c = b.dataset.new === "blank" ? Seeds.makeBlank(name) : Object.assign(clone(s), { title: name });
+    delete c.seedVersion;
+    c.id = uniqueSocietyId(name);
+    app.societies[c.id] = c; app.order.push(c.id); app.activeId = c.id;
+    app.ui.lookInside = true;
+    m.close();
+    rerunAll().then(renderAll);
+    save(); renderAll();
+    toast(b.dataset.new === "blank" ? "Your society. Look inside to give it a question, agents and rules." : "A copy of " + s.title + ", to change as you like.");
+  });
+}
 function openAddAgent() {
   const s = soc();
   const LIB = AK.Library.LIB;
   const listens = L => L.listen && (L.listen.from === "*" ? "A rule will send it what everyone says." : Society.agentById(s, L.listen.from) ? "A rule will send it what " + nameOf(s, L.listen.from) + " says." : "");
-  const m = openModal({ title: "Add an agent from the library", body: '<p class="hint">These are ready-made programmed agents. Each comes with its pseudocode and scenarios, and you can change it like any other agent.</p><div class="lib-list">' +
+  const fresh = '<div class="lib-item"><div class="grow"><b>🤖 A new AI agent</b><div class="small muted">A model agent that follows instructions you write. It opens so you can write them.</div></div><button class="btn tiny primary" data-add-new="model">Add</button></div>' +
+    (s.agents.some(a => a.kind === "renderer") ? "" : '<div class="lib-item"><div class="grow"><b>🖼️ A Renderer</b><div class="small muted">Runs Logo programs and makes pictures, for agents that draw.</div></div><button class="btn tiny primary" data-add-new="renderer">Add</button></div>');
+  const m = openModal({ title: "Add an agent", body: '<div class="lib-list">' + fresh + '</div><h3 style="margin:12px 0 4px">From the library</h3><p class="hint">Ready-made programmed agents. Each comes with its pseudocode and scenarios, and you can change it like any other agent.</p><div class="lib-list">' +
     Object.keys(LIB).map(t => { const L = LIB[t]; return '<div class="lib-item"><div class="grow"><b>' + esc(L.emoji + " " + L.name) + '</b><div class="small muted">' + esc(L.about || L.note) + (listens(L) ? " " + esc(listens(L)) : "") + '</div></div><button class="btn tiny primary" data-add-type="' + esc(t) + '">Add</button></div>'; }).join("") + '</div>' });
   m.body.addEventListener("click", ev => {
+    const n = ev.target.closest("[data-add-new]");
+    if (n) {
+      const model = n.dataset.addNew === "model";
+      const id = Society.uniqueAgentId(s, model ? "agent" : "renderer");
+      s.agents.push(model ? { id, kind: "model", name: "New agent", emoji: "🤖", role: "follows the instructions you write", instructions: "You are a friendly agent. Answer in one or two short sentences.", outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "generic" }
+        : { id, kind: "renderer", name: "Renderer", emoji: "🖼️", role: "runs Logo programs and makes pictures" });
+      m.close();
+      app.ui.lookInside = true;
+      save();
+      renderAll();
+      openAgent(id);
+      toast("Added. It hears nothing until a rule sends it something: add one under Connections.");
+      return;
+    }
     const b = ev.target.closest("[data-add-type]");
     if (!b) return;
     const r = Society.addLibraryAgent(s, b.dataset.addType);
@@ -6795,6 +6937,29 @@ async function handleBind(t, evt) {
     case "remember": { app.settings.rememberKeys = t.checked; save(); return; }
     case "add-conn": { app.ui.addModel = t.value ? { connection: t.value, model: "" } : null; renderSettings(); return; }
     case "add-model": { app.ui.addModel = Object.assign(app.ui.addModel || {}, { model: util.cleanName(t.value, 80) }); return; }
+    case "soc-field": {
+      if (isMicroworld(s.id)) return;
+      const f = t.dataset.field, v = t.value;
+      if (f === "title") { const n = util.cleanName(v, 60); if (n) s.title = n; }
+      else if (f === "question") s.question = util.cleanName(v, 200);
+      else if (f === "intro") s.intro = util.cleanText(v, 600);
+      else if (f === "questions") s.questions = String(v).split("\n").map(q => util.cleanName(q, 300)).filter(Boolean).slice(0, 10);
+      save();
+      if (change) { renderWorlds(); renderLeft(); renderStage(); }
+      return;
+    }
+    case "start-field": {
+      if (isMicroworld(s.id)) return;
+      const st = (s.starts || []).find(x => x.id === t.dataset.id);
+      if (!st) return;
+      const f = t.dataset.field;
+      if (f === "label") st.label = util.cleanName(t.value, 40) || st.label;
+      else if (f === "to") { if (Society.agentById(s, t.value)) st.to = t.value; }
+      else if (f === "examples") st.examples = String(t.value).split("\n").map(x => util.cleanText(x, 200).trim()).filter(Boolean).slice(0, 8);
+      save();
+      if (change || f === "to") { renderStage(); if (change) renderLeft(); }
+      return;
+    }
     case "stage-model": {
       const a = Society.agentById(s, t.dataset.id), refs = modelRefs();
       if (!a || !refs.length) return;

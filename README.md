@@ -33,6 +33,10 @@ Nine microworlds ship with it, in teaching order, and each is an ordinary saved 
 - **Joke Workshop — “Do critics make jokes funnier?”** A Joker writes, Critics suggest, and you
   rate every version. *Do critics help? The learner as an agent.*
 
+**Free play:** “＋ New society” starts a society of your own, from scratch or as a copy of a
+microworld. Give it a name, a question and an introduction, add AI agents and library programs, and
+wire them with rules. A rule can send the start to several agents, or wait until the run ends.
+
 Settings can hold more than one model. Then each AI agent can use the one that suits its job:
 Gemini Nano (free, in Chrome) where a small model is enough, and a stronger one for drawing and
 seeing pictures.

@@ -95,7 +95,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const notes = acts(r, "notes");
     return asked.length === 3 && /penguin/.test(asked[0]) && asked[0] !== asked[1] && r.status === "done" &&
       score[score.length - 1] === "Version 1: ★★★★ (4)\nVersion 2: ★★★★★ (5)\nVersion 3: ★★★ (3)" && notes.length >= 2 && /Critic: Clear: /.test(notes[0].response.text) && /Critic: Surprise: /.test(notes[0].response.text) &&
-      acts(r, "joker").slice(1).every(e => /^Notes from the critics:/.test(e.message.text)) && acts(r, "you").every(e => e.byYou);
+      acts(r, "joker").slice(1).every(e => /^Notes from the critics:/.test(e.message.text)) && acts(r, "rater").every(e => e.byYou);
   });
   T.test("Joke Workshop: with one Critic switched off, Notes passes on what it has", ["Engine", "Seeds"], async () => {
     const { r } = await jokes(s => { s.rules.find(x => x.id === "j4").enabled = false; s.roundLimit = 2; }, ["3", "4"]);
@@ -112,7 +112,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   T.test("page: nine microworlds; only the chosen one shows its question, the others on hover", ["Seeds"], async () => {
     const { w: pw } = await boot();
-    const ws = Array.from(pw.document.querySelectorAll(".world"));
+    const ws = Array.from(pw.document.querySelectorAll(".world:not(.add)"));
     return ws.length === 9 && pw.document.querySelectorAll(".world .q").length === 1 && ws.every(b => b.title.length > 5) && ws.map(b => b.dataset.id).join() === "telephone,pebbles,lost,story,secret,eyes3,fool,helpers,jokes";
   });
   T.test("page: Joke Workshop asks You on the stage, and the agent buttons count each AI agent's calls", ["Engine"], async () => {
@@ -127,7 +127,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
     pw.document.querySelector('[data-act="your-send"]').click();
     for (let i = 0; i < 100 && rec.api.run.status !== "waiting" && rec.api.run.status !== "done"; i++) await sleep(20);
     const calls = Array.from(pw.document.querySelectorAll(".agent-strip .achip .calls")).map(x => x.textContent);
-    const you = pw.document.querySelector('.agent-strip .achip[data-id="you"]');
+    const you = pw.document.querySelector('.agent-strip .achip[data-id="rater"]');
     return ok1 && rec.api.run.status === "waiting" && calls.some(t => /^2 calls · /.test(t)) && !you.querySelector(".calls");
   });
   T.test("page: Small Helper, Big Helper starts from a challenge, sent to the Escalator", ["Seeds"], async () => {
