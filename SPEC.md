@@ -300,6 +300,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - The Critic is told it's about pebbles, so small models don't borrow “agents” from the preamble. The Finder can say “nothing”, and the Mystery Box leaves that alone; “a toy robot” still lands in the Mystery Box, and a question asks why.
   - Gemini Nano: Chrome pauses it while its tab is hidden. Settings says so, and a note appears when you come back to a run. The Gemini list no longer calls 3.1 Pro (preview) the strongest: 3.8 Flash beats it on most shared benchmarks and costs less.
   - Suite: 334 PASS, fingerprint `b899278acfef`.
+- 2026-10-02 — **Revision 1.0.7.** Ken decided that stray lines don't count: a Judge ignores them. The Judges only ever see counts, and Dot Counter already skips lines, so Eyes is now told the pebbles are the dots and to ignore lines, shapes and writing. The test bench's “3 by 5 grid, with a stray line” checks it. `agent-kit-microworlds.md` (the seven microworld designs) is now in the repo.
+  - Suite: 335 PASS, fingerprint `d79c1a9a29fb`.
 
 ---
 

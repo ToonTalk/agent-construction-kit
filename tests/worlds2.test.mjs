@@ -264,4 +264,5 @@ export default function (T, { modelWindow, pageWindow, same }) {
     pw.__ak.renderAll();
     return ok && !!warn && /The Drawer and the Finder are using Gemini Nano/.test(warn.textContent) && !pw.document.querySelector(".qcard .warnline");
   });
+  T.test("Pebble: Eyes is told to ignore lines, as the Judge and Dot Counter do", ["Seeds"], () => /Ignore any lines/.test(Society.agentById(Seeds.makePebbles(), "eyes").instructions));
 }

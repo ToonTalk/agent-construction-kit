@@ -4,7 +4,7 @@
 
 ## State (2026-10-01)
 
-Agent Kit **1.0.6**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.0.6 follow reviews
+Agent Kit **1.0.7**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.0.7 follow reviews
 and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -54,7 +54,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**334 PASS, 0 FAIL · fingerprint `b899278acfef`** · model modules covered 19/19.
+**335 PASS, 0 FAIL · fingerprint `d79c1a9a29fb`** · model modules covered 19/19.
 
 ## Acceptance criteria (§11)
 
@@ -87,8 +87,8 @@ folder is a copy without the §14 log.)
 - **Secret Number and Lost and Found are barely tested with real models.** The guess in the design:
   no memory wanders, memory does OK, the Notebook gets close to halving (about 7 guesses).
   The review's advice: stop here and try them with children before building more.
-- **Stray lines:** Dot Counter ignores lines, but Eyes may not. Whether every Judge should
-  ignore them is a decision for Ken.
+- **Stray lines don't count** (Ken, 1.0.7): Judges ignore them; Dot Counter skips lines and Eyes
+  is told to. The seven microworld designs are in `agent-kit-microworlds.md`.
 - In Fallback A, a heavy built-in call that never loops (for example `new Array(1e9).fill(0)`)
   can't be interrupted. The Worker path handles it.
 - Pretend-mode translation only knows the shipped pseudocode plus two variants. Anything else
