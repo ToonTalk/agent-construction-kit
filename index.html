@@ -241,6 +241,7 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 .modal-head h2{font-size:20px;flex:1}
 .modal-body{padding:14px 18px 18px}
 .confirm-text{white-space:pre-wrap;margin:0 0 14px}
+.confirm-check{margin:0 0 14px}
 .form-grid{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;align-items:center}
 .form-grid label{font-weight:700;font-size:13px}
 @media (max-width:640px){.form-grid{grid-template-columns:1fr}}
@@ -405,7 +406,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.0.7";
+AK.VERSION = "1.0.8";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -4729,8 +4730,9 @@ function uiConfirm(message, opts) {
   return new Promise(resolve => {
     let done = false;
     const finish = v => { if (done) return; done = true; resolve(v); };
-    const m = openModal({ title: opts.title || "Just checking", body: '<p class="confirm-text"></p><div class="row end"><button class="btn" data-no></button><button class="btn ' + (opts.danger ? "danger" : "primary") + '" data-yes></button></div>', onClose: () => finish(false) });
+    const m = openModal({ title: opts.title || "Just checking", body: '<p class="confirm-text"></p>' + (opts.checkbox ? '<label class="row small confirm-check"><input type="checkbox" data-check><span></span></label>' : "") + '<div class="row end"><button class="btn" data-no></button><button class="btn ' + (opts.danger ? "danger" : "primary") + '" data-yes></button></div>', onClose: () => finish(false) });
     m.body.querySelector(".confirm-text").textContent = message;
+    if (opts.checkbox) { m.body.querySelector(".confirm-check span").textContent = opts.checkbox; m.body.querySelector("[data-check]").onchange = e => { opts.checked = e.target.checked; }; }
     m.body.querySelector("[data-no]").textContent = opts.cancel || "Cancel";
     m.body.querySelector("[data-yes]").textContent = opts.ok || "Yes";
     m.body.querySelector("[data-no]").onclick = () => { finish(false); m.close(); };
@@ -5712,7 +5714,7 @@ function renderSettings() {
   h += '<div class="section"><h3>How programs run here</h3><p class="small">' + esc(Runtime.note) + ' Drawings are Logo, read by a small interpreter, so they never run as JavaScript.</p></div>';
   h += '<div class="section"><h3>Guides</h3><div class="row"><button class="btn" data-act="guide" data-id="learner">📘 For learners</button><button class="btn" data-act="guide" data-id="teacher">📕 For teachers</button></div></div>';
   h += '<div class="section"><h3>The safety preamble</h3><p class="hint">This fixed text starts every model call, so every agent writes for young people.</p><pre class="box">' + esc(Prompts.PREAMBLE) + '</pre></div>';
-  h += '<div class="section"><h3>Your work</h3><p class="hint">' + (storage ? "Everything is saved in this browser as you go." : "This page can't save in this browser, so export your society to keep it.") + '</p><div class="row"><button class="btn tiny" data-act="export-society">⬇ Export this society</button><button class="btn tiny" data-act="import-society">⬆ Import a society</button><button class="btn tiny danger" data-act="reset-all">Start over (delete everything)</button></div></div>';
+  h += '<div class="section"><h3>Your work</h3><p class="hint">' + (storage ? "Everything is saved in this browser as you go." : "This page can't save in this browser, so export your society to keep it.") + '</p><div class="row"><button class="btn tiny" data-act="export-society">⬇ Export this society</button><button class="btn tiny" data-act="import-society">⬆ Import a society</button><button class="btn tiny danger" data-act="reset-all">Start over (delete my societies)</button></div></div>';
   h += '<div class="section small muted">Agent Kit ' + esc(AK.VERSION) + ' · <button class="btn tiny ghost" data-act="copy-link">Copy the project’s link</button></div>';
   const focusId = document.activeElement && document.activeElement.id;
   m.body.innerHTML = h;
@@ -6049,13 +6051,17 @@ const ACTIONS = {
     delete app.societies[s.id]; delete app.runs[s.id]; delete app.traces[s.id]; app.order = app.order.filter(id => id !== s.id); app.activeId = app.order[0]; save(); renderAll();
   },
   async "reset-all"() {
-    if (!(await uiConfirm("Delete everything this kit saved in this browser: all societies, traces and settings?", { title: "Start over?", ok: "Delete everything", danger: true }))) return;
+    const opts = { title: "Start over?", ok: "Start over", danger: true, checkbox: "Also forget my settings: the models I chose and my keys" };
+    if (!(await uiConfirm("Delete all your societies, traces and helper chats saved in this browser? The four microworlds come back as new.", opts))) return;
+    const forget = !!opts.checked;
     try { if (storage) storage.removeItem(LS_KEY); } catch (e) { /* nothing saved */ }
     for (const id of Object.keys(app.runs)) app.runs[id].api.stop();
-    app.settings = defaultSettings(); app.societies = {}; app.order = []; app.runs = {}; app.traces = {}; app.prevStrips = {}; app.log = {}; app.helperChat = {};
+    if (forget) app.settings = defaultSettings();
+    app.societies = {}; app.order = []; app.runs = {}; app.traces = {}; app.prevStrips = {}; app.log = {}; app.helperChat = {};
     ensureSocieties(); await rerunAll();
+    if (!forget) await saveNow();   // the settings stay saved
     if (app.ui.settingsModal) app.ui.settingsModal.close();
-    renderAll(); toast("Started over.");
+    renderAll(); toast(forget ? "Started over, and forgot your settings." : "Started over. Your settings are kept.");
   },
   settings() { openSettings(); },
   guide(t) { openGuide(t.dataset.id); },

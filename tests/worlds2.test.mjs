@@ -265,4 +265,25 @@ export default function (T, { modelWindow, pageWindow, same }) {
     return ok && !!warn && /The Drawer and the Finder are using Gemini Nano/.test(warn.textContent) && !pw.document.querySelector(".qcard .warnline");
   });
   T.test("Pebble: Eyes is told to ignore lines, as the Judge and Dot Counter do", ["Seeds"], () => /Ignore any lines/.test(Society.agentById(Seeds.makePebbles(), "eyes").instructions));
+  const startOver = async (pw, forget) => {
+    pw.__ak.openSettings();
+    pw.document.querySelector('[data-act="reset-all"]').click();
+    await sleep(20);
+    const dlg = Array.from(pw.document.querySelectorAll(".modal-body")).pop();
+    const box = dlg.querySelector("[data-check]");
+    if (forget) { box.checked = true; box.dispatchEvent(new pw.Event("change", { bubbles: true })); }
+    dlg.querySelector("[data-yes]").click();
+    await sleep(80);
+    return { box, text: dlg.textContent };
+  };
+  T.test("page: Start over keeps the settings unless you tick “Also forget my settings”", ["Store"], async () => {
+    const { w: pw } = await boot();
+    const st = pw.__ak.app.settings;
+    st.extra = [{ connection: "gemini", model: "gemini-3.8-flash" }];
+    pw.__ak.app.societies.secret.roundLimit = 3;
+    const a = await startOver(pw, false);
+    const kept = pw.__ak.app.settings.connection === "pretend" && pw.__ak.app.settings.extra.length === 1 && pw.__ak.app.societies.secret.roundLimit === 10 && !!a.box && !a.box.checked && /forget my settings/.test(a.text);
+    await startOver(pw, true);
+    return kept && pw.__ak.app.settings.connection === "none" && pw.__ak.app.settings.extra.length === 0;
+  });
 }

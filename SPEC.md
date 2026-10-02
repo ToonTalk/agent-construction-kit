@@ -302,6 +302,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 334 PASS, fingerprint `b899278acfef`.
 - 2026-10-02 — **Revision 1.0.7.** Ken decided that stray lines don't count: a Judge ignores them. The Judges only ever see counts, and Dot Counter already skips lines, so Eyes is now told the pebbles are the dots and to ignore lines, shapes and writing. The test bench's “3 by 5 grid, with a stray line” checks it. `agent-kit-microworlds.md` (the seven microworld designs) is now in the repo.
   - Suite: 335 PASS, fingerprint `d79c1a9a29fb`.
+- 2026-10-02 — **Revision 1.0.8.** “Start over” deletes the societies, traces and helper chats but keeps the settings (models and keys) unless “Also forget my settings” is ticked in its dialog.
+  - Suite: 336 PASS, fingerprint `9294dc5094cd`.
 
 ---
 
