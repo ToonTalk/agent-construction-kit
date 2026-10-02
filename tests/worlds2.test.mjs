@@ -308,6 +308,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const box = part => pw.document.querySelector('[data-bind="rule-send"][data-id="t2"][data-part="' + part + '"]');
     const set = (part, on) => { const b = box(part); b.checked = on; b.dispatchEvent(new pw.Event("change", { bubbles: true })); };
     const r = pw.__ak.soc().rules.find(x => x.id === "t2");
+    pw.document.querySelector('[data-act="rule-edit"][data-id="t2"]').click();
     const before = box("image").checked && !box("text").checked && !pw.document.querySelector('select[data-field="send"]');
     set("text", true); set("data", true);
     const all = r.send === "text+data+image";
@@ -356,7 +357,8 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const m = () => pw.document.querySelector(".modal-body");
     const senders = Array.from(m().querySelectorAll(".conn-in .achip")).map(x => x.textContent);
     const buttons = m().querySelectorAll('.conn-in button.achip[data-act="open-agent"]').length;
-    const ownRules = Array.from(m().querySelectorAll(".links .rule")).length;
+    const ownRules = Array.from(m().querySelectorAll(".links .rule-read")).length;
+    m().querySelector('.links [data-act="rule-edit"][data-id="t1"]').click();
     const s = pw.__ak.soc();
     // change its rule's SEND from the editor
     const box = m().querySelector('.links [data-bind="rule-send"][data-id="t1"][data-part="data"]');
@@ -364,10 +366,28 @@ export default function (T, { modelWindow, pageWindow, same }) {
     box.dispatchEvent(new pw.Event("change", { bubbles: true }));
     const changed = s.rules.find(r => r.id === "t1").send === "text+data" && m().querySelector('.links [data-bind="rule-send"][data-id="t1"][data-part="data"]').checked;
     m().querySelector('[data-act="add-rule-from"]').click();
-    const added = s.rules.filter(r => r.from === "artist").length === 2 && m().querySelectorAll(".links .rule").length === 2;
+    const added = s.rules.filter(r => r.from === "artist").length === 2 && m().querySelectorAll(".links .rule").length === 2;   // both open: t1 and the new one
     // the sender buttons open that agent
     m().querySelector('.conn-in button.achip[data-id="describer"]').click();
     const opened = /Describer/.test(pw.document.querySelector(".modal-head h2").textContent);
     return senders.some(x => /You, at the start/.test(x)) && senders.some(x => /Renderer/.test(x)) && senders.some(x => /Describer/.test(x)) && buttons === 2 && ownRules === 1 && changed && added && opened;
+  });
+  T.test("page: a rule reads as a sentence with agent buttons; ✎ Edit shows its controls and ✓ Done reads it again", ["Society"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="pebbles"]').click();
+    pw.__ak.app.ui.lookInside = true;
+    pw.__ak.renderAll();
+    const row = id => pw.document.querySelector('[data-act="rule-edit"][data-id="' + id + '"]').closest(".rule-read");
+    const p7 = row("p7").textContent.replace(/\s+/g, " ").trim();
+    const buttons = Array.from(row("p7").querySelectorAll('button.achip[data-act="open-agent"]')).map(b => b.dataset.id);
+    const off = row("p4").classList.contains("off") && /switched off/.test(row("p4").textContent);
+    const plain = !row("p7").querySelector("select, input");
+    pw.document.querySelector('[data-act="rule-edit"][data-id="p7"]').click();
+    const editing = !!pw.document.querySelector('.rule-editing [data-bind="rule"][data-id="p7"]');
+    pw.document.querySelector('[data-act="rule-done"][data-id="p7"]').click();
+    const back = !pw.document.querySelector(".rule-editing") && !!row("p7");
+    const l = Seeds.makeLostAndFound();
+    pw.__ak.app.societies.lost = l;
+    return /^When .*Judge responds, if its data says pass is false, send its words to .*Critic, starting with “The judge said:”\.\s*✎ Edit$/.test(p7) && buttons.join() === "judge,critic" && off && plain && editing && back;
   });
 }

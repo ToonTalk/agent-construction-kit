@@ -313,6 +313,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 341 PASS, fingerprint `a6cad6ff1ff8`.
 - 2026-10-02 — **Revision 1.0.11.** Every agent's editor has a **Connections** section: the agents that can send it a message, as the usual agent buttons (each opens that agent; hovering shows the rule; a sender whose rules are all off is faded and says “rule off”; “You, at the start” when a start goes to it; “anyone” for rules from anyone), and its own rules (WHEN it responds …), editable exactly as in Look inside, with “+ Add a rule for …”. Rule changes in either place redraw both. The Helper's facts mention it.
   - Suite: 342 PASS, fingerprint `ead67a66481a`.
+- 2026-10-02 — **Revision 1.0.12.** Rules are read before they are edited. In Look inside and in every agent's Connections, a rule is a sentence with agent buttons and no menus or tick boxes: “When [⚖️ Judge] responds, if its data says **pass** is **false**, send its words to [📣 Critic], starting with “The judge said:”.” Each agent button opens that agent. A switched-off rule is faded and says so. **✎ Edit** shows the rule's controls as before; **✓ Done** turns it back into a sentence. A new rule opens ready to edit.
+  - Suite: 343 PASS, fingerprint `d26bdec15ee7`.
 
 ---
 

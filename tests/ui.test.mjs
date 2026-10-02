@@ -27,7 +27,7 @@ export default function (T, { pageWindow }) {
   T.test("look inside shows the agents and rules", ["Society"], async () => {
     const { w } = await page();
     click(w, '[data-act="look"]');
-    return w.document.querySelectorAll(".acard").length === 3 && w.document.querySelectorAll(".rule").length === 4 && !!w.document.querySelector('[data-act="add-agent"]');
+    return w.document.querySelectorAll(".acard").length === 3 && w.document.querySelectorAll(".rule-read").length === 4 && !w.document.querySelector(".rules select, .rules input") && !!w.document.querySelector('[data-act="add-agent"]');
   });
   T.test("the stage starts with four rounds and has no seed", ["Seeds"], async () => {
     const { w } = await page();
@@ -109,7 +109,7 @@ export default function (T, { pageWindow }) {
     const { w } = await page();
     click(w, '[data-act="challenge"][data-id="grid3x5"]');
     const j = w.__ak.soc().agents.find(a => a.id === "judge");
-    return j.typeId === "grid-judge" && /runs the Grid Judge program/.test(w.document.querySelector(".stage").textContent) && /the Judge now runs the Grid Judge program/.test(w.document.querySelector("#toasts").textContent) && w.document.querySelectorAll(".achip").length === 6;
+    return j.typeId === "grid-judge" && /runs the Grid Judge program/.test(w.document.querySelector(".stage").textContent) && /the Judge now runs the Grid Judge program/.test(w.document.querySelector("#toasts").textContent) && w.document.querySelectorAll(".agent-strip .achip").length === 6;
   });
   T.test("a programmed agent opens with its pseudocode slots and scenarios", ["Library"], async () => {
     const { w } = await page();

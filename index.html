@@ -146,6 +146,8 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .send-group{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.send-parts{display:inline-flex;gap:3px}.sendp{display:inline-flex;align-items:center;gap:3px;border:1.5px solid var(--line);border-radius:999px;padding:1px 8px 1px 5px;font-size:12px;cursor:pointer;background:#fff;color:var(--ink-soft)}.sendp.on{border-color:var(--accent);background:var(--accent-bg);color:var(--ink)}.sendp input{margin:0}
 .models-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:8px 0 2px}.mpick{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--ink-soft)}.mpick select{font-size:12.5px;max-width:200px}
 .conn-in{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.achip.off{opacity:.55}.achip.you{border-color:#F2C9A8}
+.rule-read{display:flex;align-items:flex-start;gap:8px;border:1.5px solid var(--line);border-radius:12px;padding:7px 10px;background:#fff;font-size:13.5px;line-height:1.85}.rule-read .sentence{flex:1}.rule-read .achip{vertical-align:middle;margin:0 1px;padding:0 8px 0 5px;font-size:12.5px;line-height:1.6}.rule-read .achip .e{font-size:13px}.rule-read.off .sentence{opacity:.55}.rule-read .btn{flex:none;margin-top:3px}
+.rule-editing{border:1.5px dashed var(--accent);border-radius:12px;padding:6px}.rule-editing .rule{border:0;margin:0}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -409,7 +411,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.0.11";
+AK.VERSION = "1.0.12";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -4294,7 +4296,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "But when the learner asks how to do something in the kit itself (where a button is, how to change a setting), tell them plainly, using the facts below, then you may ask a question. Never say something can't be done if a fact below says how.\n" +
   "Facts about the kit:\n" +
   "- 🔍 Look inside shows every agent and every rule. Click an agent (there, or its button on the stage) to open its editor and change it. An agent's editor also shows its Connections: which agents can send it messages, and its own rules, which can be changed there.\n" +
-  "- A rule says WHEN an agent responds, and IF something is true, SEND its words, its data and/or its picture (three checkboxes) TO another agent.\n" +
+  "- A rule says when an agent responds, and if something is true, send its words, its data and/or its picture to another agent. Rules are shown as sentences with agent buttons; ✎ Edit next to a rule shows its controls (three checkboxes for what to send), and ✓ Done puts it back.\n" +
   "- Models: a grown-up adds models (and any keys) in ⚙️ Settings. When more than one model is set up, the learner chooses which model each AI agent uses without Settings: in the Models row on the stage, under the agent buttons, or in the agent's editor under “Its model”. The MODELS section below says what is set up now.\n" +
   "- “You be the …” on the stage lets the learner take an agent's place in the run.\n" +
   "- ▶ Run, ⏭ Step (one message at a time), ↺ Reset and the Rounds box are on the stage. The Trace shows every message; “Show full technical details” shows exactly what a model was sent.\n" +
@@ -4512,7 +4514,7 @@ const app = {
   runs: {}, traces: {}, prevStrips: {}, log: {}, helperChat: {},
   banners: [], saveError: "", loadError: "", replaced: [],
   adapter: null, adapterKey: "",
-  ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), tech: new Set(), expandedW: new Set(), bench: {}, replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
+  ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), tech: new Set(), expandedW: new Set(), editingRules: new Set(), bench: {}, replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
 };
 const soc = () => app.societies[app.activeId];
 const nameOf = (s, id) => (id === "*" ? "anyone" : id === "you" ? "You" : ((Society.agentById(s, id) || { name: id }).name));
@@ -5053,10 +5055,28 @@ function ruleHTML(r, s) {
 }
 // Rules show in Look inside and in each agent's editor, so both are drawn again.
 function rulesChanged() { renderLeft(); if (app.ui.editor) renderEditor(); }
+function agentBtnHTML(s, id) {
+  if (id === "*") return '<span class="achip"><span class="e">✳️</span>anyone</span>';
+  const a = Society.agentById(s, id);
+  if (!a) return '<span class="achip off">' + esc(id) + '</span>';
+  return '<button class="achip kind-' + a.kind + '" data-act="open-agent" data-id="' + esc(a.id) + '" title="Open ' + esc(a.name) + '"><span class="e">' + esc(a.emoji) + '</span>' + esc(a.name) + '</button>';
+}
+const OP_WORDS = { "=": "is", "!=": "is not", "<": "is less than", ">": "is more than", "<=": "is at most", ">=": "is at least" };
+function ruleSentenceHTML(r, s) {
+  const q = t => "“" + esc(t) + "”";
+  let cond = "always";
+  if (r.when === "data") cond = "if its data says <b>" + esc(r.field || "?") + "</b> " + (OP_WORDS[r.op || "="] || esc(r.op)) + " <b>" + esc(r.value == null ? "" : r.value) + "</b>";
+  if (r.when === "text") { const ws = String(r.word || "").split(",").map(w => w.trim()).filter(Boolean); cond = ws.length ? "if its words contain " + ws.map(q).join(ws.length > 2 ? ", " : " or ").replace(/, (?=[^,]*$)/, ", or ") : "if its words contain (no word yet)"; }
+  return "When " + agentBtnHTML(s, r.from) + " responds, " + cond + ", send its " + esc(Society.sendWords(r.send)) + " to " + agentBtnHTML(s, r.to) + (r.prefix ? ", starting with " + q(r.prefix) : "") + (/[.!?]\s*$/.test(r.prefix || "") ? "" : ".");
+}
+function ruleView(r, s) {
+  if (app.ui.editingRules.has(r.id)) return '<div class="rule-editing">' + ruleHTML(r, s) + '<div class="row end"><button class="btn tiny primary" data-act="rule-done" data-id="' + esc(r.id) + '">✓ Done</button></div></div>';
+  return '<div class="rule-read' + (r.enabled === false ? " off" : "") + '"><span class="sentence">' + ruleSentenceHTML(r, s) + (r.enabled === false ? ' <span class="badge plain">switched off</span>' : "") + '</span><button class="btn tiny" data-act="rule-edit" data-id="' + esc(r.id) + '" title="Change this rule">✎ Edit</button></div>';
+}
 function insideHTML(s) {
   let h = '<div class="card"><div class="card-title"><h3>Inside ' + esc(s.title) + '</h3></div><p class="inside-note">Ordinary agents and rules — the same kinds you can make yourself. Open an agent to read or change it.</p>';
   h += '<div class="agent-grid">' + s.agents.map(a => agentCardHTML(a, s)).join("") + '</div><div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-agent">+ Add an agent</button></div>';
-  h += '<div class="section"><h3>Rules</h3><p class="hint">When an agent responds, every rule that matches sends a message. A new round starts each time <select data-bind="roundAgent" aria-label="Round agent">' + agentOptions(s, s.roundAgent, false) + '</select> gets a message.</p><div class="rules">' + s.rules.map(r => ruleHTML(r, s)).join("") + '</div>' +
+  h += '<div class="section"><h3>Rules</h3><p class="hint">When an agent responds, every rule that matches sends a message. A new round starts each time <select data-bind="roundAgent" aria-label="Round agent">' + agentOptions(s, s.roundAgent, false) + '</select> gets a message.</p><div class="rules">' + s.rules.map(r => ruleView(r, s)).join("") + '</div>' +
     '<div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-rule">+ Add a rule</button></div><div class="gate-note">⛔ A <b>gate</b> answers pass = true or pass = false. When it says false, its ALWAYS rules wait; only rules that check data.pass = false still fire.</div></div>';
   h += '<div class="section"><div class="row"><button class="btn tiny" data-act="export-society">⬇ Export</button><button class="btn tiny" data-act="import-society">⬆ Import</button>' +
     (isMicroworld(s.id) ? '<button class="btn tiny" data-act="save-copy">Save a copy</button><button class="btn tiny danger" data-act="reset-world">Reset ' + esc(s.title) + '</button>' : '<button class="btn tiny danger" data-act="remove-world">Remove this society</button>') + '</div></div>';
@@ -5515,7 +5535,7 @@ function connectionsHTML(a, s) {
     (starts.length ? '<span class="achip you" title="' + esc("The start: " + starts.map(st => st.label).join(", ")) + '"><span class="e">🙋</span>You, at the start</span>' : "") +
     Array.from(senders, ([k, rs]) => chip(k, rs)).join("") + (!starts.length && !senders.size ? '<span class="small">nobody yet: no rule sends to it</span>' : "") + '</div>';
   const own = s.rules.filter(r => r.from === a.id || r.from === "*");
-  h += '<p class="hint" style="margin-top:10px">Its rules: when ' + esc(a.name) + ' responds, these decide who gets a message.' + (a.gate ? " It is a gate: when it says pass = false, its ALWAYS rules wait." : "") + '</p><div class="rules">' + (own.length ? own.map(r => ruleHTML(r, s)).join("") : '<p class="small muted">None yet, so nobody hears what it says.</p>') + '</div>' +
+  h += '<p class="hint" style="margin-top:10px">Its rules: when ' + esc(a.name) + ' responds, these decide who gets a message.' + (a.gate ? " It is a gate: when it says pass = false, its ALWAYS rules wait." : "") + '</p><div class="rules">' + (own.length ? own.map(r => ruleView(r, s)).join("") : '<p class="small muted">None yet, so nobody hears what it says.</p>') + '</div>' +
     '<div class="row" style="margin-top:6px"><button class="btn tiny" data-act="add-rule-from" data-id="' + esc(a.id) + '">+ Add a rule for ' + esc(a.name) + '</button></div></div>';
   return h;
 }
@@ -5988,15 +6008,19 @@ const ACTIONS = {
     if (!(await uiConfirm("Delete " + a.name + "? Its rules go too.", { title: "Delete an agent?", ok: "Delete", danger: true }))) return;
     Society.deleteAgent(s, a.id); if (app.ui.editorModal) app.ui.editorModal.close(); save(); renderAll();
   },
-  "add-rule"() { const s = soc(); s.rules.push({ id: Society.newRuleId(s), from: s.agents[0].id, when: "always", send: "text", to: s.agents[Math.min(1, s.agents.length - 1)].id, prefix: "", enabled: true }); save(); rulesChanged(); },
+  "add-rule"() { const s = soc(), id = Society.newRuleId(s); s.rules.push({ id, from: s.agents[0].id, when: "always", send: "text", to: s.agents[Math.min(1, s.agents.length - 1)].id, prefix: "", enabled: true }); app.ui.editingRules.add(id); save(); rulesChanged(); },
+  "rule-edit"(t) { app.ui.editingRules.add(t.dataset.id); rulesChanged(); },
+  "rule-done"(t) { app.ui.editingRules.delete(t.dataset.id); rulesChanged(); },
   "add-rule-from"(t) {
     const s = soc(), a = Society.agentById(s, t.dataset.id);
     if (!a) return;
     const other = s.agents.find(x => x.id !== a.id) || a;
-    s.rules.push({ id: Society.newRuleId(s), from: a.id, when: "always", send: "text", to: other.id, prefix: "", enabled: true });
+    const id = Society.newRuleId(s);
+    s.rules.push({ id, from: a.id, when: "always", send: "text", to: other.id, prefix: "", enabled: true });
+    app.ui.editingRules.add(id);
     save(); rulesChanged();
   },
-  "del-rule"(t) { const s = soc(); s.rules = s.rules.filter(r => r.id !== t.dataset.id); save(); rulesChanged(); },
+  "del-rule"(t) { const s = soc(); s.rules = s.rules.filter(r => r.id !== t.dataset.id); app.ui.editingRules.delete(t.dataset.id); save(); rulesChanged(); },
   "trace-tab"(t) { app.ui.traceTab = t.dataset.id; renderTrace(); },
   "trace-filter"(t) { app.ui.traceFilter = t.dataset.id; renderTrace(); },
   "trace-toggle"(t) { const i = +t.dataset.i; if (app.ui.expanded.has(i)) app.ui.expanded.delete(i); else app.ui.expanded.add(i); renderTrace(); },
