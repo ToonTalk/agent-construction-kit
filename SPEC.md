@@ -79,7 +79,7 @@ A rules table, extending the Explorer's rule model:
 ```
 WHEN <agent> responds
   [ALWAYS | IF data.<field> <op> <value> | IF text contains <word>]
-SEND [text | data | both | image] TO <agent>   (optional prefix)
+SEND [any of: words (text), data, picture (image)] TO <agent>   (optional prefix; “both” before 1.0.9 = words and data)
 ```
 - **Gate** (the veto primitive): a programmed agent whose output has `pass: false` stops the flow or reroutes it per its rule.
 - A **round limit** and a **Stop** button are always visible. **Pause all** as in the Explorer.
@@ -304,6 +304,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 335 PASS, fingerprint `d79c1a9a29fb`.
 - 2026-10-02 — **Revision 1.0.8.** “Start over” deletes the societies, traces and helper chats but keeps the settings (models and keys) unless “Also forget my settings” is ticked in its dialog.
   - Suite: 336 PASS, fingerprint `9294dc5094cd`.
+- 2026-10-02 — **Revision 1.0.9.** A rule's SEND was a menu of text, data, “both” and image, and “both” was unclear (it meant text and data), with no way to send all three. It is now three checkboxes, **words**, **data** and **picture**, in any combination (stored as `"text+data+image"` and so on). A rule must send at least one. Saved and imported rules that say “both” become `"text+data"`. Rules read as English say “SEND words and data”.
+  - Suite: 338 PASS, fingerprint `f80bc21b67b2`.
 
 ---
 

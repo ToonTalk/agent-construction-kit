@@ -143,6 +143,7 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .extra-list{display:grid;gap:6px;margin:6px 0 8px}.extra{display:flex;flex-wrap:wrap;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:10px;padding:6px 8px;font-size:13px}
 .add-model{flex-wrap:wrap;gap:6px}.add-model .field{max-width:260px}
 .bubbles.wide{min-height:60px}
+.send-group{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.send-parts{display:inline-flex;gap:3px}.sendp{display:inline-flex;align-items:center;gap:3px;border:1.5px solid var(--line);border-radius:999px;padding:1px 8px 1px 5px;font-size:12px;cursor:pointer;background:#fff;color:var(--ink-soft)}.sendp.on{border-color:var(--accent);background:var(--accent-bg);color:var(--ink)}.sendp input{margin:0}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -406,7 +407,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.0.8";
+AK.VERSION = "1.0.9";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -3295,7 +3296,7 @@ function makeTelephone() {
     rules: [
       { id: "t1", from: "artist", when: "always", send: "text", to: "renderer", prefix: "", enabled: true },
       { id: "t2", from: "renderer", when: "always", send: "image", to: "describer", prefix: "", enabled: true },
-      { id: "t3", from: "renderer", when: "data", field: "pass", op: "=", value: "false", send: "both", to: "artist", prefix: "Your program did not run.", enabled: true },
+      { id: "t3", from: "renderer", when: "data", field: "pass", op: "=", value: "false", send: "text+data", to: "artist", prefix: "Your program did not run.", enabled: true },
       { id: "t4", from: "describer", when: "always", send: "text", to: "artist", prefix: "", enabled: true }
     ]
   };
@@ -3342,7 +3343,7 @@ function makePebbles() {
     ],
     rules: [
       { id: "p1", from: "designer", when: "always", send: "text", to: "renderer", prefix: "", enabled: true },
-      { id: "p2", from: "renderer", when: "data", field: "pass", op: "=", value: "false", send: "both", to: "designer", prefix: "Your program did not run.", enabled: true },
+      { id: "p2", from: "renderer", when: "data", field: "pass", op: "=", value: "false", send: "text+data", to: "designer", prefix: "Your program did not run.", enabled: true },
       { id: "p3", from: "renderer", when: "always", send: "image", to: "eyes", prefix: "", enabled: true },
       { id: "p4", from: "renderer", when: "always", send: "data", to: "dot-counter", prefix: "", enabled: false },
       { id: "p5", from: "eyes", when: "always", send: "data", to: "judge", prefix: "", enabled: true, tag: "to-judge" },
@@ -3383,7 +3384,7 @@ function makeSecretNumber() {
     rules: [
       { id: "n1", from: "guesser", when: "always", send: "text", to: "keeper", prefix: "", enabled: true },
       { id: "n2", from: "keeper", when: "data", field: "pass", op: "=", value: "false", send: "text", to: "guesser", prefix: "", enabled: true },
-      { id: "n3", from: "keeper", when: "data", field: "pass", op: "=", value: "false", send: "both", to: "notebook", prefix: "", enabled: false },
+      { id: "n3", from: "keeper", when: "data", field: "pass", op: "=", value: "false", send: "text+data", to: "notebook", prefix: "", enabled: false },
       { id: "n4", from: "notebook", when: "always", send: "text", to: "guesser", prefix: "", enabled: false }
     ]
   };
@@ -3414,7 +3415,7 @@ function makeLostAndFound() {
     rules: [
       { id: "l1", from: "drawer", when: "always", send: "text", to: "renderer", prefix: "", enabled: true },
       { id: "l2", from: "renderer", when: "always", send: "image", to: "finder", prefix: "", enabled: true },
-      { id: "l3", from: "renderer", when: "data", field: "pass", op: "=", value: "false", send: "both", to: "drawer", prefix: "Your program did not run.", enabled: true },
+      { id: "l3", from: "renderer", when: "data", field: "pass", op: "=", value: "false", send: "text+data", to: "drawer", prefix: "Your program did not run.", enabled: true },
       to("l4", "toys", "ball, doll, kite, teddy"), to("l5", "clothes", "hat, sock, shirt, shoe"), to("l6", "animals", "dog, cat, bird, fish"), to("l7", "tools", "hammer, key, spoon, saw"),
       { id: "l8", from: "finder", when: "always", send: "text", to: "mystery-box", prefix: "", enabled: true }
     ]
@@ -3440,6 +3441,21 @@ const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instruction
 const agentById = (soc, id) => (soc && soc.agents || []).find(a => a.id === id) || null;
 const clampInt = (v, lo, hi, d) => { const n = Math.round(+v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 const arr = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
+// A rule sends any of three parts: "text", "data", "image", joined with "+" ("text+data+image").
+// "both", from before 1.0.9, means "text+data".
+const SEND_PARTS = ["text", "data", "image"];
+const SEND_WORDS = { text: "words", data: "data", image: "picture" };
+function sendParts(send) {
+  const v = send === "both" ? "text+data" : String(send || "");
+  const out = {};
+  for (const k of v.split("+")) if (SEND_PARTS.indexOf(k) >= 0) out[k] = true;
+  return out;
+}
+function normSend(send) { const P = sendParts(send); const parts = SEND_PARTS.filter(k => P[k]); return parts.length ? parts.join("+") : null; }
+function sendWords(send, the) {   // "words and data", or with the: "the words and the data"
+  const w = SEND_PARTS.filter(k => sendParts(send)[k]).map(k => (the ? "the " : "") + SEND_WORDS[k]);
+  return w.length <= 1 ? (w[0] || "nothing") : w.slice(0, -1).join(", ") + " and " + w[w.length - 1];
+}
 function validateSociety(soc) {
   const errors = [];
   if (!soc || !Array.isArray(soc.agents) || !Array.isArray(soc.rules)) return ["not a society"];
@@ -3465,7 +3481,7 @@ function validateSociety(soc) {
     if (!(r.from === "*" || ids.has(r.from))) errors.push("rule " + r.id + " comes from an unknown agent");
     if (!ids.has(r.to)) errors.push("rule " + r.id + " goes to an unknown agent");
     if (["always", "data", "text"].indexOf(r.when) < 0) errors.push("rule " + r.id + " has a bad condition");
-    if (["text", "data", "both", "image"].indexOf(r.send) < 0) errors.push("rule " + r.id + " sends something unknown");
+    if (!normSend(r.send)) errors.push("rule " + r.id + " sends something unknown");
     if (r.when === "data" && ["=", "!=", "<", ">", "<=", ">="].indexOf(r.op) < 0) errors.push("rule " + r.id + " has a bad comparison");
   }
   if (!ids.has(soc.roundAgent)) errors.push("the round agent is missing");
@@ -3642,7 +3658,7 @@ function sanitizeRule(r, ids, used) {
   const base = id;
   while (used.has(id)) id = base + "-" + n++;
   used.add(id);
-  const out = { id, from, to, when, send: ["text", "data", "both", "image"].indexOf(r.send) >= 0 ? r.send : "text", prefix: cleanText(r.prefix, 200), enabled: r.enabled !== false };
+  const out = { id, from, to, when, send: normSend(r.send) || "text", prefix: cleanText(r.prefix, 200), enabled: r.enabled !== false };
   if (when === "data") { out.field = String(r.field || "").replace(/[^A-Za-z0-9_.]/g, "").slice(0, 40) || "pass"; out.op = ["=", "!=", "<", ">", "<=", ">="].indexOf(r.op) >= 0 ? r.op : "="; out.value = cleanText(r.value, 60); }
   if (when === "text") out.word = cleanText(r.word, 200);
   if (r.tag) out.tag = cleanId(r.tag);
@@ -3728,6 +3744,7 @@ function migrateSociety(soc) {
   const toLogo = text => { if (!Logo.looksLikeJS(text)) return null; const c = Logo.fromJS(text); if (c) changed++; return c; };
   const reword = text => { let t = String(text == null ? "" : text); for (const [old, now] of V1_TEXTS) if (t.indexOf(old) >= 0) { t = t.split(old).join(now); changed++; } return t; };
   for (const st of soc.starts || []) if (st.kind === "program") st.value = toLogo(st.value) || st.value;
+  for (const r of soc.rules || []) if (r.send === "both") { r.send = "text+data"; changed++; }
   for (const a of soc.agents || []) {
     if (a.kind === "program") for (const sc of a.scenarios || []) { if (sc.program) sc.program = toLogo(sc.program) || sc.program; }
     if (a.kind === "model") { a.instructions = reword(a.instructions); a.role = reword(a.role); }
@@ -3785,7 +3802,7 @@ function importScenarios(text) {
   if (!d || d.kind !== "agent-kit-scenarios" || !Array.isArray(d.scenarios)) throw new Error("This isn't an Agent Kit scenario file.");
   return { typeId: cleanId(d.typeId), agentName: cleanName(d.agentName, 40), scenarios: arr(d.scenarios, 60).map(sanitizeScenario).filter(Boolean) };
 }
-AK.Society = { agentById, validateSociety, setParams, applyChallenge, applyVariant, duplicateAgent, deleteAgent, newRuleId, uniqueAgentId, classifyPseudoEdit, installTranslation, revertAgent, sanitizeSociety, sanitizeAgent, sanitizeScenario, exportSociety, importSociety, exportScenarios, importScenarios, migrateSociety, addLibraryAgent, randomSecret, newSecret, AGENT_KEYS };
+AK.Society = { sendParts, normSend, sendWords, agentById, validateSociety, setParams, applyChallenge, applyVariant, duplicateAgent, deleteAgent, newRuleId, uniqueAgentId, classifyPseudoEdit, installTranslation, revertAgent, sanitizeSociety, sanitizeAgent, sanitizeScenario, exportSociety, importSociety, exportScenarios, importScenarios, migrateSociety, addLibraryAgent, randomSecret, newSecret, AGENT_KEYS };
 
 /* ===== SECTION: TRANSLATOR CLIENT ===== */
 const TRANSLATOR_RULES = [
@@ -3979,12 +3996,12 @@ function ruleMatches(rule, response) {
 }
 function describeRule(rule, nameOf) {
   const cond = rule.when === "always" ? "ALWAYS" : rule.when === "text" ? "IF text contains “" + (rule.word || "") + "”" : "IF data." + (rule.field || "") + " " + (rule.op || "=") + " " + (rule.value || "");
-  return "WHEN " + (rule.from === "*" ? "anyone" : nameOf(rule.from)) + " responds " + cond + " SEND " + rule.send + " TO " + nameOf(rule.to) + (rule.prefix ? " (prefix “" + rule.prefix + "”)" : "");
+  return "WHEN " + (rule.from === "*" ? "anyone" : nameOf(rule.from)) + " responds " + cond + " SEND " + sendWords(rule.send) + " TO " + nameOf(rule.to) + (rule.prefix ? " (prefix “" + rule.prefix + "”)" : "");
 }
 function composeUserText(msg, agent, render) {
   const parts = [];
   if (msg.text) parts.push(msg.text);
-  if (msg.data && Object.keys(msg.data).length && msg.send !== "text" && msg.send !== "image") {
+  if (msg.data && Object.keys(msg.data).length && sendParts(msg.send).data) {
     let js = JSON.stringify(msg.data);
     if (js.length > 6000) js = js.slice(0, 6000) + " …(cut short)";
     parts.push("Data from " + msg.fromName + ": " + js);
@@ -4018,7 +4035,7 @@ function createRun(society, deps) {
     if (!byId(to)) throw new Error("The start goes to an agent that doesn't exist.");
     run.start = clone(spec);
     run.status = "ready";
-    const msg = makeMessage("you", to, { text: cleanText(spec.text || "", 20000), data: safeData(spec.data || {}) || {}, send: spec.data ? "both" : "text" });
+    const msg = makeMessage("you", to, { text: cleanText(spec.text || "", 20000), data: safeData(spec.data || {}) || {}, send: spec.data ? "text+data" : "text" });
     run.queue.push(msg);
     addTrace({ kind: "run-start", title: soc.title, to, toName: nameOf(to), text: msg.text, seed: run.seed, roundLimit: run.roundLimit, adapter: deps.adapter ? deps.adapter.label : "", runtime: runtime.mode, round: 1 });
   }
@@ -4057,7 +4074,7 @@ function createRun(society, deps) {
     return { text, data: safeData(data) || {} };
   }
   async function activateRenderer(agent, msg, entry) {
-    const program = extractProgram(msg.data && typeof msg.data.program === "string" && msg.send !== "text" ? msg.data.program : msg.text || "");
+    const program = extractProgram(msg.data && typeof msg.data.program === "string" && sendParts(msg.send).data ? msg.data.program : msg.text || "");
     const res = await runtime.runTurtle(program, { seed: run.seed });
     const out = res.output || { ops: [], dots: [], labels: [], segments: 0 };
     const renderId = "p" + (++run.renderSeq);
@@ -4073,11 +4090,11 @@ function createRun(society, deps) {
   function buildMessage(rule, agent, response) {
     const prefix = rule.prefix ? String(rule.prefix) : "";
     const join = (p, t) => (p && t ? (/\s$/.test(p) ? p + t : p + " " + t) : (p || t || ""));
-    const f = { rule: rule.id, send: rule.send };
-    if (rule.send === "text") f.text = join(prefix, response.text);
-    else if (rule.send === "data") { f.text = prefix; f.data = clone(response.data || {}); }
-    else if (rule.send === "both") { f.text = join(prefix, response.text); f.data = clone(response.data || {}); }
-    else if (rule.send === "image") { f.text = prefix; f.renderId = response.renderId || null; if (!response.renderId) f.text = join(prefix, "(" + agent.name + " had no picture to send.)"); }
+    const P = sendParts(rule.send);
+    const f = { rule: rule.id, send: normSend(rule.send) || "text" };
+    f.text = P.text ? join(prefix, response.text) : prefix;
+    if (P.data) f.data = clone(response.data || {});
+    if (P.image) { f.renderId = response.renderId || null; if (!response.renderId) f.text = join(f.text, "(" + agent.name + " had no picture to send.)"); }
     return makeMessage(agent.id, rule.to, f);
   }
   function fireRules(agent, response, entry) {
@@ -5010,7 +5027,8 @@ function ruleHTML(r, s) {
   h += '<select ' + b("when") + ' aria-label="Condition">' + opt("always", r.when, "ALWAYS") + opt("data", r.when, "IF data.…") + opt("text", r.when, "IF text contains…") + '</select>';
   if (r.when === "data") h += '<input type="text" class="w-field" ' + b("field") + ' value="' + esc(r.field || "") + '" placeholder="field" aria-label="Field"><select ' + b("op") + ' aria-label="Comparison">' + ["=", "!=", "<", ">", "<=", ">="].map(o => opt(o, r.op || "=", o)).join("") + '</select><input type="text" class="w-val" ' + b("value") + ' value="' + esc(r.value == null ? "" : r.value) + '" placeholder="value" aria-label="Value">';
   if (r.when === "text") h += '<input type="text" class="w-val" ' + b("word") + ' value="' + esc(r.word || "") + '" placeholder="word" aria-label="Word">';
-  h += '<span class="kw">SEND</span><select ' + b("send") + ' aria-label="What to send">' + ["text", "data", "both", "image"].map(o => opt(o, r.send, o)).join("") + '</select><span class="kw">TO</span><select ' + b("to") + ' aria-label="To">' + agentOptions(s, r.to, false) + '</select>';
+  const P = Society.sendParts(r.send);
+  h += '<span class="send-group"><span class="kw">SEND</span><span class="send-parts" role="group" aria-label="What to send">' + [["text", "words", "what it said"], ["data", "data", "the data it sent back, like rows or pass"], ["image", "picture", "the picture it made (only the Renderer makes pictures)"]].map(x => '<label class="sendp' + (P[x[0]] ? " on" : "") + '" title="' + esc(x[2]) + '"><input type="checkbox" data-bind="rule-send" data-id="' + esc(r.id) + '" data-part="' + x[0] + '"' + (P[x[0]] ? " checked" : "") + '>' + x[1] + '</label>').join("") + '</span></span><span class="kw">TO</span><select ' + b("to") + ' aria-label="To">' + agentOptions(s, r.to, false) + '</select>';
   h += '<input type="text" class="w-pre" ' + b("prefix") + ' value="' + esc(r.prefix || "") + '" placeholder="prefix (optional)" aria-label="Prefix">';
   return h + '<button class="icon-btn del" data-act="del-rule" data-id="' + esc(r.id) + '" title="Delete this rule" aria-label="Delete rule">🗑</button></div>';
 }
@@ -5265,8 +5283,7 @@ function responseHTML(e, s, run) {
   if (a && a.kind === "program" && e.program && e.program.input && e.program.output && !e.program.error) body += '<div class="row" style="margin-top:6px"><button class="btn tiny" data-act="save-scn-from" data-i="' + e.i + '" title="Keep this input, and this answer as what ' + esc(a.name) + ' should say, as a test">＋ Save as a scenario</button></div>';
   return h + '<div class="tsec"><h4>Response</h4>' + body + '</div>';
 }
-const SENT = { text: "the words", data: "the data", both: "the words and the data", image: "the picture" };
-const firedText = f => "gets " + (SENT[f.send] || f.send) + (f.reason === "ALWAYS" ? ", always" : ", because " + f.reason);
+const firedText = f => "gets " + Society.sendWords(f.send, true) + (f.reason === "ALWAYS" ? ", always" : ", because " + f.reason);
 function rulesHTML(e) {
   if (!(e.fired && e.fired.length) && !(e.held && e.held.length)) return "";
   return '<div class="tsec"><h4>Rules</h4><ul class="fired">' + (e.fired || []).map(f => '<li>→ <b>' + esc(f.toName) + '</b> ' + esc(firedText(f)) + '</li>').join("") + (e.held || []).map(f => '<li class="held">✋ ' + esc(f.toName) + ': ' + esc(f.reason) + '</li>').join("") + '</ul></div>';
@@ -5274,7 +5291,7 @@ function rulesHTML(e) {
 // Everything else, for anyone who wants to see exactly what happened.
 function techHTML(e, s, run, trace) {
   const m = e.message || {};
-  let h = '<div class="tsec"><h4>Message in</h4><dl class="kv"><dt>from</dt><dd>' + esc(m.fromName || "") + (m.rule ? " (rule " + esc(m.rule) + ")" : "") + '</dd><dt>sent in round</dt><dd>' + esc(m.round) + '</dd><dt>carries</dt><dd>' + esc(m.send || "text") + '</dd></dl>';
+  let h = '<div class="tsec"><h4>Message in</h4><dl class="kv"><dt>from</dt><dd>' + esc(m.fromName || "") + (m.rule ? " (rule " + esc(m.rule) + ")" : "") + '</dd><dt>sent in round</dt><dd>' + esc(m.round) + '</dd><dt>carries</dt><dd>' + esc(Society.sendWords(m.send || "text")) + '</dd></dl>';
   if (m.text) h += '<pre class="box">' + esc(m.text) + '</pre>';
   if (m.data && Object.keys(m.data).length) h += jsonBox(m.data);
   if (m.renderId) { const r = findRender(trace, m.renderId); h += r ? imgTag(r, "thumb", "the picture it was sent", run) : '<p class="small muted">(a picture)</p>'; }
@@ -5301,7 +5318,7 @@ function incomingHTML(e, s, run, trace) {
   let body = "";
   if (m.text) body += e.agentKind === "renderer" ? '<div class="heard small">a Logo program (' + plural(lineCount(m.text), "line") + ')</div>' : '<div class="heard">' + md(clip(m.text, 600), true) + '</div>';
   if (m.renderId) { const r = findRender(trace, m.renderId); if (r) body += imgTag(r, "thumb", "the picture it was sent", run); }
-  if (m.data && Object.keys(m.data).length && m.send !== "text" && m.send !== "image") { const w = Words.paraphrase(m.data); if (w) body += '<div class="heard small">Data, in plain words: ' + esc(w) + '</div>'; }
+  if (m.data && Object.keys(m.data).length && Society.sendParts(m.send).data) { const w = Words.paraphrase(m.data); if (w) body += '<div class="heard small">Data, in plain words: ' + esc(w) + '</div>'; }
   return body ? '<div class="tsec"><h4>It got, from ' + esc(m.fromName) + '</h4>' + body + '</div>' : "";
 }
 function entryBodyHTML(e, s, run, trace) {
@@ -6178,6 +6195,16 @@ async function handleBind(t, evt) {
     case "your-answer": { app.ui.yourDraft[s.id] = String(t.value); paintYours(); return; }
     case "logo-edit": { if (app.ui.logoEdit) { app.ui.logoEdit.text = String(t.value); paintLogoEdit(); } return; }
     case "replay": { setReplay(+t.value); return; }
+    case "rule-send": {
+      const r = s.rules.find(x => x.id === t.dataset.id);
+      if (!r || !change) return;
+      const P = Society.sendParts(r.send);
+      P[t.dataset.part] = t.checked;
+      const next = Society.normSend(Object.keys(P).filter(k => P[k]).join("+"));
+      if (next) r.send = next; else toast("A rule has to send something: the words, the data or the picture.");
+      save(); renderLeft();
+      return;
+    }
     case "rule": {
       const r = s.rules.find(x => x.id === t.dataset.id);
       if (!r) return;

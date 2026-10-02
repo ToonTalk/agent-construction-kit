@@ -4,7 +4,7 @@
 
 ## State (2026-10-01)
 
-Agent Kit **1.0.8**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.0.8 follow reviews
+Agent Kit **1.0.9**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.0.9 follow reviews
 and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -54,7 +54,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**336 PASS, 0 FAIL · fingerprint `9294dc5094cd`** · model modules covered 19/19.
+**338 PASS, 0 FAIL · fingerprint `f80bc21b67b2`** · model modules covered 19/19.
 
 ## Acceptance criteria (§11)
 

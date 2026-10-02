@@ -286,4 +286,32 @@ export default function (T, { modelWindow, pageWindow, same }) {
     await startOver(pw, true);
     return kept && pw.__ak.app.settings.connection === "none" && pw.__ak.app.settings.extra.length === 0;
   });
+  T.test("rules: send any of the words, the data and the picture; an old “both” means words and data", ["Engine", "Society"], async () => {
+    const S = Society;
+    const ok = S.normSend("both") === "text+data" && S.normSend("image+text") === "text+image" && S.normSend("") === null && S.sendWords("text+data+image") === "words, data and picture" && S.sendWords("data", true) === "the data";
+    const s = Seeds.makeTelephone();
+    s.rules.find(r => r.id === "t2").send = "text+data+image";
+    s.roundLimit = 1;
+    const r = await run(s, { to: "artist", text: "a red circle" });
+    const d = r.trace.find(e => e.kind === "activation" && e.agentId === "describer");
+    const old = Seeds.makeTelephone();
+    old.rules.find(x => x.id === "t3").send = "both";
+    const back = S.importSociety(JSON.stringify(old)).society;
+    S.migrateSociety(old);
+    return ok && /I drew/.test(d.message.text) && !!d.message.renderId && Array.isArray(d.message.data.dots) && back.rules.find(x => x.id === "t3").send === "text+data" && old.rules.find(x => x.id === "t3").send === "text+data" && S.validateSociety(Seeds.makePebbles()).length === 0;
+  });
+  T.test("page: a rule's SEND is three checkboxes, and it can't send nothing", ["Society"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="telephone"]').click();
+    pw.__ak.app.ui.lookInside = true;
+    pw.__ak.renderAll();
+    const box = part => pw.document.querySelector('[data-bind="rule-send"][data-id="t2"][data-part="' + part + '"]');
+    const set = (part, on) => { const b = box(part); b.checked = on; b.dispatchEvent(new pw.Event("change", { bubbles: true })); };
+    const r = pw.__ak.soc().rules.find(x => x.id === "t2");
+    const before = box("image").checked && !box("text").checked && !pw.document.querySelector('select[data-field="send"]');
+    set("text", true); set("data", true);
+    const all = r.send === "text+data+image";
+    set("text", false); set("data", false); set("image", false);
+    return before && all && r.send === "image" && box("image").checked;
+  });
 }

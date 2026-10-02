@@ -17,7 +17,7 @@ export default function (T, { modelWindow, same }) {
   T.test("helper: it reads the society, the run and the scenarios", ["Helper"], () => {
     const req = Helper.helperRequest(Seeds.makeTelephone(), [{ kind: "activation", round: 1, agentName: "Describer", response: { text: "A red circle.", data: {} } }], "why?", []);
     const t = req.messages[0].content;
-    return /About it: Like the party game/.test(t) && /Describer/.test(t) && /A red circle\./.test(t) && /SCENARIOS/.test(t) && /WHEN Artist responds ALWAYS SEND text TO Renderer/.test(t) && req.system === Helper.HELPER_SYSTEM;
+    return /About it: Like the party game/.test(t) && /Describer/.test(t) && /A red circle\./.test(t) && /SCENARIOS/.test(t) && /WHEN Artist responds ALWAYS SEND words TO Renderer/.test(t) && req.system === Helper.HELPER_SYSTEM;
   });
   T.test("the pretend helper answers a failing scenario with a question, not the fix", ["Helper", "Pretend"], () => {
     const reply = Pretend.personas.helper.reply({ helperState: { question: "why does my scenario fail?", failing: [{ agent: "Grid Judge", scenario: "3 by 5", expected: "pass to be true", actual: "false" }] } });
