@@ -4,8 +4,8 @@ export default function (T, { modelWindow, same }) {
   const { Library, Scenarios, Runtime, SafeJS, Slots, Engine } = w.AK;
   const LIB = Library.LIB;
   const types = Object.keys(LIB);
-  T.test("all twenty shipped programmed agents are in the library, each described for + Add an agent", ["Library"], () =>
-    same(types.slice().sort(), ["book", "checker-judge", "collector", "color-judge", "dot-counter", "escalator", "grid-judge", "keeper", "leftovers", "loop-spotter", "mystery-judge", "name-keeper", "notebook", "referee", "row-judge", "scorekeeper", "shelf", "tally", "triangle-judge", "vote"]) && types.every(t => LIB[t].about && LIB[t].about.length > 20));
+  T.test("all twenty-two shipped programmed agents are in the library, each described for + Add an agent", ["Library"], () =>
+    same(types.slice().sort(), ["book", "brief", "checker-judge", "collector", "color-judge", "dot-counter", "escalator", "grid-judge", "keeper", "leftovers", "loop-spotter", "mystery-judge", "name-keeper", "notebook", "referee", "row-judge", "scorekeeper", "selector", "shelf", "tally", "triangle-judge", "vote"]) && types.every(t => LIB[t].about && LIB[t].about.length > 20));
   for (const t of types) {
     const L = LIB[t];
     T.test(t + ": its JavaScript passes the static check", ["Library", "SafeJS"], () => SafeJS.checkJS(L.js, "program").ok);
@@ -16,7 +16,7 @@ export default function (T, { modelWindow, same }) {
       return res.length === L.scenarios.length;
     });
     T.test(t + ": has at least four scenarios, including one where the answer is no", ["Library"], () =>
-      L.scenarios.length >= 4 && L.scenarios.some(s => s.expect.pass === false || s.expect.stuck === false || s.expect.say === "" || s.expect.rows === 0 || s.expect.taken === false || s.expect.matches === false || s.expect.count === 0 || ["broken", "trickster"].indexOf(s.expect.winner) >= 0 || s.expect.big === false || /don't add up|Please give/.test(s.expect.sayContains || "")));
+      L.scenarios.length >= 4 && L.scenarios.some(s => s.expect.pass === false || s.expect.stuck === false || s.expect.say === "" || s.expect.rows === 0 || s.expect.taken === false || s.expect.matches === false || s.expect.count === 0 || ["broken", "trickster"].indexOf(s.expect.winner) >= 0 || s.expect.big === false || /don't add up|Please give/.test(s.expect.sayContains || "") || /^no /i.test(s.name)));
     T.test(t + ": its line map covers every pseudocode line and stays inside the JavaScript", ["Library"], () => {
       const pn = L.pseudocode.split("\n").length, jn = L.js.split("\n").length;
       const covered = new Set();

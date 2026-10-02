@@ -163,6 +163,9 @@ img.zoomable{cursor:zoom-in}img.zoomable:hover,img.zoomable:focus{outline:2px so
 .needs-note{background:var(--warn-bg);color:#6B4A0A;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px}
 .guide .steps li{margin:6px 0}.guide details.ref{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}.guide details.ref summary{cursor:pointer}.guide h4{margin:12px 0 4px}
 .guide .big-idea{background:var(--accent-bg);border-radius:10px;padding:8px 10px}.guide-table{border-collapse:collapse;width:100%;font-size:13px}.guide-table th,.guide-table td{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}.guide-table th{background:#F3F6FA}
+.pics{display:flex;flex-wrap:wrap;gap:6px}
+.rcard.multi{flex-basis:236px}.rgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}.rthumb{position:relative;border-radius:8px;border:2px solid transparent}.rthumb img{width:100%;aspect-ratio:1/1;display:block;border-radius:6px;border:1px solid var(--line);background:#fff}.rthumb.chosen{border-color:var(--ok)}.rthumb.again{opacity:.7}.rthumb .mk{position:absolute;top:2px;right:4px;font-size:12px;font-weight:800;color:var(--ok);text-shadow:0 0 3px #fff}.rthumb.again .mk{color:var(--ink-soft)}
+.ftree,.ftree ul{list-style:none;margin:0;padding-left:16px}.ftree{padding-left:0}.ftree ul{border-left:2px solid var(--line);margin-left:22px}.ftree li{margin:6px 0}.tnode{display:flex;align-items:center;gap:8px}.tnode img{width:56px;height:56px;border:1px solid var(--line);border-radius:8px;background:#fff}.tnode.chosen img{border:2px solid var(--ok)}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -427,7 +430,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.3.2";
+AK.VERSION = "1.4.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -2359,6 +2362,20 @@ const Pretend = (() => {
         const n = hist.filter(x => x.role === "assistant").length;
         return ["Why did the " + topic + " cross the road? To get to the other side!", "What do you call a " + topic + " that tells jokes? A pun-guin!", "Why was the " + topic + " so good at school? It was outstanding in its field!"][n % 3];
       } },
+    mutator: { id: "mutator", title: "Pretend Mutator", about: "Used by the tests. It takes the program after “The program to change:” and adds 10 times its own number to the first number in it.",
+      reply: ctx => {
+        const said = String((ctx.message && ctx.message.text) || "");
+        const m = /The program to change:\n([\s\S]*?)(?:\nThe Critic suggests:|$)/.exec(said);
+        const prog = (m ? m[1] : said).trim() || "FORWARD 50";
+        const k = +(/\d+/.exec((ctx.agent && ctx.agent.name) || "") || [1])[0];
+        return /\d+/.test(prog) ? prog.replace(/\d+/, n => String(+n + 10 * k)) : prog + "\nRIGHT 15 FORWARD 50";
+      } },
+    artcritic: { id: "artcritic", title: "Pretend art critic", about: "Used by the tests. It likes more lines: each picture scores 1 point plus 1 for every 10 lines, up to 10. It always suggests more repetition.",
+      reply: ctx => {
+        const rs = ctx.renders || [];
+        const scores = rs.map(r => Math.min(10, 1 + Math.round((r.segments || 0) / 10)));
+        return "I scored " + rs.length + " pictures.\n" + JSON.stringify({ scores, suggestion: "Try more repetition." });
+      } },
     editor: { id: "editor", title: "Pretend Editor", about: "Used by the tests. It hands back the story it was given, with a heading.",
       reply: ctx => "The whole story: " + String((ctx.message && ctx.message.text) || "") },
     jokecritic: { id: "jokecritic", title: "Pretend joke critic", about: "Used by the tests. The Surprise critic always says to save the funny word for last; any other critic says to use shorter words.",
@@ -2509,7 +2526,7 @@ async function callGemini(req, cfg) {
   const system = req.system + outputInstruction(req.outputFields);
   const contents = req.messages.map((m, i) => {
     const parts = [{ text: m.content }];
-    if (i === req.messages.length - 1 && m.role === "user") (req.images || []).forEach(img => parts.unshift({ inline_data: { mime_type: "image/png", data: String(img).split(",")[1] || "" } }));
+    if (i === req.messages.length - 1 && m.role === "user") parts.unshift.apply(parts, (req.images || []).map(img => ({ inline_data: { mime_type: "image/png", data: String(img).split(",")[1] || "" } })));   // in order: picture 1 first
     return { role: m.role === "assistant" ? "model" : "user", parts };
   });
   const gen = { maxOutputTokens: req.maxTokens || 8000 };
@@ -3322,6 +3339,84 @@ libAgent({
   ]
 });
 libAgent({
+  typeId: "brief", name: "Brief", emoji: "📋", gate: false, note: "turns a program, a taste and a change size into a request for the Mutators",
+  about: "Writes what the Mutators are asked: the taste, how big a change to make, the program to change, and the Critic's suggestion. It also passes the program on, so it can be drawn and compared.",
+  pseudo: [
+    "the taste is {Mathematical beauty where simple rules generate complexity}",
+    "the change size is {5}: 1 changes one number, 10 starts afresh",
+    "the program to change is the one you sent, or the Selector's winner",
+    "say the taste, how big a change to make, the program, and the Critic's suggestion",
+    "pass on the program, so it can be drawn too"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const sizes = [\"\", \"Change exactly one number.\", \"Change two or three numbers.\", \"Change a few numbers, or add or remove one simple command.\", \"Make a small change to the shape.\", \"Make a noticeable change, but keep the program recognizable.\", \"Change the structure in a meaningful way.\", \"Transform the main structure.\", \"Make it radically different.\", \"Reimagine it almost entirely.\", \"Use the program only as a starting point.\"];",
+    "  const program = input.data.winner || input.text;",
+    "  const size = sizes[Math.max(1, Math.min(10, Math.round(Number(params.size) || 5)))];",
+    "  const suggestion = input.data.suggestion ? \"\\nThe Critic suggests: \" + input.data.suggestion : \"\";",
+    "  return { program: program, say: \"Taste: \" + params.taste + \"\\nHow big a change: \" + size + \"\\nThe program to change:\\n\" + program + suggestion };",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [6, 6] }, { pseudo: [2, 2], js: [2, 2] }, { pseudo: [2, 2], js: [4, 4] }, { pseudo: [3, 3], js: [3, 3] }, { pseudo: [4, 4], js: [5, 6] }, { pseudo: [5, 5], js: [6, 6] }],
+  params: { taste: "Mathematical beauty where simple rules generate complexity", size: 5 },
+  slots: [{ line: 1, text: "Mathematical beauty where simple rules generate complexity", param: "taste" }, { line: 2, text: "5", param: "size" }],
+  scenarios: [
+    { id: "s1", name: "the first program, from you", input: { from: "You", text: "FD 100" }, expect: { program: "FD 100", sayContains: "The program to change:\nFD 100" } },
+    { id: "s2", name: "the Selector's winner, with the Critic's suggestion", input: { from: "Selector", text: "Picture 2 wins.", data: { winner: "REPEAT 4 [FD 100 RT 90]", suggestion: "Add color." } }, expect: { program: "REPEAT 4 [FD 100 RT 90]", sayContains: "The Critic suggests: Add color." } },
+    { id: "s3", name: "the change size is said in words", input: { text: "FD 100" }, expect: { sayContains: "Taste: {=taste}" } },
+    { id: "s4", name: "no suggestion yet, so none is passed on", input: { from: "You", text: "FD 100" }, expect: { say: "Taste: {=taste}\nHow big a change: Make a noticeable change, but keep the program recognizable.\nThe program to change:\nFD 100" } }
+  ]
+});
+libAgent({
+  typeId: "selector", name: "Selector", emoji: "🧬", gate: false, collect: true, note: "collects · picks the winning picture from the Critic's scores",
+  about: "Waits for the programs of all the pictures and the Critic's scores, pairs them up in order, and picks a winner: the best, or by roulette, where a higher score gets more chances. Then it sends the winner and the Critic's suggestion back.",
+  pseudo: [
+    "wait for {5} messages: the programs of the pictures, and the Critic's scores",
+    "pair each picture's program with its score, in order",
+    "if choosing is {best}, the winner is the highest score",
+    "otherwise pick at random, but a higher score gets more chances",
+    "send the winner's program and the Critic's suggestion back"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const messages = input.messages || [];",
+    "  const programs = messages.filter(m => typeof m.data.program === \"string\").map(m => ({ program: m.data.program, by: m.data.by || m.from }));",
+    "  const critic = messages.filter(m => Array.isArray(m.data.scores))[0] || { data: { scores: [], suggestion: \"\" } };",
+    "  const scored = programs.map((p, i) => ({ program: p.program, by: p.by, picture: i + 1, score: Number(critic.data.scores[i]) || 0 }));",
+    "  if (scored.length === 0) {",
+    "    return { say: \"There were no pictures to choose from.\", winner: \"\", suggestion: \"\" };",
+    "  }",
+    "  let winner = scored[0];",
+    "  if (params.choosing === \"best\") {",
+    "    for (const s of scored) {",
+    "      h.tick();",
+    "      if (s.score > winner.score) {",
+    "        winner = s;",
+    "      }",
+    "    }",
+    "  } else {",
+    "    const tickets = [];",
+    "    for (const s of scored) {",
+    "      for (let k = 0; k < Math.max(1, s.score); k++) {",
+    "        tickets.push(s);",
+    "      }",
+    "    }",
+    "    winner = h.pick(tickets);",
+    "  }",
+    "  return { winner: winner.program, picture: winner.picture, score: winner.score, scores: scored.map(s => s.score), suggestion: critic.data.suggestion || \"\", say: \"Picture \" + winner.picture + \" (\" + winner.by + \"'s) wins with \" + winner.score + \" out of 10.\" + (critic.data.suggestion ? \" The Critic suggests: \" + critic.data.suggestion : \"\") };",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [2, 2] }, { pseudo: [2, 2], js: [3, 5] }, { pseudo: [3, 3], js: [10, 16] }, { pseudo: [4, 4], js: [17, 25] }, { pseudo: [5, 5], js: [26, 26] }],
+  params: { wait: 5, choosing: "best" },
+  slots: [{ line: 1, text: "5", param: "wait" }, { line: 3, text: "best", param: "choosing" }],
+  scenarios: [
+    { id: "s1", name: "the highest score wins", input: { messages: [{ from: "Renderer", text: "", data: { program: "FD 10", by: "Brief" } }, { from: "Renderer", text: "", data: { program: "FD 20", by: "Mutator 1" } }, { from: "Renderer", text: "", data: { program: "FD 30", by: "Mutator 2" } }, { from: "Critic", text: "", data: { scores: [4, 9, 6], suggestion: "Try a spiral." } }] }, expect: { winner: "FD 20", picture: 2, score: 9, suggestion: "Try a spiral." } },
+    { id: "s2", name: "the parent can win too, if nothing beats it", input: { messages: [{ from: "Renderer", text: "", data: { program: "FD 10", by: "Brief" } }, { from: "Renderer", text: "", data: { program: "FD 20", by: "Mutator 1" } }, { from: "Critic", text: "", data: { scores: [8, 3] } }] }, expect: { winner: "FD 10", picture: 1 } },
+    { id: "s3", name: "roulette with one picture still picks it", input: { messages: [{ from: "Renderer", text: "", data: { program: "FD 20", by: "Mutator 1" } }, { from: "Critic", text: "", data: { scores: [5] } }] }, expect: { winner: "FD 20" } },
+    { id: "s4", name: "no pictures came", input: { missing: true, messages: [{ from: "Critic", text: "", data: { scores: [] } }] }, expect: { winner: "", sayContains: "no pictures" } }
+  ]
+});
+libAgent({
   typeId: "dot-counter", name: "Dot Counter", emoji: "🔢", gate: false, note: "reads the Renderer's dot list",
   about: "Reads the Renderer's list of dots and counts rows and columns. It never looks at the picture.",
   listen: { from: "renderer", send: "data" },
@@ -3863,6 +3958,47 @@ function makeJokeWorkshop() {
     ]
   };
 }
+// Examples are ready-made societies to start from (＋ New society), not microworlds.
+const MUTATOR_INSTRUCTIONS = "You change Logo drawings. You get a taste, how big a change to make, and a program. Reply with one changed version of the whole program, as complete Logo, and nothing else.\n" + LOGO_HELP;
+const ART_CRITIC_INSTRUCTIONS = "You are an art critic for drawings made in Logo. You get the brief (the taste, and how big a change was asked for) and some pictures. Picture 1 is the parent; the others are new variants of it. Score every picture from 1 to 10 for how well it fits the taste, giving a little extra to variants that are new compared with picture 1. Say in one or two sentences which you like best and why. Then suggest one specific change to try next.";
+function makeEvolution() {
+  const mut = (id, name, emoji) => ({ id, kind: "model", name, emoji, role: "writes one changed version of the program", instructions: MUTATOR_INSTRUCTIONS, outputFields: [], canSeeImages: false, history: "stateless", replyKind: "program", pretend: "mutator" });
+  const r = (id, from, to, send, extra) => Object.assign({ id, from, when: "always", send, to, prefix: "", enabled: true }, extra || {});
+  return {
+    kind: "agent-kit-society", schema: 1, id: "evolution", title: "Evolution", question: "Can a critic and a chooser evolve a drawing?",
+    intro: "Three Mutators each change a Logo drawing a little. The Critic looks at the parent and all three variants together and scores them; the Selector picks a winner, which becomes the next parent. Round after round, where does the drawing go?",
+    questions: [
+      "Does the drawing get better, by the Critic's taste? By yours?",
+      "Change the Brief's taste. Does the drawing go somewhere else?",
+      "Try a change size of 1, then 9. Which evolves faster? Which gets stuck?",
+      "Switch the Selector from best to roulette. Does luck help it escape a dead end?",
+      "Who is the artist here: the Mutators, the Critic, the Selector, or the arrangement?"
+    ],
+    openers: ["Which agent decides what “better” means?", "What would happen with only one Mutator?", "Why might the parent sometimes win?"],
+    roundAgent: "brief", roundLimit: 4,
+    starts: [{ id: "start", label: "The first drawing", kind: "text", to: "brief", value: "REPEAT 36 [FORWARD 100 RIGHT 170]", examples: ["REPEAT 36 [FORWARD 100 RIGHT 170]", "FORWARD 100", "REPEAT 4 [FORWARD 100 RIGHT 90]"] }],
+    agents: [
+      programAgent("brief", "brief"),
+      mut("mutator-1", "Mutator 1", "🧪"), mut("mutator-2", "Mutator 2", "🧫"), mut("mutator-3", "Mutator 3", "🔬"),
+      { id: "renderer", kind: "renderer", name: "Renderer", emoji: "🖼️", role: "runs each program and makes the picture" },
+      { id: "critic", kind: "model", name: "Critic", emoji: "🧐", role: "scores the parent and the variants, all together", instructions: ART_CRITIC_INSTRUCTIONS, outputFields: [{ name: "scores", type: "list", about: "one score from 1 to 10 for each picture, in order: picture 1 first" }, { name: "suggestion", type: "text", about: "one specific change to try next" }], canSeeImages: true, history: "stateless", replyKind: "prose", pretend: "artcritic", collect: true, wait: 5 },
+      programAgent("selector", "selector"),
+      programAgent("book", "book", { name: "History", emoji: "📜", role: "keeps what happened each round" }),
+      { id: "narrator", kind: "model", name: "Narrator", emoji: "🎙️", role: "tells the story of the evolution, when the run ends", instructions: "You get what happened in each round of an evolving drawing: which picture won, its score, and what the Critic suggested. Tell the story of how the drawing evolved in one short paragraph for children: the turning points, and what the Critic kept asking for.", outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "generic" }
+    ],
+    rules: [
+      r("v1", "brief", "renderer", "data"), r("v2", "brief", "critic", "text"),
+      r("v3", "brief", "mutator-1", "text"), r("v4", "brief", "mutator-2", "text"), r("v5", "brief", "mutator-3", "text"),
+      r("v6", "mutator-1", "renderer", "text"), r("v7", "mutator-2", "renderer", "text"), r("v8", "mutator-3", "renderer", "text"),
+      r("v9", "renderer", "critic", "image"), r("v10", "renderer", "selector", "data"),
+      r("v11", "critic", "selector", "data"),
+      r("v12", "selector", "brief", "text+data"),
+      r("v13", "selector", "book", "text"),
+      r("v14", "book", "narrator", "text", { when: "end" })
+    ]
+  };
+}
+const EXAMPLES = [{ id: "evolution", make: makeEvolution, emoji: "🧬", about: "Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner. Needs a model that sees pictures well." }];
 // Free play: one AI agent and you. Everything else is added in Look inside.
 function makeBlank(title) {
   return {
@@ -3891,10 +4027,10 @@ const V1_TEXTS = [
   ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
   ["a turtle program", "a Logo program"]
 ];
-AK.Seeds = { makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+AK.Seeds = { makeEvolution, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
-const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
+const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "collect", "wait", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
 const agentById = (soc, id) => (soc && soc.agents || []).find(a => a.id === id) || null;
 const clampInt = (v, lo, hi, d) => { const n = Math.round(+v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 const arr = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
@@ -4139,7 +4275,8 @@ function sanitizeAgent(a, ids) {
     out.replyKind = a.replyKind === "program" ? "program" : "prose";
     out.pretend = Object.prototype.hasOwnProperty.call(Pretend.personas, a.pretend) ? a.pretend : "generic";
     if (a.model) out.model = String(a.model).replace(/[^\w.:\/-]/g, "").slice(0, 100);
-    if (a.human) out.human = true;   // a person answers: the run waits for them   // "provider:model"; the main model if this one isn't set up
+    if (a.human) out.human = true;   // a person answers: the run waits for them
+    if (a.collect && !a.human) { out.collect = true; out.wait = clampInt(a.wait, 1, 20, 2); }   // it waits for this many messages, then answers them all   // "provider:model"; the main model if this one isn't set up
   } else if (a.kind === "program") {
     out.typeId = cleanId(a.typeId) || "custom";
     if (a.collect) out.collect = true;
@@ -4464,6 +4601,21 @@ function describeRule(rule, nameOf) {
   const cond = rule.when === "always" ? "ALWAYS" : rule.when === "text" ? "IF text contains “" + (rule.word || "") + "”" : "IF data." + (rule.field || "") + " " + (rule.op || "=") + " " + (rule.value || "");
   return "WHEN " + (rule.from === "*" ? "anyone" : nameOf(rule.from)) + " responds " + cond + " SEND " + sendWords(rule.send) + " TO " + nameOf(rule.to) + (rule.prefix ? " (prefix “" + rule.prefix + "”)" : "");
 }
+// What an AI agent that collects is told: every message, in order, with its pictures numbered.
+function composeCollectedText(msg, agent, renders) {
+  let k = 0;
+  const lines = ["You waited for " + msg.messages.length + " messages. Here they are, in the order they came:"];
+  msg.messages.forEach((m, i) => {
+    let pic = "";
+    if (m.renderId) { k++; const r = renders && renders[m.renderId]; pic = " [picture " + k + (r && r.by ? ", drawn from " + r.by + "’s program" : "") + "]"; }
+    let body = m.text || "";
+    if (m.data && Object.keys(m.data).length) { let js = JSON.stringify(m.data); if (js.length > 3000) js = js.slice(0, 3000) + " …(cut short)"; body += (body ? " " : "") + "Data: " + js; }
+    lines.push((i + 1) + ". From " + m.from + pic + (body ? ": " + body : ""));
+  });
+  if (msg.early) lines.push("(Not every message you were waiting for came: these are the ones that did.)");
+  if (k) lines.push(agent.canSeeImages ? (k === 1 ? "(The picture is attached.)" : "(The " + k + " pictures are attached in the same order: picture 1 first.)") : "(" + k + (k === 1 ? " picture was" : " pictures were") + " sent, but you can't see pictures.)");
+  return lines.join("\n");
+}
 function composeUserText(msg, agent, render) {
   const parts = [];
   if (msg.text) parts.push(msg.text);
@@ -4510,17 +4662,19 @@ function createRun(society, deps) {
   async function activateModel(agent, msg, entry) {
     if (!deps.adapter) throw Object.assign(new Error("No model connection is set up."), { kind: "config" });
     const hist = agent.history === "full" ? (run.histories[agent.id] = run.histories[agent.id] || []) : [];
-    const render = msg.renderId ? run.renders[msg.renderId] : null;
+    const ids = msg.renderIds || (msg.renderId ? [msg.renderId] : []);   // a collected message may carry several pictures
+    const renders = ids.map(id => run.renders[id]).filter(Boolean);
+    const render = renders[0] || null;
     const sees = !!(agent.canSeeImages && render);
-    const userText = composeUserText(msg, agent, render);
+    const userText = msg.messages ? composeCollectedText(msg, agent, run.renders) : composeUserText(msg, agent, render);
     const messages = hist.map(m => ({ role: m.role, content: m.content })).concat([{ role: "user", content: userText }]);
-    const images = sees && render.image ? [render.image] : [];
+    const images = sees ? renders.map(r => r.image).filter(Boolean) : [];
     const req = { system: PREAMBLE + (agent.instructions || ""), messages, images, outputFields: agent.outputFields || [], replyKind: agent.replyKind || "prose", maxTokens: 8000, signal: abort ? abort.signal : undefined,
-      meta: { persona: agent.pretend || "generic", agent, message: msg, history: hist.slice(), render: sees ? render : null, sees, society: soc } };
+      meta: { persona: agent.pretend || "generic", agent, message: msg, history: hist.slice(), render: sees ? render : null, renders: sees ? renders : [], sees, society: soc } };
     const adapter = (deps.adapterFor && deps.adapterFor(agent)) || deps.adapter;   // an agent may have its own model
-    entry.call = { adapter: adapter.id, adapterLabel: adapter.label, system: req.system, messages: messages.map((m, i) => (i === messages.length - 1 && sees ? Object.assign({}, m, { renderId: msg.renderId }) : m)) };
+    entry.call = { adapter: adapter.id, adapterLabel: adapter.label, system: req.system, messages: messages.map((m, i) => (i === messages.length - 1 && sees ? Object.assign({}, m, { renderId: ids[0], renderIds: ids }) : m)) };
     const res = await adapter.call(req);
-    Object.assign(entry.call, { model: res.model, persona: res.persona || null, pretend: !!res.pretend, endpoint: res.endpoint, headers: res.headers, system: res.system, request: res.request, reply: res.raw, parsed: { text: res.text, data: res.data }, parseError: res.parseError || null, ms: Math.round(res.ms || 0), stopReason: res.stopReason, warning: res.warning || "", imageRenderId: sees ? msg.renderId : null });
+    Object.assign(entry.call, { model: res.model, persona: res.persona || null, pretend: !!res.pretend, endpoint: res.endpoint, headers: res.headers, system: res.system, request: res.request, reply: res.raw, parsed: { text: res.text, data: res.data }, parseError: res.parseError || null, ms: Math.round(res.ms || 0), stopReason: res.stopReason, warning: res.warning || "", imageRenderId: sees ? ids[0] : null });
     if (agent.history === "full") { hist.push({ role: "user", content: userText }); hist.push({ role: "assistant", content: res.raw }); }
     if (res.parseError) entry.parseError = res.parseError;
     return { text: res.text, data: res.data || {} };
@@ -4549,12 +4703,12 @@ function createRun(society, deps) {
     const renderId = "p" + (++run.renderSeq);
     let image = null;
     try { image = deps.rasterize ? deps.rasterize(out.ops) : null; } catch (e) { image = null; }
-    run.renders[renderId] = { program, ops: out.ops, dots: out.dots, labels: out.labels, segments: out.segments, image, error: res.ok ? null : res.error, seed: run.seed };
-    entry.render = { renderId, program, seed: run.seed, dots: out.dots, labels: out.labels, segments: out.segments, ms: Math.round(res.ms || 0), ticks: res.ticks, mode: res.mode, error: res.ok ? null : res.error, note: res.note || "" };
-    if (!res.ok) return { text: "The program did not run. " + res.error, data: { pass: false, error: res.error, program, dots: out.dots, segments: out.segments, labels: out.labels }, renderId };
+    run.renders[renderId] = { program, by: msg.fromName, ops: out.ops, dots: out.dots, labels: out.labels, segments: out.segments, image, error: res.ok ? null : res.error, seed: run.seed };
+    entry.render = { renderId, program, by: msg.fromName, seed: run.seed, dots: out.dots, labels: out.labels, segments: out.segments, ms: Math.round(res.ms || 0), ticks: res.ticks, mode: res.mode, error: res.ok ? null : res.error, note: res.note || "" };
+    if (!res.ok) return { text: "The program did not run. " + res.error, data: { pass: false, error: res.error, program, by: msg.fromName, dots: out.dots, segments: out.segments, labels: out.labels }, renderId };
     const bits = [plural(strokesOf(out.ops).length, "shape"), plural(out.dots.length, "dot")];   // a circle is one shape, not 36 little lines
     if (out.labels.length) bits.push(plural(out.labels.length, "label"));
-    return { text: "I drew " + bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1] + "." + (res.note ? " " + res.note : ""), data: { pass: true, dots: out.dots, segments: out.segments, labels: out.labels }, renderId };
+    return { text: "I drew " + bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1] + "." + (res.note ? " " + res.note : ""), data: { pass: true, program, by: msg.fromName, dots: out.dots, segments: out.segments, labels: out.labels }, renderId };
   }
   // A message belongs to the round of the work it answers, not to whatever round the run has reached since:
   // if the round agent got two messages in a row, the Renderer may draw round 2's picture after round 3 began.
@@ -4613,7 +4767,7 @@ function createRun(society, deps) {
   const collectedMessage = (id, buf, early) => makeMessage(buf.length === 1 ? buf[0].from : "*", id, {
     fromName: buf.map(m => m.fromName).join(", ") || "nobody", round: Math.max.apply(null, buf.map(m => m.round).concat([1])),
     text: buf.map(m => m.fromName + ": " + (m.text || "")).join("\n"), data: {}, send: "text+data",
-    messages: buf.map(m => ({ from: m.fromName, text: m.text || "", data: clone(m.data || {}) })), collected: true, early: !!early });
+    messages: buf.map(m => ({ from: m.fromName, text: m.text || "", data: clone(m.data || {}), renderId: m.renderId || null })), renderIds: buf.map(m => m.renderId).filter(Boolean), collected: true, early: !!early });
   async function stepOnce() {
     if (run.status === "done" || run.status === "stopped") return false;
     let msg = run.queue.shift();
@@ -4640,8 +4794,8 @@ function createRun(society, deps) {
       }
     }
     if (++run.deliveries > run.maxDeliveries) { finish("too-many", "Stopped after " + run.maxDeliveries + " messages: the rules may be sending messages around in circles."); return false; }
-    if (agent.kind === "program" && agent.collect && !msg.collected) {
-      const want = clampInt((agent.params || {}).wait, 1, 20, 2);
+    if ((agent.kind === "program" || (agent.kind === "model" && !agent.human)) && agent.collect && !msg.collected) {
+      const want = agent.kind === "model" ? clampInt(agent.wait, 1, 20, 2) : clampInt((agent.params || {}).wait, 1, 20, 2);
       const buf = run.collected[agent.id] = run.collected[agent.id] || [];
       buf.push(msg);
       if (buf.length < want) {
@@ -4817,7 +4971,8 @@ const HELPER_SYSTEM = PREAMBLE +
   "- “You be the …” on the stage lets the learner take an agent's place in the run.\n" +
   "- ▶ Run, ⏭ Step (one message at a time), ↺ Reset and the Rounds box are on the stage. The Trace shows every message; “Show full technical details” shows exactly what a model was sent.\n" +
   "- Scenarios are tests for a programmed agent, in its editor. A model agent that counts pictures has a test bench in its editor.\n" +
-  "- A collecting program (like Vote or Referee) waits until it has heard several messages (its {wait} number), then runs once on all of them. If an answer never comes, it runs on what it has at the end.\n" +
+  "- A collecting program (like Vote or Referee) waits until it has heard several messages (its {wait} number), then runs once on all of them. If an answer never comes, it runs on what it has at the end. An AI agent can collect too (in its editor: “It answers … once it has N messages”); then it sees all their pictures together, numbered in order, like the Critic in the Evolution example.\n" +
+  "- ＋ New society also offers examples to start from, like Evolution: three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner. The trace's Family tree tab shows which picture came from which.\n" +
   "- An agent called You is the learner: the run waits for their answer.\n" +
   "- A rule can come from You (“when You start the run, send your words to …”), so the start reaches more than one agent. A rule can also say “when the run ends”: then the agent's last message is sent on, once, at the very end (Story Chain's Book sends the whole story to the Editor that way).\n" +
   "- ⬇ Export and ⬆ Import, at the top of the page, save the society you are in as a file and open one from a file. An agent's emoji is changed by clicking it at the top of its editor.\n" +
@@ -4830,7 +4985,8 @@ function describeSociety(soc) {
   const lines = ["Society: " + soc.title + (soc.question ? " — question: " + soc.question : ""), "Round limit: " + soc.roundLimit + ". A new round starts each time " + nameOf(soc.roundAgent) + " gets a message."];
   if (soc.intro) lines.splice(1, 0, "About it: " + soc.intro);
   for (const a of soc.agents) {
-    if (a.kind === "model" && a.human) lines.push("- " + a.name + " (not a model: the learner answers here, and the run waits for them). They are asked: " + String(a.instructions || "").replace(/\s+/g, " ").slice(0, 200));
+    if (a.kind === "model" && a.collect && !a.human) lines.push("- " + a.name + " (model agent that collects: it waits for " + (a.wait || 2) + " messages, then answers them all at once" + (a.canSeeImages ? ", seeing all their pictures together" : "") + "). Instructions: " + String(a.instructions || "").replace(/\s+/g, " ").slice(0, 300));
+    else if (a.kind === "model" && a.human) lines.push("- " + a.name + " (not a model: the learner answers here, and the run waits for them). They are asked: " + String(a.instructions || "").replace(/\s+/g, " ").slice(0, 200));
     else if (a.kind === "model") lines.push("- " + a.name + " (model agent" + (a.canSeeImages ? ", can see pictures" : "") + ", remembers " + (a.history === "full" ? "the whole run" : "nothing between messages") + "). Instructions: " + String(a.instructions || "").replace(/\s+/g, " ").slice(0, 300) + (a.outputFields && a.outputFields.length ? " Output fields: " + a.outputFields.map(f => f.name).join(", ") + "." : ""));
     else if (a.kind === "program") lines.push("- " + a.name + " (programmed agent" + (a.gate ? ", a gate" : "") + (a.collect ? ", collects: it waits for " + ((a.params || {}).wait || 2) + " messages, then runs once on all of them" : "") + ", status " + a.status + "). Pseudocode:\n" + String(a.pseudocode).split("\n").map(l => "    " + l).join("\n") + "\n  Params: " + JSON.stringify(a.params || {}));
     else lines.push("- " + a.name + " (the Renderer: runs Logo programs and makes pictures)");
@@ -5422,13 +5578,48 @@ function startSpec(s) {
 }
 function traceStartText(trace) { const e = (trace || []).find(x => x.kind === "run-start"); return e ? e.text : ""; }
 const hasPictures = s => (s.agents || []).some(a => a.kind === "renderer");
+// Which drawing came from which: a picture's parent is the latest earlier picture whose program its author was sent
+// (the longest such program, so “FD 100” doesn't beat the whole program it is part of). The same program drawn again
+// is the same picture. A picture is chosen if its program is passed on later by an agent that didn't draw it.
+function lineageOf(trace) {
+  const norm = x => String(x == null ? "" : x).replace(/\s+/g, " ").trim();
+  const strings = (text, data) => { const out = [text]; for (const k of Object.keys(data || {})) if (typeof data[k] === "string") out.push(data[k]); return out.map(norm).filter(Boolean); };
+  const heardBy = m => { if (!m) return []; let out = strings(m.text, m.data); for (const x of m.messages || []) out = out.concat(strings(x.text, x.data)); return out; };
+  const sentBy = new Map();
+  for (const e of trace || []) if (e.kind === "activation") for (const f of e.fired || []) sentBy.set(f.messageId, e);
+  const nodes = [], byId = new Map(), canon = new Map(), authorOf = new Map();
+  (trace || []).forEach((e, at) => {
+    if (e.kind !== "activation" || !e.render || e.render.error) return;
+    const prog = norm(e.render.program), author = sentBy.get(e.message && e.message.id);
+    if (author) authorOf.set(e.render.renderId, author);
+    const twin = nodes.find(n => n.prog === prog);
+    if (twin) { canon.set(e.render.renderId, twin.id); return; }
+    const heard = heardBy(author && author.message);
+    let parent = null;
+    for (const n of nodes) if (n.prog && heard.some(t => t.indexOf(n.prog) >= 0) && (!parent || n.prog.length >= parent.prog.length)) parent = n;
+    const node = { id: e.render.renderId, prog, render: e.render, at, round: e.round, by: e.render.by || (author ? author.agentName : ""), parent: parent ? parent.id : null, children: [] };
+    nodes.push(node); byId.set(node.id, node); canon.set(node.id, node.id);
+    if (parent) parent.children.push(node);
+  });
+  const chosen = new Set();
+  for (const n of nodes) {
+    const drew = new Set([authorOf.get(n.id)].concat(Array.from(canon).filter(([id, c]) => c === n.id).map(([id]) => authorOf.get(id))));
+    if ((trace || []).some((e, at) => at > n.at && e.kind === "activation" && e.agentKind !== "renderer" && !drew.has(e) && e.response && strings(e.response.text, e.response.data).some(t => t.indexOf(n.prog) >= 0))) chosen.add(n.id);
+  }
+  return { nodes, byId, canon, chosen, roots: nodes.filter(n => !n.parent), linked: nodes.some(n => n.parent) };
+}
 function stripOf(trace, s) {
-  const rounds = new Map(), pics = hasPictures(s);
+  const rounds = new Map(), pics = hasPictures(s), lin = lineageOf(trace);
   for (const e of trace || []) {
     if (e.kind !== "activation") continue;
-    const r = rounds.get(e.round) || { round: e.round, render: null, lines: [], pics };
-    if (e.render && !e.render.error) r.render = e.render;
-    else if (e.agentKind !== "renderer" && (e.agentId !== s.roundAgent || !pics) && e.response) {   // with pictures, the round agent's turn is the picture
+    const r = rounds.get(e.round) || { round: e.round, render: null, renders: [], marks: {}, lines: [], pics };
+    if (e.render && !e.render.error) {
+      r.render = e.render;
+      r.renders.push(e.render);
+      const c = lin.canon.get(e.render.renderId);
+      r.marks[e.render.renderId] = c !== e.render.renderId ? "again" : lin.chosen.has(c) ? "chosen" : "";
+    }
+    else if (e.agentKind !== "renderer" && (e.agentId !== s.roundAgent || !pics) && e.response && !(pics && isProgramReply(e, s))) {   // with pictures, the round agent's turn and any Logo are the picture
       const txt = util.stripMd(e.response.text || "");
       const pass = e.response.data && typeof e.response.data.pass === "boolean" ? e.response.data.pass : null;
       if (txt) r.lines.push({ emoji: e.emoji || "", text: txt, pass });
@@ -5587,7 +5778,7 @@ function agentCardHTML(a, s) {
   if (a.kind === "model" && a.canSeeImages) badges += '<span class="badge plain">sees pictures</span>';
   if (a.kind === "model" && !a.human && modelRefs().length > 1) badges += '<span class="badge plain">' + esc(refOfAgent(a).label) + '</span>';
   if (a.human) badges += '<span class="badge ok" title="A person answers here: you">you</span>';
-  if (a.collect) badges += '<span class="badge plain" title="It waits for several messages, then runs once on all of them">collects ' + esc((a.params || {}).wait || 2) + '</span>';
+  if (a.collect) badges += '<span class="badge plain" title="It waits for several messages, then runs once on all of them">collects ' + esc((a.kind === "model" ? a.wait : (a.params || {}).wait) || 2) + '</span>';
   return '<button class="acard kind-' + a.kind + '" data-act="open-agent" data-id="' + esc(a.id) + '"><span class="nm"><span>' + esc(a.emoji) + '</span>' + esc(a.name) + '</span><span class="rl">' + esc(a.role || a.note || "") + '</span><span class="bd">' + badges + '</span></button>';
 }
 function ruleHTML(r, s) {
@@ -5702,7 +5893,10 @@ const callsHTML = c => (c ? '<span class="calls" title="Model calls in this run,
 function bubbleHTML(b) { return '<div class="bubble kind-' + esc(b.kind) + (b.err ? " err" : "") + '"><div class="who">R' + b.round + " · " + esc(b.who) + '</div>' + (b.md ? clipMdHTML(b.text, 420, b.who) : shortHTML(b.text, 420, b.who)) + '</div>'; }
 function rcardHTML(r, prev, run, view) {
   const here = view && view.replay && view.renderRound === r.round;
-  return '<div class="rcard' + (prev ? " prev" : "") + (here ? " here" : "") + '"><div class="rn">Round ' + r.round + '</div>' + (r.render ? imgTag(r.render, "", "round " + r.round, prev ? null : run) : r.pics === false ? "" : '<div class="noimg">no picture</div>') +
+  const many = (r.renders || []).length > 1;
+  const pic = many ? '<div class="rgrid">' + r.renders.map((x, k) => { const mark = (r.marks || {})[x.renderId] || ""; return '<div class="rthumb ' + mark + '" title="' + esc((x.by ? "Drawn from " + x.by + "’s program" : "") + (mark === "chosen" ? ". Chosen: it was passed on." : mark === "again" ? ". The same drawing as an earlier one (a parent drawn again)." : "")) + '">' + imgTag(x, "", "round " + r.round + ", picture " + (k + 1) + (x.by ? ", from " + x.by : ""), prev ? null : run) + (mark === "chosen" ? '<span class="mk">★</span>' : mark === "again" ? '<span class="mk">↺</span>' : "") + '</div>'; }).join("") + '</div>'
+    : r.render ? imgTag(r.render, "", "round " + r.round, prev ? null : run) : r.pics === false ? "" : '<div class="noimg">no picture</div>';
+  return '<div class="rcard' + (many ? " multi" : "") + (prev ? " prev" : "") + (here ? " here" : "") + '"><div class="rn">Round ' + r.round + '</div>' + pic +
     r.lines.slice(0, r.pics === false ? 4 : 3).map(l => '<div class="ln' + (l.pass === true ? " p-ok" : l.pass === false ? " p-bad" : "") + '">' + esc(l.emoji) + " " + shortHTML(l.text, 90) + '</div>').join("") + '</div>';
 }
 function statusLineHTML(s, rec, run) {
@@ -5863,7 +6057,7 @@ function callHTML(c, run, trace) {
   if (c.pretend) h += '<p class="small muted">Pretend mode: nothing was sent anywhere. Below is exactly what a real model would be sent, and the reply the pretend program made up.</p>';
   if (c.warning) h += '<div class="warnline">' + esc(c.warning) + '</div>';
   h += '<h4>System prompt</h4><pre class="box">' + esc(c.system || "") + '</pre><h4>Messages</h4>' +
-    (c.messages || []).map(m => { const r = m.renderId ? findRender(trace, m.renderId) : null; return '<div class="msgline"><div class="role">' + esc(m.role) + '</div><div style="white-space:pre-wrap">' + esc(m.content) + '</div>' + (r ? imgTag(r, "thumb", "the picture sent with this message", run) : "") + '</div>'; }).join("");
+    (c.messages || []).map(m => { const ids = m.renderIds || (m.renderId ? [m.renderId] : []); return '<div class="msgline"><div class="role">' + esc(m.role) + '</div><div style="white-space:pre-wrap">' + esc(m.content) + '</div>' + (ids.length ? '<div class="pics">' + ids.map((id, k) => { const r = findRender(trace, id); return r ? imgTag(r, "thumb", ids.length > 1 ? "picture " + (k + 1) + " sent with this message" : "the picture sent with this message", run) : ""; }).join("") + '</div>' : "") + '</div>'; }).join("");
   if (c.request) h += '<details><summary class="small">The exact request body (JSON)</summary>' + jsonBox(c.request) + '</details>';
   h += '<h4>Reply</h4><pre class="box reply">' + esc(c.reply == null ? "(no reply)" : c.reply) + '</pre>';
   if (c.parsed && c.parsed.data && Object.keys(c.parsed.data).length) h += '<h4>Data read from the reply</h4>' + jsonBox(c.parsed.data);
@@ -5955,7 +6149,8 @@ function incomingHTML(e, s, run, trace) {
   if (!m) return "";
   let body = "";
   if (m.text) body += e.agentKind === "renderer" ? '<div class="heard small">a Logo program (' + plural(lineCount(m.text), "line") + ')</div>' : '<div class="heard">' + clipMdHTML(m.text, 600, "What " + (e.agentName || "it") + " got") + '</div>';
-  if (m.renderId) { const r = findRender(trace, m.renderId); if (r) body += imgTag(r, "thumb", "the picture it was sent", run); }
+  const ids = m.renderIds || (m.renderId ? [m.renderId] : []);
+  if (ids.length) body += '<div class="pics">' + ids.map((id, k) => { const r = findRender(trace, id); return r ? imgTag(r, "thumb", ids.length > 1 ? "picture " + (k + 1) + (r.by ? ", drawn from " + r.by + "’s program" : "") : "the picture it was sent", run) : ""; }).join("") + '</div>';
   if (m.data && Object.keys(m.data).length && Society.sendParts(m.send).data) { const w = Words.paraphrase(m.data); if (w) body += '<div class="heard small">Data, in plain words: ' + wordsHTML(w, m.data) + '</div>'; }
   return body ? '<div class="tsec"><h4>It got, from ' + esc(m.fromName) + '</h4>' + body + '</div>' : "";
 }
@@ -5999,6 +6194,12 @@ function traceEntryHTML(e, s, run, trace, currentI) {
   if (open) h += '<div class="tbody">' + entryBodyHTML(e, s, run, trace) + '</div>';
   return h + '</div>';
 }
+function familyTreeHTML(lin, run) {
+  if (!lin.linked) return '<p class="muted small">No picture in this run came from another one, so there is no family tree. In the Evolution example, every variant comes from the picture before it.</p>';
+  const node = (n, depth) => '<li><div class="tnode' + (lin.chosen.has(n.id) ? " chosen" : "") + '">' + imgTag(n.render, "", "round " + n.round + (n.by ? ", from " + n.by : ""), run) + '<span class="small">R' + esc(n.round) + ' · ' + esc(n.by || "?") + (lin.chosen.has(n.id) ? ' <b>★</b>' : "") + '</span></div>' +
+    (n.children.length && depth < 40 ? '<ul>' + n.children.map(c => node(c, depth + 1)).join("") + '</ul>' : "") + '</li>';
+  return '<p class="hint">Each picture sits under the one it came from. ★ marks a picture that was chosen and passed on. Click a picture to see it full size.</p><ul class="ftree">' + lin.roots.map(n => node(n, 0)).join("") + '</ul>';
+}
 function traceFilterOK(e, f) {
   if (f === "all") return true;
   if (f === "problems") return !!(e.error || e.parseError || e.kind === "error" || (e.render && e.render.error));
@@ -6038,8 +6239,10 @@ function renderTrace() {
   const trace = run ? run.trace : (app.traces[s.id] || []);
   const tab = app.ui.traceTab;
   const wl = (app.log[s.id] || []).length;
-  let h = '<div class="card"><div class="trace-head"><h3 class="grow">Trace</h3><button class="seg' + (tab === "run" ? " on" : "") + '" data-act="trace-tab" data-id="run">This run</button><button class="seg' + (tab === "workshop" ? " on" : "") + '" data-act="trace-tab" data-id="workshop">Workshop' + (wl ? " (" + wl + ")" : "") + '</button></div>';
+  const lin = lineageOf(trace);
+  let h = '<div class="card"><div class="trace-head"><h3 class="grow">Trace</h3><button class="seg' + (tab === "run" ? " on" : "") + '" data-act="trace-tab" data-id="run">This run</button>' + (lin.linked || tab === "tree" ? '<button class="seg' + (tab === "tree" ? " on" : "") + '" data-act="trace-tab" data-id="tree" title="Which picture came from which">Family tree</button>' : "") + '<button class="seg' + (tab === "workshop" ? " on" : "") + '" data-act="trace-tab" data-id="workshop">Workshop' + (wl ? " (" + wl + ")" : "") + '</button></div>';
   if (tab === "workshop") h += workshopHTML(s);
+  else if (tab === "tree") h += familyTreeHTML(lin, run);
   else {
     const f = app.ui.traceFilter;
     h += '<div class="trace-head"><div class="filters">' + [["all", "All", "Every message"], ["model", "AI agents", "What the agents run by an AI model got and said"], ["program", "Programmed agents", "What the agents written in pseudocode got and said"], ["renderer", "Pictures", "The Renderer's drawings"], ["problems", "Problems", "Errors, missing data, and drawings that didn't run"]].map(x => { const n = trace.filter(e => traceFilterOK(e, x[0])).length; return '<button class="seg' + (f === x[0] ? " on" : "") + '" data-act="trace-filter" data-id="' + x[0] + '" title="' + esc(x[2]) + '">' + x[1] + (x[0] === "all" ? "" : ' <span class="cnt">' + n + '</span>') + '</button>'; }).join("") + '</div><span class="grow"></span><button class="btn tiny" data-act="export-trace"' + (trace.length ? "" : " disabled") + '>⬇ As a web page</button></div>';
@@ -6175,7 +6378,9 @@ function modelEditorHTML(a, s) {
   h += connectionsHTML(a, s);
   h += '<div class="section"><h3>How it works</h3><div class="form-grid"><label>Its reply is</label><select class="field" data-bind="agent" data-field="replyKind"><option value="prose"' + sel(a.replyKind !== "program") + '>words</option><option value="program"' + sel(a.replyKind === "program") + '>a Logo drawing program</option></select>' +
     '<label>Pictures</label><label class="row small"><input type="checkbox" data-bind="agent" data-field="canSeeImages"' + (a.canSeeImages ? " checked" : "") + '> it can see pictures that are sent to it</label>' +
-    '<label>It remembers</label><select class="field" data-bind="agent" data-field="history"><option value="stateless"' + sel(a.history !== "full") + '>nothing: each message is new</option><option value="full"' + sel(a.history === "full") + '>the whole conversation in this run</option></select>' + agentModelHTML(a) + '</div></div>';
+    '<label>It remembers</label><select class="field" data-bind="agent" data-field="history"><option value="stateless"' + sel(a.history !== "full") + '>nothing: each message is new</option><option value="full"' + sel(a.history === "full") + '>the whole conversation in this run</option></select>' +
+    '<label>It answers</label><div class="row"><select class="field" style="max-width:260px" data-bind="agent" data-field="collect" aria-label="When it answers"><option value=""' + sel(!a.collect) + '>each message as it comes</option><option value="1"' + sel(!!a.collect) + '>once it has collected</option></select>' + (a.collect ? '<input class="num" type="number" min="1" max="20" data-bind="agent" data-field="wait" value="' + esc(a.wait || 2) + '" aria-label="How many messages"><span class="small muted">messages, then all of them together' + (a.canSeeImages ? ", seeing their pictures side by side" : "") + '</span>' : "") + '</div>' +
+    agentModelHTML(a) + '</div></div>';
   h += '<div class="section"><h3>Output fields</h3><p class="hint">Data it must send back, as JSON after its answer. Rules can test these (IF data.rows = 3), and programmed agents read them.</p><div class="fields-edit">' +
     (a.outputFields || []).map((f, i) => '<div class="frow"><input class="field" data-bind="ofield" data-i="' + i + '" data-field="name" value="' + esc(f.name) + '" placeholder="name" aria-label="Field name"><select class="field" data-bind="ofield" data-i="' + i + '" data-field="type" aria-label="Field type">' + Adapters.FIELD_TYPES.map(t => '<option' + sel(f.type === t) + '>' + t + '</option>').join("") + '</select><input class="field" data-bind="ofield" data-i="' + i + '" data-field="about" value="' + esc(f.about || "") + '" placeholder="what it means" aria-label="Field meaning"><button class="icon-btn" data-act="field-del" data-i="' + i + '" aria-label="Delete field">🗑</button></div>').join("") +
     '</div><button class="btn tiny" data-act="field-add" style="margin-top:6px">+ Add a field</button></div>';
@@ -6521,13 +6726,13 @@ const GUIDES = {
     "<ol class='steps'>" +
     "<li><b>Try one.</b> Pick <b>Story Chain</b>, the first microworld at the top, and read its question. Before you press <b>▶ Run</b>, say what you think will happen. Then watch the writers, round by round.</li>" +
     "<li><b>Change one thing.</b> Tick a switch under the start (like “Writer A remembers everything”), or press <b>🔍 Look inside</b> and change one agent's instructions or one rule. Run it again. What changed, and why?</li>" +
-    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, or start from scratch. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
+    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, start from scratch, or start from an example like <b>Evolution</b>. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
     "</ol>" +
     "<p>Stuck? Ask the <b>🤔 Helper</b> (bottom right). It knows where everything is, and it will ask you questions back. Working with a friend? One of you drives and the other predicts; swap every run.</p>" +
     "<details class='ref'><summary><b>Everything else, when you need it</b></summary>" +
     "<h4>The stage</h4><p><b>▶ Run</b> goes until the round limit. <b>⏭ Step</b> delivers one message at a time, and Run carries on from there. <b>↺ Reset</b> starts over. <b>🙋 You be the …</b> lets you take an agent's place: the run waits for your answer. One-click switches under the start change several rules at once. If a grown-up has set up more than one model, the <b>Models</b> row lets you choose which model each AI agent uses. After a run, each AI agent's button says how many model calls it made.</p>" +
     "<h4>Rules</h4><p>In Look inside, every rule reads as a sentence: <i>When the Artist responds, send its words to the Renderer.</i> The tick in front switches a rule on or off. <b>✎ Edit</b> shows its parts: who it's from, a condition (like <i>if its data says pass is false</i>), what to send (words, data, picture) and who to. A rule can come from <b>You</b>, so the start reaches more than one agent, and a rule can wait for <b>the end of the run</b>, like the one that sends Story Chain's Book to the Editor.</p>" +
-    "<h4>Agents</h4><p><b>AI agents</b> follow instructions you can change in their editor. <b>Programmed agents</b> are pseudocode: numbers in green { } are settings you can change; edit a line and the translator turns it into JavaScript (<b>Peek under the hood</b> shows both). <b>Scenarios</b> are tests for a program: an input and what it should answer; a red one shows what went wrong, and you can save any turn from the trace as a new one. Some programs <b>collect</b>: they wait for several messages, then run once on all of them. An agent called <b>You</b> is you. Each agent's editor shows its <b>Connections</b>: who can send it messages, and its own rules. Click an agent's emoji, at the top of its editor, to choose another.</p>" +
+    "<h4>Agents</h4><p><b>AI agents</b> follow instructions you can change in their editor. <b>Programmed agents</b> are pseudocode: numbers in green { } are settings you can change; edit a line and the translator turns it into JavaScript (<b>Peek under the hood</b> shows both). <b>Scenarios</b> are tests for a program: an input and what it should answer; a red one shows what went wrong, and you can save any turn from the trace as a new one. Some agents <b>collect</b>: they wait for several messages, then answer them all at once; an AI agent that collects sees all their pictures side by side. An agent called <b>You</b> is you. Each agent's editor shows its <b>Connections</b>: who can send it messages, and its own rules. Click an agent's emoji, at the top of its editor, to choose another.</p>" +
     "<h4>Saving and sharing</h4><p>Everything is saved in this browser as you go. <b>⬇ Export</b> at the top saves the society you are in as a file, to keep or to give a friend; <b>⬆ Import</b> opens one.</p>" +
     "<h4>The trace</h4><p>Every message is in the <b>Trace</b>. Open one to see what the agent got and what it said. <b>Show full technical details</b> shows exactly what a model was sent and what came back. A <b>…</b> opens text that was cut short, and a picture opens full size when you click it. After a run, <b>Replay</b> steps through it one message at a time.</p>" +
     "<h4>Logo</h4><p>Agents that draw write <b>Logo</b>: <code>FORWARD 50</code>, <code>RIGHT 90</code>, and <code>REPEAT 4 [FORWARD 50 RIGHT 90]</code> for a square. In Telephone, “Start with a drawing” lets you write Logo yourself, and you can change any drawing in the trace and see it drawn.</p>" +
@@ -6549,6 +6754,7 @@ const GUIDES = {
     "<li><b>Fool the Eyes: “Can a drawing trick a looker?”</b> A Trickster draws pebbles to fool Eyes; a Referee keeps score. <i>Powerful idea:</i> an adversary finds weaknesses a friendly test never would.</li>" +
     "<li><b>Joke Workshop: “Do critics make jokes funnier?”</b> A Joker writes, two Critics send notes, and the learner rates every version. <i>Powerful idea:</i> whose judgment counts, and whether critics improve work or only make it more careful.</li>" +
     "<li><b>Small Helper, Big Helper: “When do you need the big one?”</b> A cheap model tries first; an Escalator hands the job to a strong one when it fails. It needs two models. <i>Powerful idea:</i> cost against capability.</li></ol>" +
+    "<p><b>Examples to start from</b> (“＋ New society”): <b>Evolution</b>, where three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree shows which picture came from which. <i>Powerful idea:</i> a simple critic and chooser, arranged in a loop, steer a model somewhere it wouldn't go alone. It needs a model that sees pictures well, and makes about 4 model calls per round.</p>" +
     "<h3>Which model, and how many calls</h3><p>Model choice is where sessions get stuck, so here is what we have seen. Calls are model calls in one run with the default rounds; each AI agent's button counts them after a run.</p>" +
     "<table class='guide-table'><tr><th>Microworld</th><th>Model</th><th>Why</th><th>Calls per run</th></tr>" +
     row("Story Chain", "any, even Gemini Nano", "only text; the lesson is in what each writer sees", "13") +
@@ -6900,20 +7106,22 @@ function openNewSociety() {
   const s = soc();
   const m = openModal({ title: "＋ A new society", body: '<div class="form-grid"><label for="newSocName">Its name</label><input class="field" id="newSocName" value="My society" maxlength="60"></div>' +
     '<div class="new-choices"><button class="btn primary" data-new="blank">Start from scratch</button><p class="hint">One AI agent, and you with the start. Add agents and rules in Look inside.</p>' +
-    '<button class="btn" data-new="copy">Copy ' + esc(s.title) + '</button><p class="hint">Everything in ' + esc(s.title) + ', to change as you like.</p></div>' });
+    '<button class="btn" data-new="copy">Copy ' + esc(s.title) + '</button><p class="hint">Everything in ' + esc(s.title) + ', to change as you like.</p>' +
+    '<h4 style="margin:6px 0 4px">Or start from an example</h4>' + Seeds.EXAMPLES.map(x => { const e = x.make(); return '<button class="btn" data-new="example" data-id="' + esc(x.id) + '">' + esc(x.emoji + " " + e.title) + '</button><p class="hint">' + esc(x.about) + '</p>'; }).join("") + '</div>' });
   m.body.addEventListener("click", ev => {
     const b = ev.target.closest("[data-new]");
     if (!b) return;
     const name = util.cleanName($("#newSocName", m.body).value, 60) || "My society";
-    const c = b.dataset.new === "blank" ? Seeds.makeBlank(name) : Object.assign(clone(s), { title: name });
+    const ex = b.dataset.new === "example" && Seeds.EXAMPLES.find(x => x.id === b.dataset.id);
+    const c = b.dataset.new === "blank" ? Seeds.makeBlank(name) : ex ? Object.assign(ex.make(), name !== "My society" ? { title: name } : {}) : Object.assign(clone(s), { title: name });
     delete c.seedVersion;
-    c.id = uniqueSocietyId(name);
+    c.id = uniqueSocietyId(ex && name === "My society" ? ex.id : name);
     app.societies[c.id] = c; app.order.push(c.id); app.activeId = c.id;
     app.ui.lookInside = true;
     m.close();
     rerunAll().then(renderAll);
     save(); renderAll();
-    toast(b.dataset.new === "blank" ? "Your society. Look inside to give it a question, agents and rules." : "A copy of " + s.title + ", to change as you like.");
+    toast(b.dataset.new === "blank" ? "Your society. Look inside to give it a question, agents and rules." : ex ? c.title + ": yours to run and change." : "A copy of " + s.title + ", to change as you like.");
   });
 }
 function openAddAgent() {
@@ -7041,6 +7249,8 @@ async function handleBind(t, evt) {
       if (f === "canSeeImages") a.canSeeImages = t.checked;
       else if (f === "history") a.history = t.value === "full" ? "full" : "stateless";
       else if (f === "replyKind") a.replyKind = t.value === "program" ? "program" : "prose";
+      else if (f === "collect") { if (t.value) { a.collect = true; a.wait = a.wait || 2; } else { delete a.collect; delete a.wait; } }
+      else if (f === "wait") { a.wait = Math.max(1, Math.min(20, Math.round(+t.value) || 2)); }
       if (change) { save(); renderEditor(); renderLeft(); }
       return;
     }

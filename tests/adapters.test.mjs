@@ -1,5 +1,5 @@
 // Output-field parsing, and every adapter against a fake fetch (no network in tests).
-export default function (T, { modelWindow }) {
+export default function (T, { modelWindow, same }) {
   const w = modelWindow();
   const { Adapters, Prompts, util } = w.AK;
   const F = [{ name: "rows", type: "number", about: "rows" }, { name: "cols", type: "number", about: "cols" }];
@@ -69,6 +69,19 @@ export default function (T, { modelWindow }) {
     const r = await Adapters.makeAdapter({ connection: "gemini", keys: { gemini: "g-key" }, models: { gemini: "gemini-3-flash-preview" } }).call(req());
     const b = calls[0].body;
     return /generateContent/.test(calls[0].url) && calls[0].opts.headers["x-goog-api-key"] === "g-key" && b.systemInstruction.parts[0].text.indexOf("SYS") === 0 && b.contents[0].parts[0].inline_data.data === "QUJD" && r.data.rows === 3;
+  });
+  T.test("several pictures go in order, picture 1 first, to Gemini, Claude and OpenAI", ["Adapters"], async () => {
+    const imgs = ["data:image/png;base64,AAA", "data:image/png;base64,BBB", "data:image/png;base64,CCC"];
+    let calls = fake(() => resp(200, { candidates: [{ content: { parts: [{ text: "ok" }] } }] }));
+    await Adapters.makeAdapter({ connection: "gemini", keys: { gemini: "g" }, models: { gemini: "gemini-3.8-flash" } }).call(req({ images: imgs, outputFields: [] }));
+    const g = calls[0].body.contents[0].parts.map(x => x.inline_data ? x.inline_data.data : "text");
+    calls = fake(() => resp(200, { model: "claude-haiku-4-5", stop_reason: "end_turn", content: [{ type: "text", text: "ok" }] }));
+    await Adapters.makeAdapter({ connection: "anthropic", keys: { anthropic: "a" }, models: { anthropic: "claude-haiku-4-5" } }).call(req({ images: imgs, outputFields: [] }));
+    const c = calls[0].body.messages[0].content.map(x => x.source ? x.source.data : "text");
+    calls = fake(() => resp(200, { choices: [{ message: { content: "ok" } }] }));
+    await Adapters.makeAdapter({ connection: "openai", keys: { openai: "o" }, models: { openai: "gpt-6-luna" } }).call(req({ images: imgs, outputFields: [] }));
+    const o = calls[0].body.messages[calls[0].body.messages.length - 1].content.map(x => x.image_url ? x.image_url.url.split(",")[1] : "text");
+    return same(g, ["AAA", "BBB", "CCC", "text"]) && same(c, ["AAA", "BBB", "CCC", "text"]) && same(o, ["text", "AAA", "BBB", "CCC"]);
   });
   T.test("OpenAI: a system message and image_url content", ["Adapters"], async () => {
     const calls = fake(() => resp(200, { choices: [{ message: { content: '{"rows":1,"cols":2}' } }] }));

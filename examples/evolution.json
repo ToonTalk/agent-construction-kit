@@ -1,0 +1,742 @@
+{
+  "kind": "agent-kit-export",
+  "schema": 1,
+  "app": "Agent Kit 1.4.0",
+  "exportedAt": "2026-10-02T15:06:15.150Z",
+  "society": {
+    "kind": "agent-kit-society",
+    "schema": 1,
+    "id": "evolution",
+    "title": "Evolution",
+    "question": "Can a critic and a chooser evolve a drawing?",
+    "intro": "Three Mutators each change a Logo drawing a little. The Critic looks at the parent and all three variants together and scores them; the Selector picks a winner, which becomes the next parent. Round after round, where does the drawing go?",
+    "questions": [
+      "Does the drawing get better, by the Critic's taste? By yours?",
+      "Change the Brief's taste. Does the drawing go somewhere else?",
+      "Try a change size of 1, then 9. Which evolves faster? Which gets stuck?",
+      "Switch the Selector from best to roulette. Does luck help it escape a dead end?",
+      "Who is the artist here: the Mutators, the Critic, the Selector, or the arrangement?"
+    ],
+    "openers": [
+      "Which agent decides what “better” means?",
+      "What would happen with only one Mutator?",
+      "Why might the parent sometimes win?"
+    ],
+    "roundAgent": "brief",
+    "roundLimit": 4,
+    "starts": [
+      {
+        "id": "start",
+        "label": "The first drawing",
+        "kind": "text",
+        "to": "brief",
+        "value": "REPEAT 36 [FORWARD 100 RIGHT 170]",
+        "examples": [
+          "REPEAT 36 [FORWARD 100 RIGHT 170]",
+          "FORWARD 100",
+          "REPEAT 4 [FORWARD 100 RIGHT 90]"
+        ]
+      }
+    ],
+    "agents": [
+      {
+        "id": "brief",
+        "kind": "program",
+        "typeId": "brief",
+        "name": "Brief",
+        "emoji": "📋",
+        "role": "turns a program, a taste and a change size into a request for the Mutators",
+        "note": "turns a program, a taste and a change size into a request for the Mutators",
+        "gate": false,
+        "collect": false,
+        "pseudocode": "the taste is {Mathematical beauty where simple rules generate complexity}\nthe change size is {5}: 1 changes one number, 10 starts afresh\nthe program to change is the one you sent, or the Selector's winner\nsay the taste, how big a change to make, the program, and the Critic's suggestion\npass on the program, so it can be drawn too",
+        "params": {
+          "taste": "Mathematical beauty where simple rules generate complexity",
+          "size": 5
+        },
+        "slots": [
+          {
+            "line": 1,
+            "text": "Mathematical beauty where simple rules generate complexity",
+            "param": "taste"
+          },
+          {
+            "line": 2,
+            "text": "5",
+            "param": "size"
+          }
+        ],
+        "scenarios": [
+          {
+            "id": "s1",
+            "name": "the first program, from you",
+            "input": {
+              "from": "You",
+              "text": "FD 100"
+            },
+            "expect": {
+              "program": "FD 100",
+              "sayContains": "The program to change:\nFD 100"
+            }
+          },
+          {
+            "id": "s2",
+            "name": "the Selector's winner, with the Critic's suggestion",
+            "input": {
+              "from": "Selector",
+              "text": "Picture 2 wins.",
+              "data": {
+                "winner": "REPEAT 4 [FD 100 RT 90]",
+                "suggestion": "Add color."
+              }
+            },
+            "expect": {
+              "program": "REPEAT 4 [FD 100 RT 90]",
+              "sayContains": "The Critic suggests: Add color."
+            }
+          },
+          {
+            "id": "s3",
+            "name": "the change size is said in words",
+            "input": {
+              "text": "FD 100"
+            },
+            "expect": {
+              "sayContains": "Taste: {=taste}"
+            }
+          },
+          {
+            "id": "s4",
+            "name": "no suggestion yet, so none is passed on",
+            "input": {
+              "from": "You",
+              "text": "FD 100"
+            },
+            "expect": {
+              "say": "Taste: {=taste}\nHow big a change: Make a noticeable change, but keep the program recognizable.\nThe program to change:\nFD 100"
+            }
+          }
+        ],
+        "code": {
+          "pseudocode": "the taste is {Mathematical beauty where simple rules generate complexity}\nthe change size is {5}: 1 changes one number, 10 starts afresh\nthe program to change is the one you sent, or the Selector's winner\nsay the taste, how big a change to make, the program, and the Critic's suggestion\npass on the program, so it can be drawn too",
+          "js": "function run(input, params, h) {\n  const sizes = [\"\", \"Change exactly one number.\", \"Change two or three numbers.\", \"Change a few numbers, or add or remove one simple command.\", \"Make a small change to the shape.\", \"Make a noticeable change, but keep the program recognizable.\", \"Change the structure in a meaningful way.\", \"Transform the main structure.\", \"Make it radically different.\", \"Reimagine it almost entirely.\", \"Use the program only as a starting point.\"];\n  const program = input.data.winner || input.text;\n  const size = sizes[Math.max(1, Math.min(10, Math.round(Number(params.size) || 5)))];\n  const suggestion = input.data.suggestion ? \"\\nThe Critic suggests: \" + input.data.suggestion : \"\";\n  return { program: program, say: \"Taste: \" + params.taste + \"\\nHow big a change: \" + size + \"\\nThe program to change:\\n\" + program + suggestion };\n}",
+          "lineMap": [
+            {
+              "pseudo": [
+                1,
+                1
+              ],
+              "js": [
+                6,
+                6
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                2,
+                2
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                4,
+                4
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                3,
+                3
+              ]
+            },
+            {
+              "pseudo": [
+                4,
+                4
+              ],
+              "js": [
+                5,
+                6
+              ]
+            },
+            {
+              "pseudo": [
+                5,
+                5
+              ],
+              "js": [
+                6,
+                6
+              ]
+            }
+          ],
+          "hash": "44e233c68b65a947"
+        },
+        "lastGood": null,
+        "status": "ok",
+        "statusDetail": null,
+        "shipped": true
+      },
+      {
+        "id": "mutator-1",
+        "kind": "model",
+        "name": "Mutator 1",
+        "emoji": "🧪",
+        "role": "writes one changed version of the program",
+        "instructions": "You change Logo drawings. You get a taste, how big a change to make, and a program. Reply with one changed version of the whole program, as complete Logo, and nothing else.\nWrite the drawing in Logo, the turtle language. Commands:\nFORWARD 50 (or FD 50), BACK 50 (BK), RIGHT 90 (RT), LEFT 90 (LT), PENUP (PU), PENDOWN (PD), HOME,\nSETXY 100 -50 (go straight to a point), SETHEADING 90 (SETH: 0 is up, 90 is right),\nSETPENCOLOR \"red (put a quote mark before a color name), SETPENSIZE 4,\nDOT 20 (a filled dot 20 across, in the pen color, where the turtle is), CIRCLE 30 (a circle of radius 30 around the turtle), LABEL [some words] (writes the words where the turtle is).\nREPEAT 4 [FORWARD 100 RIGHT 90] runs the commands in the brackets 4 times. Inside a REPEAT, REPCOUNT says which time it is: 1, 2, 3 …\nTO SQUARE :SIZE REPEAT 4 [FORWARD :SIZE RIGHT 90] END makes a new command, used like SQUARE 50.\nMAKE \"N 5 stores a number, used as :N. Arithmetic works, like FORWARD :N * 10. IF :N > 3 [ … ] and IFELSE :N > 3 [ … ] [ … ] work too.\nThe picture is 512 by 512. The turtle starts in the middle at 0 0, facing up, with its pen down. x runs from -256 (left edge) to 256 (right edge), and y from -256 (bottom) to 256 (top).\nUse REPEAT whenever something happens more than once, instead of writing the same commands again and again.\nUse only the commands above. There is no LINE, TRIANGLE, SQUARE, RECTANGLE, STAR, POLYGON, FILL or SETBG command: draw shapes with FORWARD and RIGHT, for example a triangle is REPEAT 3 [FORWARD 100 RIGHT 120], or make your own command with TO … END.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "program",
+        "pretend": "mutator"
+      },
+      {
+        "id": "mutator-2",
+        "kind": "model",
+        "name": "Mutator 2",
+        "emoji": "🧫",
+        "role": "writes one changed version of the program",
+        "instructions": "You change Logo drawings. You get a taste, how big a change to make, and a program. Reply with one changed version of the whole program, as complete Logo, and nothing else.\nWrite the drawing in Logo, the turtle language. Commands:\nFORWARD 50 (or FD 50), BACK 50 (BK), RIGHT 90 (RT), LEFT 90 (LT), PENUP (PU), PENDOWN (PD), HOME,\nSETXY 100 -50 (go straight to a point), SETHEADING 90 (SETH: 0 is up, 90 is right),\nSETPENCOLOR \"red (put a quote mark before a color name), SETPENSIZE 4,\nDOT 20 (a filled dot 20 across, in the pen color, where the turtle is), CIRCLE 30 (a circle of radius 30 around the turtle), LABEL [some words] (writes the words where the turtle is).\nREPEAT 4 [FORWARD 100 RIGHT 90] runs the commands in the brackets 4 times. Inside a REPEAT, REPCOUNT says which time it is: 1, 2, 3 …\nTO SQUARE :SIZE REPEAT 4 [FORWARD :SIZE RIGHT 90] END makes a new command, used like SQUARE 50.\nMAKE \"N 5 stores a number, used as :N. Arithmetic works, like FORWARD :N * 10. IF :N > 3 [ … ] and IFELSE :N > 3 [ … ] [ … ] work too.\nThe picture is 512 by 512. The turtle starts in the middle at 0 0, facing up, with its pen down. x runs from -256 (left edge) to 256 (right edge), and y from -256 (bottom) to 256 (top).\nUse REPEAT whenever something happens more than once, instead of writing the same commands again and again.\nUse only the commands above. There is no LINE, TRIANGLE, SQUARE, RECTANGLE, STAR, POLYGON, FILL or SETBG command: draw shapes with FORWARD and RIGHT, for example a triangle is REPEAT 3 [FORWARD 100 RIGHT 120], or make your own command with TO … END.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "program",
+        "pretend": "mutator"
+      },
+      {
+        "id": "mutator-3",
+        "kind": "model",
+        "name": "Mutator 3",
+        "emoji": "🔬",
+        "role": "writes one changed version of the program",
+        "instructions": "You change Logo drawings. You get a taste, how big a change to make, and a program. Reply with one changed version of the whole program, as complete Logo, and nothing else.\nWrite the drawing in Logo, the turtle language. Commands:\nFORWARD 50 (or FD 50), BACK 50 (BK), RIGHT 90 (RT), LEFT 90 (LT), PENUP (PU), PENDOWN (PD), HOME,\nSETXY 100 -50 (go straight to a point), SETHEADING 90 (SETH: 0 is up, 90 is right),\nSETPENCOLOR \"red (put a quote mark before a color name), SETPENSIZE 4,\nDOT 20 (a filled dot 20 across, in the pen color, where the turtle is), CIRCLE 30 (a circle of radius 30 around the turtle), LABEL [some words] (writes the words where the turtle is).\nREPEAT 4 [FORWARD 100 RIGHT 90] runs the commands in the brackets 4 times. Inside a REPEAT, REPCOUNT says which time it is: 1, 2, 3 …\nTO SQUARE :SIZE REPEAT 4 [FORWARD :SIZE RIGHT 90] END makes a new command, used like SQUARE 50.\nMAKE \"N 5 stores a number, used as :N. Arithmetic works, like FORWARD :N * 10. IF :N > 3 [ … ] and IFELSE :N > 3 [ … ] [ … ] work too.\nThe picture is 512 by 512. The turtle starts in the middle at 0 0, facing up, with its pen down. x runs from -256 (left edge) to 256 (right edge), and y from -256 (bottom) to 256 (top).\nUse REPEAT whenever something happens more than once, instead of writing the same commands again and again.\nUse only the commands above. There is no LINE, TRIANGLE, SQUARE, RECTANGLE, STAR, POLYGON, FILL or SETBG command: draw shapes with FORWARD and RIGHT, for example a triangle is REPEAT 3 [FORWARD 100 RIGHT 120], or make your own command with TO … END.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "program",
+        "pretend": "mutator"
+      },
+      {
+        "id": "renderer",
+        "kind": "renderer",
+        "name": "Renderer",
+        "emoji": "🖼️",
+        "role": "runs each program and makes the picture"
+      },
+      {
+        "id": "critic",
+        "kind": "model",
+        "name": "Critic",
+        "emoji": "🧐",
+        "role": "scores the parent and the variants, all together",
+        "instructions": "You are an art critic for drawings made in Logo. You get the brief (the taste, and how big a change was asked for) and some pictures. Picture 1 is the parent; the others are new variants of it. Score every picture from 1 to 10 for how well it fits the taste, giving a little extra to variants that are new compared with picture 1. Say in one or two sentences which you like best and why. Then suggest one specific change to try next.",
+        "outputFields": [
+          {
+            "name": "scores",
+            "type": "list",
+            "about": "one score from 1 to 10 for each picture, in order: picture 1 first"
+          },
+          {
+            "name": "suggestion",
+            "type": "text",
+            "about": "one specific change to try next"
+          }
+        ],
+        "canSeeImages": true,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "artcritic",
+        "collect": true,
+        "wait": 5
+      },
+      {
+        "id": "selector",
+        "kind": "program",
+        "typeId": "selector",
+        "name": "Selector",
+        "emoji": "🧬",
+        "role": "collects · picks the winning picture from the Critic's scores",
+        "note": "collects · picks the winning picture from the Critic's scores",
+        "gate": false,
+        "collect": true,
+        "pseudocode": "wait for {5} messages: the programs of the pictures, and the Critic's scores\npair each picture's program with its score, in order\nif choosing is {best}, the winner is the highest score\notherwise pick at random, but a higher score gets more chances\nsend the winner's program and the Critic's suggestion back",
+        "params": {
+          "wait": 5,
+          "choosing": "best"
+        },
+        "slots": [
+          {
+            "line": 1,
+            "text": "5",
+            "param": "wait"
+          },
+          {
+            "line": 3,
+            "text": "best",
+            "param": "choosing"
+          }
+        ],
+        "scenarios": [
+          {
+            "id": "s1",
+            "name": "the highest score wins",
+            "input": {
+              "messages": [
+                {
+                  "from": "Renderer",
+                  "text": "",
+                  "data": {
+                    "program": "FD 10",
+                    "by": "Brief"
+                  }
+                },
+                {
+                  "from": "Renderer",
+                  "text": "",
+                  "data": {
+                    "program": "FD 20",
+                    "by": "Mutator 1"
+                  }
+                },
+                {
+                  "from": "Renderer",
+                  "text": "",
+                  "data": {
+                    "program": "FD 30",
+                    "by": "Mutator 2"
+                  }
+                },
+                {
+                  "from": "Critic",
+                  "text": "",
+                  "data": {
+                    "scores": [
+                      4,
+                      9,
+                      6
+                    ],
+                    "suggestion": "Try a spiral."
+                  }
+                }
+              ]
+            },
+            "expect": {
+              "winner": "FD 20",
+              "picture": 2,
+              "score": 9,
+              "suggestion": "Try a spiral."
+            }
+          },
+          {
+            "id": "s2",
+            "name": "the parent can win too, if nothing beats it",
+            "input": {
+              "messages": [
+                {
+                  "from": "Renderer",
+                  "text": "",
+                  "data": {
+                    "program": "FD 10",
+                    "by": "Brief"
+                  }
+                },
+                {
+                  "from": "Renderer",
+                  "text": "",
+                  "data": {
+                    "program": "FD 20",
+                    "by": "Mutator 1"
+                  }
+                },
+                {
+                  "from": "Critic",
+                  "text": "",
+                  "data": {
+                    "scores": [
+                      8,
+                      3
+                    ]
+                  }
+                }
+              ]
+            },
+            "expect": {
+              "winner": "FD 10",
+              "picture": 1
+            }
+          },
+          {
+            "id": "s3",
+            "name": "roulette with one picture still picks it",
+            "input": {
+              "messages": [
+                {
+                  "from": "Renderer",
+                  "text": "",
+                  "data": {
+                    "program": "FD 20",
+                    "by": "Mutator 1"
+                  }
+                },
+                {
+                  "from": "Critic",
+                  "text": "",
+                  "data": {
+                    "scores": [
+                      5
+                    ]
+                  }
+                }
+              ]
+            },
+            "expect": {
+              "winner": "FD 20"
+            }
+          },
+          {
+            "id": "s4",
+            "name": "no pictures came",
+            "input": {
+              "missing": true,
+              "messages": [
+                {
+                  "from": "Critic",
+                  "text": "",
+                  "data": {
+                    "scores": []
+                  }
+                }
+              ]
+            },
+            "expect": {
+              "winner": "",
+              "sayContains": "no pictures"
+            }
+          }
+        ],
+        "code": {
+          "pseudocode": "wait for {5} messages: the programs of the pictures, and the Critic's scores\npair each picture's program with its score, in order\nif choosing is {best}, the winner is the highest score\notherwise pick at random, but a higher score gets more chances\nsend the winner's program and the Critic's suggestion back",
+          "js": "function run(input, params, h) {\n  const messages = input.messages || [];\n  const programs = messages.filter(m => typeof m.data.program === \"string\").map(m => ({ program: m.data.program, by: m.data.by || m.from }));\n  const critic = messages.filter(m => Array.isArray(m.data.scores))[0] || { data: { scores: [], suggestion: \"\" } };\n  const scored = programs.map((p, i) => ({ program: p.program, by: p.by, picture: i + 1, score: Number(critic.data.scores[i]) || 0 }));\n  if (scored.length === 0) {\n    return { say: \"There were no pictures to choose from.\", winner: \"\", suggestion: \"\" };\n  }\n  let winner = scored[0];\n  if (params.choosing === \"best\") {\n    for (const s of scored) {\n      h.tick();\n      if (s.score > winner.score) {\n        winner = s;\n      }\n    }\n  } else {\n    const tickets = [];\n    for (const s of scored) {\n      for (let k = 0; k < Math.max(1, s.score); k++) {\n        tickets.push(s);\n      }\n    }\n    winner = h.pick(tickets);\n  }\n  return { winner: winner.program, picture: winner.picture, score: winner.score, scores: scored.map(s => s.score), suggestion: critic.data.suggestion || \"\", say: \"Picture \" + winner.picture + \" (\" + winner.by + \"'s) wins with \" + winner.score + \" out of 10.\" + (critic.data.suggestion ? \" The Critic suggests: \" + critic.data.suggestion : \"\") };\n}",
+          "lineMap": [
+            {
+              "pseudo": [
+                1,
+                1
+              ],
+              "js": [
+                2,
+                2
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                3,
+                5
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                10,
+                16
+              ]
+            },
+            {
+              "pseudo": [
+                4,
+                4
+              ],
+              "js": [
+                17,
+                25
+              ]
+            },
+            {
+              "pseudo": [
+                5,
+                5
+              ],
+              "js": [
+                26,
+                26
+              ]
+            }
+          ],
+          "hash": "c775621f3960c850"
+        },
+        "lastGood": null,
+        "status": "ok",
+        "statusDetail": null,
+        "shipped": true
+      },
+      {
+        "id": "book",
+        "kind": "program",
+        "typeId": "book",
+        "name": "History",
+        "emoji": "📜",
+        "role": "keeps what happened each round",
+        "note": "keeps every sentence it is sent, in order",
+        "gate": false,
+        "collect": false,
+        "pseudocode": "if nothing was sent, say the story as it is\notherwise add the new sentence to the end of the story\nsay the whole story so far, and remember it",
+        "params": {},
+        "slots": [],
+        "scenarios": [
+          {
+            "id": "s1",
+            "name": "the first sentence",
+            "input": {
+              "text": "Once upon a time, a dragon called Pip lived by the sea."
+            },
+            "expect": {
+              "sentences": 1,
+              "say": "Once upon a time, a dragon called Pip lived by the sea."
+            }
+          },
+          {
+            "id": "s2",
+            "name": "the next sentence goes on the end",
+            "input": {
+              "text": "Then Pip found a shell.",
+              "memory": [
+                "Once upon a time, a dragon called Pip lived by the sea."
+              ]
+            },
+            "expect": {
+              "sentences": 2,
+              "say": "Once upon a time, a dragon called Pip lived by the sea. Then Pip found a shell."
+            }
+          },
+          {
+            "id": "s3",
+            "name": "an empty message changes nothing",
+            "input": {
+              "text": "",
+              "memory": [
+                "One.",
+                "Two."
+              ]
+            },
+            "expect": {
+              "sentences": 2,
+              "say": "One. Two."
+            }
+          },
+          {
+            "id": "s4",
+            "name": "nothing yet",
+            "input": {
+              "text": ""
+            },
+            "expect": {
+              "sentences": 0,
+              "say": ""
+            }
+          }
+        ],
+        "code": {
+          "pseudocode": "if nothing was sent, say the story as it is\notherwise add the new sentence to the end of the story\nsay the whole story so far, and remember it",
+          "js": "function run(input, params, h) {\n  const story = input.memory || [];\n  if (h.count(input.text) === 0) {\n    return { sentences: story.length, say: story.join(\" \"), memory: story };\n  }\n  const now = story.concat([input.text]);\n  return { sentences: now.length, say: now.join(\" \"), memory: now };\n}",
+          "lineMap": [
+            {
+              "pseudo": [
+                1,
+                1
+              ],
+              "js": [
+                2,
+                5
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                6,
+                6
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                7,
+                7
+              ]
+            }
+          ],
+          "hash": "d1d7a2bb9ff687dc"
+        },
+        "lastGood": null,
+        "status": "ok",
+        "statusDetail": null,
+        "shipped": true
+      },
+      {
+        "id": "narrator",
+        "kind": "model",
+        "name": "Narrator",
+        "emoji": "🎙️",
+        "role": "tells the story of the evolution, when the run ends",
+        "instructions": "You get what happened in each round of an evolving drawing: which picture won, its score, and what the Critic suggested. Tell the story of how the drawing evolved in one short paragraph for children: the turning points, and what the Critic kept asking for.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "generic"
+      }
+    ],
+    "rules": [
+      {
+        "id": "v1",
+        "from": "brief",
+        "when": "always",
+        "send": "data",
+        "to": "renderer",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v2",
+        "from": "brief",
+        "when": "always",
+        "send": "text",
+        "to": "critic",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v3",
+        "from": "brief",
+        "when": "always",
+        "send": "text",
+        "to": "mutator-1",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v4",
+        "from": "brief",
+        "when": "always",
+        "send": "text",
+        "to": "mutator-2",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v5",
+        "from": "brief",
+        "when": "always",
+        "send": "text",
+        "to": "mutator-3",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v6",
+        "from": "mutator-1",
+        "when": "always",
+        "send": "text",
+        "to": "renderer",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v7",
+        "from": "mutator-2",
+        "when": "always",
+        "send": "text",
+        "to": "renderer",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v8",
+        "from": "mutator-3",
+        "when": "always",
+        "send": "text",
+        "to": "renderer",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v9",
+        "from": "renderer",
+        "when": "always",
+        "send": "image",
+        "to": "critic",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v10",
+        "from": "renderer",
+        "when": "always",
+        "send": "data",
+        "to": "selector",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v11",
+        "from": "critic",
+        "when": "always",
+        "send": "data",
+        "to": "selector",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v12",
+        "from": "selector",
+        "when": "always",
+        "send": "text+data",
+        "to": "brief",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v13",
+        "from": "selector",
+        "when": "always",
+        "send": "text",
+        "to": "book",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v14",
+        "from": "book",
+        "when": "end",
+        "send": "text",
+        "to": "narrator",
+        "prefix": "",
+        "enabled": true
+      }
+    ]
+  }
+}

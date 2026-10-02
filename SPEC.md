@@ -365,6 +365,13 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 424 PASS, fingerprint `547b1e524b19`.
 - 2026-10-02 — **Revision 1.3.2** (Ken's requests). An agent's emoji, at the top of its editor, is a button that opens a picker: about 90 emoji in four groups (people and jobs, tools and judges, animals, everything else), or type or paste any other. **⬇ Export** and **⬆ Import** are always at the top of the page, next to Guides and Settings, not only in Look inside. The learner guide and the Helper mention both.
   - Suite: 426 PASS, fingerprint `632dd72b6b38`.
+- 2026-10-02 — **Revision 1.4.0: the Logo Evolution Lab's core, as a society** (Ken asked whether the kit could express the Lab's ideas; three gaps were found and filled).
+  - **The Renderer passes on the program it drew**, and whose it was (`data.program`, `data.by`), so a program can choose between pictures and send the winner on.
+  - **AI agents can collect** (editor: “It answers … once it has N messages”; `agent.collect`, `agent.wait`). A collected message lists every message in order, numbers its pictures (“picture 2, drawn from Mutator 1's program”), and sends all of them to the model at once. Gemini now gets the pictures in order (they were reversed); Claude and OpenAI already were (tested for all three).
+  - **Every picture of a round shows on its card**, with the chosen one starred (★: its program was passed on later by an agent that didn't draw it) and a parent drawn again marked ↺. Logo replies stay out of the cards' text. **A Family tree tab** in the trace appears when a picture came from another one: a picture's parent is the latest earlier picture whose program its author was sent, and the same program drawn again is the same picture.
+  - **Evolution**, an example to start from (＋ New society, “Or start from an example”), not a tenth microworld: a Brief program (taste and change size as settings) asks three Mutators for variants; the Renderer draws the parent and the variants; the Critic collects the Brief and the four pictures and scores them together (output fields `scores` and `suggestion`); a Selector program collects the four programs and the scores and picks the best, or by roulette; the winner goes back to the Brief. A History (a Book) keeps each round, and when the run ends a Narrator tells the story. Also as `examples/evolution.json`. New library programs: Brief and Selector (22 in all).
+  - Not carried over from the Lab: the decaying backup pool, the drawing animation, the “dissolve” export and code diffs.
+  - Suite: 448 PASS, fingerprint `f74411ad5781`.
 
 ---
 
