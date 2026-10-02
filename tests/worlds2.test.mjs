@@ -381,13 +381,57 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const p7 = row("p7").textContent.replace(/\s+/g, " ").trim();
     const buttons = Array.from(row("p7").querySelectorAll('button.achip[data-act="open-agent"]')).map(b => b.dataset.id);
     const off = row("p4").classList.contains("off") && /switched off/.test(row("p4").textContent);
-    const plain = !row("p7").querySelector("select, input");
+    const plain = !row("p7").querySelector("select, input:not(.rule-on)");
     pw.document.querySelector('[data-act="rule-edit"][data-id="p7"]').click();
     const editing = !!pw.document.querySelector('.rule-editing [data-bind="rule"][data-id="p7"]');
     pw.document.querySelector('[data-act="rule-done"][data-id="p7"]').click();
     const back = !pw.document.querySelector(".rule-editing") && !!row("p7");
     const l = Seeds.makeLostAndFound();
     pw.__ak.app.societies.lost = l;
-    return /^When .*Judge responds, if its data says pass is false, send its words to .*Critic, starting with “The judge said:”\.\s*✎ Edit$/.test(p7) && buttons.join() === "judge,critic" && off && plain && editing && back;
+    return /^When .*Judge responds, if its data says pass is false, send its words to .*Critic, starting with “The judge said:”\.\s*✎ Edit$/.test(p7) && !row("p7").querySelector("select") && buttons.join() === "judge,critic" && off && plain && editing && back;
+  });
+  T.test("page: rules: one tick switches a rule off, “always” isn't said, the round agent and the gate note read plainly, and the switches sit by the rules", ["Society"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="pebbles"]').click();
+    pw.__ak.app.ui.lookInside = true;
+    pw.__ak.renderAll();
+    const s = pw.__ak.soc();
+    const left = () => pw.document.querySelector("#colLeft");
+    const p8 = pw.document.querySelector('[data-act="rule-edit"][data-id="p8"]').closest(".rule-read").textContent.replace(/\s+/g, " ");
+    const tick = pw.document.querySelector('.rule-read .rule-on[data-id="p8"]');
+    tick.checked = false;
+    tick.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    const off = s.rules.find(r => r.id === "p8").enabled === false && pw.document.querySelector('.rule-on[data-id="p8"]').closest(".rule-read").classList.contains("off");
+    const header = !left().querySelector('select[data-bind="roundAgent"]') && !!left().querySelector('.rules').previousElementSibling;
+    pw.document.querySelector('[data-act="round-edit"]').click();
+    const choosing = !!left().querySelector('select[data-bind="roundAgent"]');
+    pw.document.querySelector('[data-act="round-done"]').click();
+    const gate = left().querySelector(".gate-note").textContent;
+    const sw = left().querySelector('.variants-inside [data-bind="variant"][data-id="dot-counter"]');
+    sw.checked = true;
+    sw.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    const swapped = s.rules.find(r => r.id === "p4").enabled && s.rules.find(r => r.id === "p6").enabled && !s.rules.find(r => r.id === "p3").enabled && !s.rules.find(r => r.id === "p5").enabled;
+    return /Critic responds, send its words to/.test(p8) && !/always/.test(p8) && off && header && choosing && !left().querySelector('select[data-bind="roundAgent"]') &&
+      /if its data says pass is false/.test(gate) && !/ALWAYS|data\.pass/.test(gate) && swapped && /\(4 rules\)/.test(left().querySelector(".variants-inside").textContent);
+  });
+  T.test("page: unticking a rule's last SEND box says why, right there", ["Society"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="telephone"]').click();
+    pw.__ak.app.ui.lookInside = true;
+    pw.__ak.renderAll();
+    pw.document.querySelector('[data-act="rule-edit"][data-id="t1"]').click();
+    const b = pw.document.querySelector('[data-bind="rule-send"][data-id="t1"][data-part="text"]');
+    b.checked = false;
+    b.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    const warn = pw.document.querySelector(".send-warn");
+    return !!warn && /has to send something/.test(warn.textContent) && pw.__ak.soc().rules.find(r => r.id === "t1").send === "text" && pw.document.querySelector('[data-bind="rule-send"][data-id="t1"][data-part="text"]').checked;
+  });
+  T.test("page: with two models, the card asks which agent needs the strongest", ["Seeds"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="lost"]').click();
+    const before = /strongest model/.test(pw.document.querySelector(".qcard").textContent);
+    pw.__ak.app.settings.extra = [{ connection: "gemini", model: "gemini-3.8-flash" }];
+    pw.__ak.renderAll();
+    return !before && /Which agent needs the strongest model\?/.test(pw.document.querySelector(".qcard").textContent);
   });
 }

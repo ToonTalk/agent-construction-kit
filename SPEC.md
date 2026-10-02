@@ -315,6 +315,15 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 342 PASS, fingerprint `ead67a66481a`.
 - 2026-10-02 — **Revision 1.0.12.** Rules are read before they are edited. In Look inside and in every agent's Connections, a rule is a sentence with agent buttons and no menus or tick boxes: “When [⚖️ Judge] responds, if its data says **pass** is **false**, send its words to [📣 Critic], starting with “The judge said:”.” Each agent button opens that agent. A switched-off rule is faded and says so. **✎ Edit** shows the rule's controls as before; **✓ Done** turns it back into a sentence. A new rule opens ready to edit.
   - Suite: 343 PASS, fingerprint `d26bdec15ee7`.
+- 2026-10-02 — **Revision 1.0.13** (from Claude in Chrome's test of 1.0.12, and Ken).
+  - **A tick before each rule** switches it on or off in one click; an off rule is greyed and says “switched off”. (Ken: a tick for on/off makes sense; it is a direct act, not a chooser.) Everything else still waits behind ✎ Edit.
+  - “always,” is no longer said: “When Designer responds, send its words to Renderer.”
+  - **The round agent reads first:** “A new round starts each time [✏️ Designer] gets a message. ✎ Change”.
+  - **The gate note uses the rules' own words:** “When its data says pass is false, only its rules that say ‘if its data says pass is false’ send anything; its other rules wait.” The same wording is in agent editors, the trace's held rules and the Renderer's description. No more “ALWAYS” or “data.pass”.
+  - **One-click switches sit above the rules** in Look inside, as well as on the stage, saying how many rules each changes: “Dot Counter counts instead of Eyes (4 rules)” swaps the counters in one click.
+  - The “starting with” box is wider, and unticking a rule's last SEND box says right there that it has to send something.
+  - With more than one model set up, each question card adds: “Which agent needs the strongest model? Give it to one agent at a time, in the Models row on the stage, and compare.”
+  - Suite: 346 PASS, fingerprint `da60cc53b63f`.
 
 ---
 

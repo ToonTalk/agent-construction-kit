@@ -27,7 +27,7 @@ export default function (T, { pageWindow }) {
   T.test("look inside shows the agents and rules", ["Society"], async () => {
     const { w } = await page();
     click(w, '[data-act="look"]');
-    return w.document.querySelectorAll(".acard").length === 3 && w.document.querySelectorAll(".rule-read").length === 4 && !w.document.querySelector(".rules select, .rules input") && !!w.document.querySelector('[data-act="add-agent"]');
+    return w.document.querySelectorAll(".acard").length === 3 && w.document.querySelectorAll(".rule-read").length === 4 && !w.document.querySelector(".rules select, .rules input:not(.rule-on)") && w.document.querySelectorAll(".rules .rule-on").length === 4 && !!w.document.querySelector('[data-act="add-agent"]');
   });
   T.test("the stage starts with four rounds and has no seed", ["Seeds"], async () => {
     const { w } = await page();
