@@ -199,4 +199,15 @@ export default function (T, { modelWindow, pageWindow, same }) {
       /What learners type is sent to the model's provider/.test(text) && /“What did it actually get sent\?”/.test(text) && /The AI knows/.test(text) && text.indexOf(pw.AK.Adapters.modelLabel("gemini", pw.AK.Adapters.DEFAULT_MODELS.gemini)) >= 0 &&
       g.querySelectorAll(".worlds-list > li").length === Array.from(g.querySelectorAll(".worlds-list > li")).filter(li => /Powerful idea/.test(li.textContent)).length;
   });
+  T.test("rounds: when the round agent gets two messages in a row, each reply stays in the round of the work it answers", ["Engine"], async () => {
+    const s = Seeds.makeTelephone();
+    s.agents.push({ id: "agent", kind: "model", name: "New agent", emoji: "🤖", role: "", instructions: "Comment.", outputFields: [], canSeeImages: true, history: "stateless", replyKind: "prose", pretend: "describer" });
+    s.rules.push(rule("x1", "renderer", "agent", { send: "image" }), rule("x2", "agent", "artist"));
+    const r = await run(s, { to: "artist", text: "a red circle" });
+    const pics = acts(r, "renderer").map(e => e.round);
+    const comments = acts(r, "describer").concat(acts(r, "agent"));
+    // every comment is in the same round as the picture it was sent, and each picture has its comments
+    return comments.every(e => { const pic = r.trace.find(x => x.render && x.render.renderId === e.message.renderId); return pic && pic.round === e.round; }) &&
+      pics.every(n => acts(r, "describer").some(e => e.round === n)) && acts(r, "artist").length > acts(r, "describer").length - 1;
+  });
 }

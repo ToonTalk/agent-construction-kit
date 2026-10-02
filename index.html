@@ -426,7 +426,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.3.0";
+AK.VERSION = "1.3.1";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -4555,7 +4555,9 @@ function createRun(society, deps) {
     if (out.labels.length) bits.push(plural(out.labels.length, "label"));
     return { text: "I drew " + bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1] + "." + (res.note ? " " + res.note : ""), data: { pass: true, dots: out.dots, segments: out.segments, labels: out.labels }, renderId };
   }
-  function buildMessage(rule, agent, response) {
+  // A message belongs to the round of the work it answers, not to whatever round the run has reached since:
+  // if the round agent got two messages in a row, the Renderer may draw round 2's picture after round 3 began.
+  function buildMessage(rule, agent, response, round) {
     const prefix = rule.prefix ? String(rule.prefix) : "";
     const join = (p, t) => (p && t ? (/\s$/.test(p) ? p + t : p + " " + t) : (p || t || ""));
     const P = sendParts(rule.send);
@@ -4563,6 +4565,7 @@ function createRun(society, deps) {
     f.text = P.text ? join(prefix, response.text) : prefix;
     if (P.data) f.data = clone(response.data || {});
     if (P.image) { f.renderId = response.renderId || null; if (!response.renderId) f.text = join(f.text, "(" + agent.name + " had no picture to send.)"); }
+    if (round != null) f.round = round;
     return makeMessage(agent.id, rule.to, f);
   }
   function fireRules(agent, response, entry) {
@@ -4574,7 +4577,7 @@ function createRun(society, deps) {
       if (!cond.match) continue;
       if (rule.when === "always" && blocked) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), reason: agent.name + "'s data says pass is false, so its rules that don't check for that wait." }); continue; }
       if (!byId(rule.to)) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: rule.to, reason: "There is no agent called “" + rule.to + "”." }); continue; }
-      const msg = buildMessage(rule, agent, response);
+      const msg = buildMessage(rule, agent, response, entry.round);
       run.queue.push(msg);
       entry.fired.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), send: rule.send, reason: cond.reason, messageId: msg.id, rule: describeRule(rule, nameOf) });
     }
