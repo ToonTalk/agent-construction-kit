@@ -113,7 +113,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
   T.test("page: nine microworlds; only the chosen one shows its question, the others on hover", ["Seeds"], async () => {
     const { w: pw } = await boot();
     const ws = Array.from(pw.document.querySelectorAll(".world:not(.add)"));
-    return ws.length === 9 && pw.document.querySelectorAll(".world .q").length === 1 && ws.every(b => b.title.length > 5) && ws.map(b => b.dataset.id).join() === "telephone,pebbles,lost,story,secret,eyes3,fool,helpers,jokes";
+    return ws.length === 9 && pw.document.querySelectorAll(".world .q").length === 1 && ws.every(b => b.title.length > 5) && ws.map(b => b.dataset.id).join() === "story,secret,lost,telephone,pebbles,eyes3,fool,jokes,helpers" && pw.__ak.app.activeId === "story";
   });
   T.test("page: Joke Workshop asks You on the stage, and the agent buttons count each AI agent's calls", ["Engine"], async () => {
     const { w: pw } = await boot();

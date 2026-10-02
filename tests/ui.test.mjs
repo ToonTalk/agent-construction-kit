@@ -6,6 +6,8 @@ export default function (T, { pageWindow }) {
     const p = await pageWindow(opts);
     p.w.__ak.app.settings.connection = "pretend";
     p.w.__ak.app.societies.pebbles.challenges.find(c => c.id === "mystery").random.on = false;
+    p.w.__ak.app.activeId = "telephone";   // the page opens on Story Chain; these tests start in Telephone
+    p.w.__ak.renderAll();
     return p;
   };
   const page = async () => (P = P || await boot());

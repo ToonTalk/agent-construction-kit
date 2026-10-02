@@ -177,4 +177,26 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const two = pw.__ak.app.runs.secret.api.run.trace[0].adapter;
     return one === "Scripted stand-ins" && two === "Gemini 3.8 Flash";
   });
+  T.test("page: the learner guide is a first 15 minutes (try, change one thing, make it yours), with the reference folded below", ["Seeds"], async () => {
+    const { w: pw } = await boot();
+    pw.__ak.app.ui.helperOpen = false;
+    pw.document.querySelector('[data-act="guide"][data-id="learner"]') ? pw.document.querySelector('[data-act="guide"][data-id="learner"]').click() : pw.__ak.openSettings();
+    if (!pw.document.querySelector(".guide")) Array.from(pw.document.querySelectorAll('[data-act="guide"][data-id="learner"]')).pop().click();
+    const g = Array.from(pw.document.querySelectorAll(".guide")).pop();
+    const steps = Array.from(g.querySelectorAll(".steps > li")).map(li => li.querySelector("b").textContent);
+    const ref = g.querySelector("details.ref");
+    return /Your first 15 minutes/.test(g.textContent) && same(steps, ["Try one.", "Change one thing.", "Make it yours."]) && /Story Chain/.test(g.querySelector(".steps").textContent) && !!ref && !ref.open && /Models row|Models<\/b> row/.test(ref.innerHTML) && !/choose.{0,20}in Settings/i.test(g.querySelector(".steps").textContent);
+  });
+  T.test("page: the teacher guide has the big idea, a model table for all nine, sessions to try, prompts, misconceptions and the privacy point", ["Seeds", "Adapters"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector(".modal [data-close]") && pw.document.querySelector(".modal [data-close]").click();
+    pw.__ak.openSettings();
+    Array.from(pw.document.querySelectorAll('[data-act="guide"][data-id="teacher"]')).pop().click();
+    const g = Array.from(pw.document.querySelectorAll(".guide")).pop();
+    const rows = g.querySelectorAll(".guide-table tr").length - 1;
+    const text = g.textContent;
+    return /The big idea:/.test(g.querySelector(".big-idea").textContent) && rows === 9 && g.querySelectorAll(".worlds-list > li").length === 9 && /Sessions to try/.test(text) && !/Sessions that work/.test(text) &&
+      /What learners type is sent to the model's provider/.test(text) && /“What did it actually get sent\?”/.test(text) && /The AI knows/.test(text) && text.indexOf(pw.AK.Adapters.modelLabel("gemini", pw.AK.Adapters.DEFAULT_MODELS.gemini)) >= 0 &&
+      g.querySelectorAll(".worlds-list > li").length === Array.from(g.querySelectorAll(".worlds-list > li")).filter(li => /Powerful idea/.test(li.textContent)).length;
+  });
 }

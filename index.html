@@ -161,6 +161,8 @@ img.zoomable{cursor:zoom-in}img.zoomable:hover,img.zoomable:focus{outline:2px so
 .zoom{display:flex;justify-content:center}.zoom img{width:min(100%, 72vh, 768px);height:auto;aspect-ratio:1/1;border:1px solid var(--line);border-radius:10px;background:#fff}
 .world.needs{opacity:.5;border-style:dashed}.world.needs.on{opacity:.75}
 .needs-note{background:var(--warn-bg);color:#6B4A0A;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px}
+.guide .steps li{margin:6px 0}.guide details.ref{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}.guide details.ref summary{cursor:pointer}.guide h4{margin:12px 0 4px}
+.guide .big-idea{background:var(--accent-bg);border-radius:10px;padding:8px 10px}.guide-table{border-collapse:collapse;width:100%;font-size:13px}.guide-table th,.guide-table td{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}.guide-table th{background:#F3F6FA}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -424,7 +426,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.2.4";
+AK.VERSION = "1.3.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -3871,8 +3873,11 @@ function makeBlank(title) {
     rules: []
   };
 }
-// In teaching order (agent-kit-microworlds.md): the first two, then the seven designs.
-const MICROWORLDS = [{ id: "telephone", make: makeTelephone }, { id: "pebbles", make: makePebbles }, { id: "lost", make: makeLostAndFound }, { id: "story", make: makeStoryChain }, { id: "secret", make: makeSecretNumber }, { id: "eyes3", make: makeThreeEyes }, { id: "fool", make: makeFoolTheEyes }, { id: "helpers", make: makeSmallBig }, { id: "jokes", make: makeJokeWorkshop }];
+// In teaching order. Words before pictures, and any model (even Gemini Nano) before the ones that need a strong one:
+// Story Chain and Secret Number need only text; Lost and Found and Telephone add pictures; Pebble Challenge adds
+// judges and critics; Three Eyes and Fool the Eyes build on Pebble's counting; Joke Workshop makes the learner an agent;
+// Small Helper, Big Helper needs two models.
+const MICROWORLDS = [{ id: "story", make: makeStoryChain }, { id: "secret", make: makeSecretNumber }, { id: "lost", make: makeLostAndFound }, { id: "telephone", make: makeTelephone }, { id: "pebbles", make: makePebbles }, { id: "eyes3", make: makeThreeEyes }, { id: "fool", make: makeFoolTheEyes }, { id: "jokes", make: makeJokeWorkshop }, { id: "helpers", make: makeSmallBig }];
 // What a reporter (Eyes or Dot Counter) must send for each kind of judge to work.
 const REPORTER_FIELDS = { "row-judge": [F_ROWS, F_COLS], "grid-judge": [F_ROWS, F_COLS], "triangle-judge": [F_ROWLIST], "checker-judge": [F_ROWS, F_COLS, F_ROWLIST], "color-judge": [F_ROWLIST], "mystery-judge": [F_ROWLIST] };
 const reporterFieldsFor = typeId => clone(REPORTER_FIELDS[typeId] || [F_ROWS, F_COLS, F_ROWLIST]);
@@ -5043,7 +5048,7 @@ function unmetNeed(s) {
 }
 const app = {
   settings: defaultSettings(),
-  societies: {}, order: [], activeId: "telephone",
+  societies: {}, order: [], activeId: Seeds.MICROWORLDS[0].id,
   runs: {}, traces: {}, prevStrips: {}, log: {}, helperChat: {},
   banners: [], saveError: "", loadError: "", replaced: [],
   adapter: null, adapterKey: "",
@@ -6476,30 +6481,71 @@ async function askHelper(q) {
 function runOrLastTrace(id) { const rec = app.runs[id]; return rec ? rec.api.run.trace : (app.traces[id] || []); }
 
 /* ===== SECTION: GUIDES ===== */
+// The guides follow the kit, so the model names come from the kit itself.
 const GUIDES = {
-  learner: { title: "📘 A guide for learners", html:
-    "<h3>What is Agent Kit?</h3><p>You build a <b>society</b>: a team of agents that pass messages to each other. <b>Model agents</b> are AIs following instructions you can read and change. <b>Programmed agents</b> are small programs written in pseudocode. The <b>Renderer</b> turns Logo programs into pictures.</p>" +
-    "<h3>Start</h3><ol><li>Pick a microworld at the top. <b>Telephone</b> and <b>Pebble Challenge</b> are good ones to start with.</li><li>Read its question card. The questions have no single right answer.</li><li>Press <b>▶ Run</b> and watch the pictures, round by round.</li></ol>" +
-    "<h3>Look inside</h3><p>“Look inside” shows every agent and every rule. Nothing is hidden. Rules say who hears what: <i>when the Artist responds, always send its text to the Renderer</i>. You can change them, add new ones, or switch them off. <b>+ Add an agent</b> brings in a ready-made agent from the library, like a Loop Spotter that notices when Telephone gets stuck.</p>" +
-    "<h3>The trace</h3><p>Every message is in the <b>Trace</b>. Open one to see what an agent said and where its words went next. <b>Show full technical details</b> shows exactly what it was sent and exactly what came back, including the whole prompt for model calls. After a run, <b>Replay</b> steps through it one message at a time.</p>" +
-    "<h3>Logo</h3><p>The Artist and the Designer draw in <b>Logo</b>, the turtle language: <code>FORWARD 50</code>, <code>RIGHT 90</code>, and <code>REPEAT 4 [FORWARD 50 RIGHT 90]</code> for a square. In Telephone, “Start with a drawing” lets you write Logo yourself.</p>" +
-    "<h3>Programmed agents</h3><p>Open one to read its pseudocode. Numbers in { } are settings you can change right there. To change what it does, edit the pseudocode and save: the translator turns it into JavaScript. <b>Peek under the hood</b> shows both side by side; point at a line to see its partner.</p><p>Programs only work with data. If a line needs eyes or opinions (“if the drawing looks happy”), the translator will ask you what a program could count instead.</p>" +
-    "<h3>Scenarios</h3><p>Scenarios are tests: an input, and what the agent should answer. They run after every change. A red one shows what was expected and what happened. Make scenarios that try to break an agent, then export them for a friend.</p>" +
-    "<h3>Models</h3><p>The model agents need a model to think with. Settings lets you choose: Claude, Gemini or OpenAI with a key, Claude with no key inside a claude.ai chat, or Gemini Nano, which is free and built into desktop Chrome.</p>" +
-    "<h3>Tips</h3><ul><li>Change one thing at a time.</li><li>Run the same start twice and compare.</li><li>Before you press Run, say what you think will happen.</li><li>Stuck? Ask the 🤔 Helper. It asks questions back.</li></ul>" },
-  teacher: { title: "📕 A guide for teachers", html:
-    "<h3>What learners do</h3><p>Learners (about 10 to 16) run, inspect, debug and change small societies of agents: language-model agents, programmed agents written in editable pseudocode, and a built-in Renderer. Everything is a glass box: every prompt, every reply, every program and every message is visible.</p>" +
-    "<h3>The microworlds</h3><p><b>Telephone: “Where does it go?”</b> An Artist turns a sentence into a Logo program, the Renderer draws it, a Describer describes the picture, and the description goes back to the Artist. Powerful ideas: iteration, fixed points and cycles, variance between runs. Learners can later add a Loop Spotter or a Tally from the library.</p><p><b>Pebble Challenge: “Why did the Designer win?”</b> A Designer draws a challenge in pebbles, Eyes (a vision model) counts them, and a programmed Judge lets the work through or blocks it; a Critic tells the Designer what to fix. Each challenge gives the one Judge its program, shown on the stage. One click swaps Eyes for Dot Counter, a program that reads the Renderer's dot list; another takes the Critic out, so the Judge's words go straight to the Designer. The challenges run from easy to hard: a strong model meets the easy ones at once, <i>A big grid</i> is hard for a vision model to count, and <i>Mystery rows</i> keeps a secret that only the Critic's notes reveal, a few clues at a time. Powerful ideas: critics can be gamed; correlated and independent error; perception versus judgment.</p>" +
-    "<p>The others, in teaching order: <b>Lost and Found</b> (rules that route by words; literal programs), <b>Story Chain</b> (what each agent can see and remember), <b>Secret Number</b> (a program with a notebook makes a model look smarter), <b>Three Eyes</b> (voting, and whether copies of one model fail together; a Vote program <i>collects</i> several answers before it runs), <b>Fool the Eyes</b> (a model as the adversary, with a Referee keeping score), <b>Small Helper, Big Helper</b> (a cheap model first, a strong one when it fails; each AI agent's button counts its calls), and <b>Joke Workshop</b> (an agent called You: the run waits for the learner's rating).</p>" +
-    "<h3>Sessions that work</h3><ol><li><b>Predict, run, compare.</b> Run Telephone twice with the same start. How different are the runs? Why?</li><li><b>Find the attractor.</b> Which starts settle fast, which flip back and forth, which never settle? Then add a Loop Spotter (Look inside, then + Add an agent) and change its threshold: is “stuck” a fact about the pictures or about the Loop Spotter?</li><li><b>Game the judge.</b> In Pebble Challenge, can the Designer win without meeting the challenge? Try labels, spacing and little circles. Which fooled Eyes, and which fooled Dot Counter?</li><li><b>Read and write programs.</b> Open a Judge, peek under the hood, change a number in a slot, then change a line and watch the scenarios.</li><li><b>Play the machine's game.</b> Tick “You be the Designer” and solve Mystery rows yourself, then compare your tries with the model's. In Telephone, “You be the Artist” lets a learner draw in Logo from the Describer's words.</li><li><b>Does the Critic help?</b> Run the same challenge with and without the Critic. If nothing gets worse, what was the Critic for?</li></ol>" +
-    "<h3>Seat two learners at one society</h3><p>One drives; the other predicts and writes down what happens; swap every run. Then use <b>scenario files</b> to challenge each other: each pair exports a set of scenarios designed to break the other pair's agent, the other pair imports it, and the fixing begins.</p>" +
-    "<h3>Modes and cost</h3><ul><li><b>Gemini Nano, built into desktop Chrome</b>: free, and nothing leaves the computer. A small model, so it makes more mistakes, which can be worth discussing.</li><li><b>Claude inside a claude.ai chat</b>: no key; uses the signed-in account.</li><li><b>Your own key</b> (Anthropic, Google, OpenAI): billed to that key. Each starts on its provider's cheapest model that can see pictures (Claude Haiku 4.5, Gemini 3.5 Flash-Lite, GPT-6 Luna); Settings lists stronger ones. The round limit and the Stop button keep runs short.</li></ul>" +
-    "<h3>Safety and privacy</h3><ul><li>Every model call starts with a fixed, visible safety preamble for a young audience.</li><li>The kit never asks for personal data.</li><li>Imported files are checked: text is cleaned, and any JavaScript in them is thrown away and translated again here.</li><li>Programs run behind a checker, a step counter and (where the page allows) a Worker. Drawings are Logo, read by an interpreter that can only move the turtle.</li><li>The Helper asks questions rather than giving answers, and never states the fix for a failing scenario.</li></ul>" }
+  learner: { title: "📘 A guide for learners", html: () =>
+    "<h3>Your first 15 minutes</h3>" +
+    "<p>Agent Kit is for building a <b>society</b>: a team of agents that pass messages to each other. Some agents are AIs following instructions you can read; some are little programs; one, the Renderer, turns drawing programs into pictures. Nothing is hidden.</p>" +
+    "<ol class='steps'>" +
+    "<li><b>Try one.</b> Pick <b>Story Chain</b>, the first microworld at the top, and read its question. Before you press <b>▶ Run</b>, say what you think will happen. Then watch the writers, round by round.</li>" +
+    "<li><b>Change one thing.</b> Tick a switch under the start (like “Writer A remembers everything”), or press <b>🔍 Look inside</b> and change one agent's instructions or one rule. Run it again. What changed, and why?</li>" +
+    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, or start from scratch. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
+    "</ol>" +
+    "<p>Stuck? Ask the <b>🤔 Helper</b> (bottom right). It knows where everything is, and it will ask you questions back. Working with a friend? One of you drives and the other predicts; swap every run.</p>" +
+    "<details class='ref'><summary><b>Everything else, when you need it</b></summary>" +
+    "<h4>The stage</h4><p><b>▶ Run</b> goes until the round limit. <b>⏭ Step</b> delivers one message at a time, and Run carries on from there. <b>↺ Reset</b> starts over. <b>🙋 You be the …</b> lets you take an agent's place: the run waits for your answer. One-click switches under the start change several rules at once. If a grown-up has set up more than one model, the <b>Models</b> row lets you choose which model each AI agent uses. After a run, each AI agent's button says how many model calls it made.</p>" +
+    "<h4>Rules</h4><p>In Look inside, every rule reads as a sentence: <i>When the Artist responds, send its words to the Renderer.</i> The tick in front switches a rule on or off. <b>✎ Edit</b> shows its parts: who it's from, a condition (like <i>if its data says pass is false</i>), what to send (words, data, picture) and who to. A rule can come from <b>You</b>, so the start reaches more than one agent, and a rule can wait for <b>the end of the run</b>, like the one that sends Story Chain's Book to the Editor.</p>" +
+    "<h4>Agents</h4><p><b>AI agents</b> follow instructions you can change in their editor. <b>Programmed agents</b> are pseudocode: numbers in green { } are settings you can change; edit a line and the translator turns it into JavaScript (<b>Peek under the hood</b> shows both). <b>Scenarios</b> are tests for a program: an input and what it should answer; a red one shows what went wrong, and you can save any turn from the trace as a new one. Some programs <b>collect</b>: they wait for several messages, then run once on all of them. An agent called <b>You</b> is you. Each agent's editor shows its <b>Connections</b>: who can send it messages, and its own rules.</p>" +
+    "<h4>The trace</h4><p>Every message is in the <b>Trace</b>. Open one to see what the agent got and what it said. <b>Show full technical details</b> shows exactly what a model was sent and what came back. A <b>…</b> opens text that was cut short, and a picture opens full size when you click it. After a run, <b>Replay</b> steps through it one message at a time.</p>" +
+    "<h4>Logo</h4><p>Agents that draw write <b>Logo</b>: <code>FORWARD 50</code>, <code>RIGHT 90</code>, and <code>REPEAT 4 [FORWARD 50 RIGHT 90]</code> for a square. In Telephone, “Start with a drawing” lets you write Logo yourself, and you can change any drawing in the trace and see it drawn.</p>" +
+    "<h4>Models</h4><p>A grown-up chooses the models in ⚙️ Settings: Gemini Nano (free, built into Chrome), or Claude, Gemini or OpenAI with a key. If they add more than one, you choose which agent uses which on the stage. Each microworld's question card says which model suits it.</p>" +
+    "<h4>Tips</h4><ul><li>Change one thing at a time.</li><li>Run the same start twice and compare: AI agents don't always say the same thing.</li><li>Before you press Run, say what you think will happen.</li></ul>" +
+    "</details>" },
+  teacher: { title: "📕 A guide for teachers", html: () => {
+    const D = Adapters.DEFAULT_MODELS, L = Adapters.modelLabel;
+    const row = (name, model, why, calls) => "<tr><td><b>" + name + "</b></td><td>" + model + "</td><td>" + why + "</td><td>" + calls + "</td></tr>";
+    return "<p class='big-idea'><b>The big idea:</b> what looks like intelligence often comes from how simple agents are arranged. A small model with a four-line notebook plays Secret Number far better than one without; Dot Counter, which can't see, counts better than Eyes; the Book remembers what the Editor smooths over.</p>" +
+    "<h3>What learners do</h3><p>Learners (about 10 to 16) run, inspect, debug and change small societies of agents: AI agents, programmed agents written in editable pseudocode, and a Renderer that draws Logo. Everything is a glass box: every prompt, every reply, every program and every message is visible. Then they make their own with <b>＋ New society</b>.</p>" +
+    "<h3>The microworlds, in teaching order</h3><ol class='worlds-list'>" +
+    "<li><b>Story Chain: “Who remembers the dragon?”</b> Three writers add a sentence each; a Name Keeper checks the hero is still there; a Book keeps every sentence; when the run ends an Editor tells the story again. <i>Powerful ideas:</i> each agent knows only what it is sent; a record (the Book) and a reconstruction (the Editor) are different kinds of memory.</li>" +
+    "<li><b>Secret Number: “Can a notebook make it smarter?”</b> The Guesser has no memory; a four-line Notebook program keeps the clues. <i>Powerful ideas:</i> bookkeeping can look like intelligence; memory is not the same as strategy.</li>" +
+    "<li><b>Lost and Found: “Where did it end up?”</b> A Finder names a drawing, and rules route it to shelves by its words. <i>Powerful ideas:</i> programs are literal and models are fuzzy; the wording decides where things go.</li>" +
+    "<li><b>Telephone: “Where does it go?”</b> An Artist draws a sentence in Logo, a Describer describes the picture, round and round. <i>Powerful ideas:</i> iteration, fixed points and cycles, variance between runs.</li>" +
+    "<li><b>Pebble Challenge: “Why did the Designer win?”</b> A Designer draws pebbles, Eyes counts them, a programmed Judge passes or blocks, and a Critic says what to fix. One click swaps Eyes for Dot Counter. <i>Powerful ideas:</i> critics can be gamed; perception versus judgment.</li>" +
+    "<li><b>Three Eyes: “Are three heads better than one?”</b> Three Eyes count the same picture and a Vote program takes the most popular answer. <i>Powerful idea:</i> voting helps only when the voters' mistakes are independent; copies of one model often fail together.</li>" +
+    "<li><b>Fool the Eyes: “Can a drawing trick a looker?”</b> A Trickster draws pebbles to fool Eyes; a Referee keeps score. <i>Powerful idea:</i> an adversary finds weaknesses a friendly test never would.</li>" +
+    "<li><b>Joke Workshop: “Do critics make jokes funnier?”</b> A Joker writes, two Critics send notes, and the learner rates every version. <i>Powerful idea:</i> whose judgment counts, and whether critics improve work or only make it more careful.</li>" +
+    "<li><b>Small Helper, Big Helper: “When do you need the big one?”</b> A cheap model tries first; an Escalator hands the job to a strong one when it fails. It needs two models. <i>Powerful idea:</i> cost against capability.</li></ol>" +
+    "<h3>Which model, and how many calls</h3><p>Model choice is where sessions get stuck, so here is what we have seen. Calls are model calls in one run with the default rounds; each AI agent's button counts them after a run.</p>" +
+    "<table class='guide-table'><tr><th>Microworld</th><th>Model</th><th>Why</th><th>Calls per run</th></tr>" +
+    row("Story Chain", "any, even Gemini Nano", "only text; the lesson is in what each writer sees", "13") +
+    row("Secret Number", "any, even Gemini Nano", "the Guesser only says a number", "up to 10 (about 7 with the Notebook)") +
+    row("Lost and Found", "stronger than Nano for the Drawer and Finder", "they draw and name pictures", "2") +
+    row("Telephone", "stronger than Nano", "the Artist writes Logo, the Describer sees pictures; Nano fails before there is anything to study", "8") +
+    row("Pebble Challenge", "one that sees pictures well", "Eyes counts pictures; the Designer writes Logo", "3 per try, up to 15") +
+    row("Three Eyes", "different models for the three Eyes, if you have them", "copies of one model make the same mistakes", "4") +
+    row("Fool the Eyes", "a strong one for the Trickster", "it has to write tricky Logo", "8") +
+    row("Joke Workshop", "any that writes well", "the learner does the judging", "up to 9") +
+    row("Small Helper, Big Helper", "two: a cheap one and a strong one", "it compares them", "1 per try, up to 6") +
+    "</table><p>Settings starts each key-based provider on a cheap model (" + L("anthropic", D.anthropic) + ", " + L("gemini", D.gemini) + ", " + L("openai", D.openai) + ") and lists stronger ones. A grown-up sets up the models; with more than one, learners choose which agent uses which in the Models row on the stage, without opening Settings.</p>" +
+    "<h3>Sessions to try</h3><p>No child has used the kit yet, so these are guesses to test, not results.</p><ol>" +
+    "<li><b>Where did Pip go?</b> (Story Chain) Run it and count the rounds until Pip disappears. Tick “Writer A remembers” and run again. Then compare the Book with the Editor's story: what did the Editor leave out, or make up?</li>" +
+    "<li><b>Is the Guesser smarter?</b> (Secret Number) Run with no Notebook and count the guesses. Switch the Notebook on and run again with the same model. Then tick “You be the Guesser” and try to beat it.</li>" +
+    "<li><b>Predict, run, compare.</b> (Telephone) Run twice with the same start. How different are the runs? Which starts settle, which flip back and forth?</li>" +
+    "<li><b>Game the judge.</b> (Pebble Challenge) Can the Designer win without meeting the challenge? Which tricks fooled Eyes, and which fooled Dot Counter?</li>" +
+    "<li><b>Read and write programs.</b> Open a Judge or the Notebook, change a number in a slot, then change a line and watch the scenarios.</li>" +
+    "<li><b>Does the Critic help?</b> (Pebble Challenge or Joke Workshop) Run with and without the critics. If nothing gets worse, what were they for?</li>" +
+    "<li><b>Make your own.</b> ＋ New society, copy a microworld, and change its question to one the learners care about.</li></ol>" +
+    "<h3>Seat two learners at one society</h3><p>One drives; the other predicts and writes down what happens; swap every run. Then use <b>scenario files</b> to challenge each other: each pair exports scenarios designed to break the other pair's agent, the other pair imports them, and the fixing begins.</p>" +
+    "<h3>What to say when a learner is stuck</h3><p>Questions, not answers:</p><ul><li>“What did it actually get sent?” (Open its trace entry: “It got …”.)</li><li>“What would a program have to count to decide that?”</li><li>“Which agent decided that, and what did it look at?”</li><li>“What do you think will happen? Why?”</li><li>“If you ran it again, would it say the same?”</li></ul>" +
+    "<h3>Misconceptions to watch for</h3><ul><li><b>“The AI knows.”</b> An agent knows only its instructions and what rules send it. The trace shows exactly that.</li><li><b>“The AI is lying.”</b> It writes likely text; it has no plan to deceive. Ask what it was sent.</li><li><b>“The program is clever.”</b> It does exactly what its pseudocode says, which is why “dogs” isn't “dog”.</li><li><b>“Same start, same result.”</b> AI agents vary from run to run; programs don't.</li><li><b>“Bigger is always better.”</b> Small Helper, Big Helper shows when it isn't worth it.</li><li><b>“The Editor's story is what happened.”</b> The Book is the record.</li></ul>" +
+    "<h3>Safety and privacy</h3><ul><li><b>What learners type is sent to the model's provider</b> (Anthropic, Google or OpenAI), along with the agents' messages and pictures, except with Gemini Nano, which runs on the computer. Tell learners not to type names, addresses or anything personal.</li><li>Every model call starts with a fixed, visible safety preamble for a young audience.</li><li>Keys stay in this browser unless you choose to remember them; they are never put in exported files.</li><li>Imported files are checked: text is cleaned, and any JavaScript in them is thrown away and translated again here.</li><li>Programs run behind a checker, a step counter and (where the page allows) a Worker. Drawings are Logo, read by an interpreter that can only move the turtle.</li><li>The Helper asks questions back, and never states the fix for a failing scenario.</li></ul>";
+  } }
 };
 function openGuide(which) {
   const g = GUIDES[which] || GUIDES.learner;
   const other = which === "teacher" ? "learner" : "teacher";
-  const m = openModal({ title: g.title, body: '<div class="guide">' + g.html + '</div><div class="row end" style="margin-top:14px"><button class="btn" data-act="guide" data-id="' + other + '">' + (other === "teacher" ? "📕 The teacher guide" : "📘 The learner guide") + '</button></div>' });
+  const m = openModal({ title: g.title, wide: which === "teacher", body: '<div class="guide">' + (typeof g.html === "function" ? g.html() : g.html) + '</div><div class="row end" style="margin-top:14px"><button class="btn" data-act="guide" data-id="' + other + '">' + (other === "teacher" ? "📕 The teacher guide" : "📘 The learner guide") + '</button></div>' });
   m.el.addEventListener("click", e => { if (e.target.closest("[data-act=guide]")) m.close(); });
 }
 

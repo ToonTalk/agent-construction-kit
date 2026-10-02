@@ -5,8 +5,17 @@ Learners (about 10 to 16) build **societies of agents**: language-model agents, 
 turns Logo programs into pictures. Everything is a glass box: every prompt, every reply,
 every program and every message between agents can be opened and read.
 
-Nine microworlds ship with it, in teaching order, and each is an ordinary saved society:
+Nine microworlds ship with it, in teaching order (words before pictures; any model, even Gemini
+Nano, before the ones that need a strong one), and each is an ordinary saved society:
 
+- **Story Chain — “Who remembers the dragon?”** Three writers add a sentence each; a Name Keeper
+  checks the hero is still there; a Book keeps every sentence and, when the run ends, an Editor
+  tells it again. *What each agent can see and remember; a record versus a reconstruction.*
+- **Secret Number — “Can a notebook make it smarter?”** The Keeper keeps a number from 1 to 100
+  and says higher or lower; the Guesser has no memory. Switch on a Notebook program that keeps
+  the clues, or let the Guesser remember. *Memory and bookkeeping versus cleverness.*
+- **Lost and Found — “Where did it end up?”** A Drawer draws a lost thing, the Finder names it,
+  and rules send it to a shelf by the words it used. *Routing by words; literal programs.*
 - **Telephone — “Where does it go?”** An Artist draws a sentence, a Describer describes the
   picture, and the description goes back to the Artist. Learners can add a Loop Spotter or a
   Tally from the library. *Iteration, fixed points and cycles, variance.*
@@ -17,21 +26,14 @@ Nine microworlds ship with it, in teaching order, and each is an ordinary saved 
   Telephone, the Artist) in the same game as the machine. The challenges run from easy to hard: in
   *Mystery rows* the Judge keeps a secret that only the Critic's notes reveal. *Critics can be
   gamed; perception versus judgment.*
-- **Secret Number — “Can a notebook make it smarter?”** The Keeper keeps a number from 1 to 100
-  and says higher or lower; the Guesser has no memory. Switch on a Notebook program that keeps
-  the clues, or let the Guesser remember. *Memory and bookkeeping versus cleverness.*
-- **Lost and Found — “Where did it end up?”** A Drawer draws a lost thing, the Finder names it,
-  and rules send it to a shelf by the words it used. *Routing by words; literal programs.*
-- **Story Chain — “Who remembers the dragon?”** Three writers add a sentence each; a Name Keeper
-  checks the hero is still there. *What each agent can see and remember.*
 - **Three Eyes — “Are three heads better than one?”** Three lookers count the same picture and a
   Vote program, which collects all their answers, takes the most popular. *Correlated error.*
 - **Fool the Eyes — “Can a drawing trick a looker?”** A Trickster draws pebbles to fool Eyes; a
   Referee keeps score. *A model as the adversary.*
-- **Small Helper, Big Helper — “When do you need the big one?”** A cheap model tries first; an
-  Escalator hands the job to a strong one when it fails. *Cost against capability.*
 - **Joke Workshop — “Do critics make jokes funnier?”** A Joker writes, Critics suggest, and you
   rate every version. *Do critics help? The learner as an agent.*
+- **Small Helper, Big Helper — “When do you need the big one?”** A cheap model tries first; an
+  Escalator hands the job to a strong one when it fails. It needs two models. *Cost against capability.*
 
 **Free play:** “＋ New society” starts a society of your own, from scratch or as a copy of a
 microworld. Give it a name, a question and an introduction, add AI agents and library programs, and
