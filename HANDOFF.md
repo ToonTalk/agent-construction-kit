@@ -4,7 +4,7 @@
 
 ## State (2026-10-01)
 
-Agent Kit **1.2.2**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.2.2 follow reviews
+Agent Kit **1.2.3**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.2.3 follow reviews
 and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -63,7 +63,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**418 PASS, 0 FAIL · fingerprint `6dd9fa4f2871`** · model modules covered 19/19.
+**420 PASS, 0 FAIL · fingerprint `dc9ee4fe0959`** · model modules covered 19/19.
 
 ## Acceptance criteria (§11)
 
@@ -104,6 +104,11 @@ folder is a copy without the §14 log.)
   says it needs translation and keeps running the last good program, as §4.2 asks.
 
 ## Next steps
+
+0. **Stop adding microworlds and try the kit with two or three children** (Claude in Chrome and
+   the panel agree; all nine are built and none has met a child). Story Chain is a good first one:
+   it works even on Gemini Nano. Watch whether the menu (nine microworlds, 20 library agents) is
+   more than one child's project needs.
 
 1. Live runs (see Open issues), then tune the Artist, Designer, Eyes and Critic instructions
    from what real models do.

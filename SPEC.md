@@ -347,6 +347,13 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 417 PASS, fingerprint `5759d2519a9f`.
 - 2026-10-02 — **Revision 1.2.2.** Every small picture (the trace, what an agent got, the round-by-round cards, scenarios, the test bench, your turn) opens full size in a window when clicked, or with Enter from the keyboard (Ken's request). The window is named for the picture, like “The Renderer's picture, round 2”.
   - Suite: 418 PASS, fingerprint `6dd9fa4f2871`.
+- 2026-10-02 — **Revision 1.2.3** (Ken's requests, and Claude in Chrome's test of 1.2.0 with Gemini Nano and 3.8 Flash).
+  - **The last thing said counts.** At the round limit, only the message that would start a new round is dropped (and any later ones to the round agent); every message already on its way is still delivered, then the ending happens. The trace says so: “That was the last round (4): Writer A won't start another, but messages already on their way are still delivered.” Before, the run stopped mid-delivery, so the Book never got Writer C's last sentence and the Editor tidied an incomplete story.
+  - **The trace's start line names the models the agents used** (“Gemini Nano + Gemini 3.8 Flash”), not only the main connection.
+  - The Escalator's description had a raw “{2}”; no library description has one now (tested).
+  - **Story Chain's question about the Editor** is now Minsky's: “Compare the Book with the Editor's story. What did the Editor leave out, or make up? Which one is more like your own memory?” The Book is a record; the Editor reconstructs, and a good Editor hides the gaps.
+  - **A Logo program is shown once, in color**, in the trace's technical details and in the exported web page (which colors Logo now, in Renderer entries and in model replies that are programs). **Pictures in the exported page open full size** with a click, using CSS only: the page still has no scripts. It also shows the picture an agent was sent, and the start's other recipients, the last-round note and the ending.
+  - Suite: 420 PASS, fingerprint `dc9ee4fe0959`.
 
 ---
 

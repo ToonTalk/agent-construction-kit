@@ -39,7 +39,7 @@ export default function (T, { pageWindow }) {
     w.__ak.app.settings.speed = "instant";
     const rec = await w.__ak.runNow();
     await sleep(60);
-    return rec.api.run.status === "done" && w.document.querySelectorAll(".tentry").length === 14 && w.document.querySelectorAll(".rcard").length === 4;
+    return rec.api.run.status === "done" && w.document.querySelectorAll(".tentry").length === 15 && w.document.querySelectorAll(".rcard").length === 4 && /That was the last round/.test(w.document.querySelector("#colRight").textContent);
   });
   T.test("a trace entry shows the response and rules first, and the exact prompt only when asked", ["Engine"], async () => {
     const { w } = await page();
@@ -174,7 +174,8 @@ export default function (T, { pageWindow }) {
   T.test("the trace exports as a web page with no scripts in it", ["Engine"], async () => {
     const { w } = await page();
     const html = await w.__ak.traceDocument(w.__ak.app.societies.telephone, w.__ak.app.traces.telephone, null);
-    return /<details/.test(html) && !/<script/i.test(html) && /System prompt/.test(html) && /The Logo program it drew/.test(html);
+    return /<details/.test(html) && !/<script/i.test(html) && /System prompt/.test(html) && /The Logo program it drew/.test(html) && /<pre class="logo"><span class="lg-k">/.test(html) && /img\.zoom:focus/.test(html) &&
+      (html.match(/The Logo program it drew/g) || []).length === (html.match(/<pre class="logo">/g) || []).length - (html.match(/<h4>Reply[^<]*<\/h4><pre class="logo">/g) || []).length;
   });
   T.test("settings: one model field to type in, with models to pick", ["Adapters"], async () => {
     const { w } = await page();

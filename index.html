@@ -422,7 +422,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.2.2";
+AK.VERSION = "1.2.3";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -3197,7 +3197,7 @@ libAgent({
 });
 libAgent({
   typeId: "escalator", name: "Escalator", emoji: "🪜", gate: false, note: "gives the job to the big helper after the small one fails",
-  about: "Hands each task to the small helper. After the small helper has failed {2} times, it gives the job, with what went wrong, to the big helper.",
+  about: "Hands each task to the small helper. After the small helper has failed a few times (2, unless you change it), it gives the job, with what went wrong, to the big helper.",
   pseudo: [
     "when the task arrives from you, remember it, and send it to the small helper",
     "when the work is rejected, count one more try",
@@ -3533,8 +3533,8 @@ const CRITIC_INSTRUCTIONS = "You are the Critic. The Designer drew pebbles (dots
 const MYSTERY_TASK = "The Mystery Judge has a secret: how many pebbles each of 3 rows should have. Each row has between 1 and 8 pebbles. Draw 3 rows of pebbles, one under another. After each try, the Critic will tell you which rows need more pebbles and which need fewer.";
 // Bump this when a microworld changes: saved copies of the older version are then replaced (and can be kept as copies).
 const SEED_VERSION = 5;   // the newest; each microworld has its own, so one that didn't change isn't replaced
-const SEED_VERSIONS = { telephone: 4, pebbles: 7, secret: 6, lost: 6, story: 2, eyes3: 1, fool: 1, helpers: 1, jokes: 2 };   // "you" is reserved for the start
-const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, which follow its settings; the Critic talks only about the pebbles; and Eyes ignores stray lines, as the Judge does.", secret: "The Keeper's own secret is 83 now, and you can type a secret on the stage.", lost: "The Finder can say “nothing”, and there's a question about a toy robot.", story: "A Book keeps the whole story, and when the run ends an Editor tells it again." };
+const SEED_VERSIONS = { telephone: 4, pebbles: 7, secret: 6, lost: 6, story: 3, eyes3: 1, fool: 1, helpers: 1, jokes: 2 };   // "you" is reserved for the start
+const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, which follow its settings; the Critic talks only about the pebbles; and Eyes ignores stray lines, as the Judge does.", secret: "The Keeper's own secret is 83 now, and you can type a secret on the stage.", lost: "The Finder can say “nothing”, and there's a question about a toy robot.", story: "A Book keeps the whole story, and when the run ends an Editor tells it again. Compare them: what did the Editor change?" };
 // Which model suits each microworld, from testing with Gemini Nano (October 2026). strong: agents a small model lets down.
 const MODEL_ADVICE = {
   telephone: { text: "Which model? One that writes Logo and sees pictures well. Gemini Nano usually fails here before there is anything to study.", strong: ["artist", "describer"] },
@@ -3709,7 +3709,7 @@ function makeStoryChain() {
       "Give one writer the whole story and the others only the last sentence. Who keeps it on track?",
       "Can you add a rule so the Name Keeper's warning goes back to the next writer? Does the story recover?",
       "The Name Keeper says “where did Pip go?” when a writer says “she”. Is the Name Keeper wrong, or the writer?",
-      "The Book remembers every sentence, but each writer sees only one. When the run ends, does the Editor's story make sense?"
+      "Compare the Book with the Editor's story. What did the Editor leave out, or make up? Which one is more like your own memory?"
     ],
     openers: ["What does Writer B know about the story when it writes?", "How could the Name Keeper be fooled?", "What would you need to remember to keep a story on track?"],
     roundAgent: "writer-a", roundLimit: 4,
@@ -4495,7 +4495,7 @@ function createRun(society, deps) {
     run.queue.push(msg);
     const also = [];   // rules from You: the start goes to them too
     for (const r of soc.rules) if (r.enabled !== false && r.from === "you" && r.when !== "end" && byId(r.to)) { run.queue.push(buildMessage(r, { id: "you", name: "You" }, { text: msg.text, data: msg.data })); also.push(nameOf(r.to)); }
-    addTrace({ kind: "run-start", title: soc.title, to, toName: nameOf(to), also, text: msg.text, seed: run.seed, roundLimit: run.roundLimit, adapter: deps.adapter ? deps.adapter.label : "", runtime: runtime.mode, round: 1 });
+    addTrace({ kind: "run-start", title: soc.title, to, toName: nameOf(to), also, text: msg.text, seed: run.seed, roundLimit: run.roundLimit, adapter: deps.modelsLabel || (deps.adapter ? deps.adapter.label : ""), runtime: runtime.mode, round: 1 });
   }
   async function activateModel(agent, msg, entry) {
     if (!deps.adapter) throw Object.assign(new Error("No model connection is set up."), { kind: "config" });
@@ -4608,22 +4608,22 @@ function createRun(society, deps) {
       // Nothing left to deliver: a collector still waiting runs on what it has (an answer went missing).
       const waiting = Object.keys(run.collected).find(id => run.collected[id].length);
       if (waiting) { run.queue.push(collectedMessage(waiting, run.collected[waiting], true)); run.collected[waiting] = []; return true; }
-      if (beginEnding("done", "Finished: no rule sent another message.")) return true;
+      if (beginEnding(run.closing ? "round-limit" : "done", run.closing ? run.closing.note : "Finished: no rule sent another message.")) return true;
       finish(run.ending.reason, run.ending.note);
       return false;
     }
     const agent = byId(msg.to);
     if (!agent) { addTrace({ kind: "error", text: "A message went to “" + msg.to + "”, but there is no agent with that name.", round: run.round }); return true; }
     const isRoundAgent = agent.id === soc.roundAgent;
+    if (isRoundAgent && run.closing && !run.ending) return true;   // past the round limit: no new round starts
     if (isRoundAgent && !run.ending) {
       if (run.activations > 0) run.round++;        // every visit to the round agent after the first delivery starts a new round
       if (run.round > run.roundLimit) {
+        // The last round is over, but messages already on their way still arrive, so the last thing said counts.
         run.round = run.roundLimit;
-        const note = "Reached the round limit (" + run.roundLimit + ").";
-        run.queue.length = 0;
-        if (beginEnding("round-limit", note)) return true;
-        finish("round-limit", note);
-        return false;
+        run.closing = { note: "Reached the round limit (" + run.roundLimit + ")." };
+        addTrace({ kind: "note", round: run.round, text: "That was the last round (" + run.roundLimit + "): " + agent.name + " won't start another, but messages already on their way are still delivered." });
+        return true;
       }
     }
     if (++run.deliveries > run.maxDeliveries) { finish("too-many", "Stopped after " + run.maxDeliveries + " messages: the rules may be sending messages around in circles."); return false; }
@@ -5430,7 +5430,8 @@ function beginRun(override) {
     if (secret != null) for (const a of s.agents || []) if (a.kind === "program" && a.params && a.params.secret !== undefined) rerunScenarios(a);
   }
   // A new seed every run: programs that pick at random pick differently, like the models do.
-  const api = Engine.createRun(s, { adapter: getAdapter(), adapterFor, runtime: Runtime, rasterize, delayMs: speedDelay(), seed: 1 + Math.floor(Math.random() * 2147483646), playAs: app.ui.playAs[s.id] || null });
+  const used = Array.from(new Set(s.agents.filter(a => a.kind === "model" && !a.human).map(a => (refOfAgent(a) || {}).label).filter(Boolean)));
+  const api = Engine.createRun(s, { adapter: getAdapter(), adapterFor, modelsLabel: used.length ? used.join(" + ") : "no AI agents", runtime: Runtime, rasterize, delayMs: speedDelay(), seed: 1 + Math.floor(Math.random() * 2147483646), playAs: app.ui.playAs[s.id] || null });
   const rec = { api, startText: spec.text, working: null, socId: s.id };
   app.runs[s.id] = rec;
   app.ui.replay = null;
@@ -5902,7 +5903,8 @@ function rulesHTML(e) {
 function techHTML(e, s, run, trace) {
   const m = e.message || {};
   let h = '<div class="tsec"><h4>Message in</h4><dl class="kv"><dt>from</dt><dd>' + esc(m.fromName || "") + (m.rule ? " (rule " + esc(m.rule) + ")" : "") + '</dd><dt>sent in round</dt><dd>' + esc(m.round) + '</dd><dt>carries</dt><dd>' + esc(Society.sendWords(m.send || "text")) + '</dd></dl>';
-  if (m.text) h += '<pre class="box">' + esc(m.text) + '</pre>';
+  if (m.text && e.render && e.render.program) h += '<p class="small muted">A Logo program: it is shown in color below, under “The Logo program it ran”.</p>';
+  else if (m.text) h += '<pre class="box">' + esc(m.text) + '</pre>';
   if (m.data && Object.keys(m.data).length) h += jsonBox(m.data);
   if (m.renderId) { const r = findRender(trace, m.renderId); h += r ? imgTag(r, "thumb", "the picture it was sent", run) : '<p class="small muted">(a picture)</p>'; }
   h += '</div>';
@@ -5950,6 +5952,7 @@ function summaryText(e, s) {
 }
 function traceEntryHTML(e, s, run, trace, currentI) {
   if (e.kind === "ending") return '<div class="tentry slim"><div class="th"><span class="rb">⏳</span><span class="sum">' + esc(e.text) + '</span></div></div>';
+  if (e.kind === "note") return '<div class="tentry slim"><div class="th"><span class="rb">⏹</span><span class="sum">' + esc(e.text) + '</span></div></div>';
   if (e.kind === "run-start") return '<div class="tentry slim"><div class="th"><span class="rb">▶</span><span class="sum">Start: <b>You → ' + esc([e.toName].concat(e.also || []).join(", ")) + '</b>: “' + shortHTML(e.text, 160, "The start") + '”<br><span class="small muted" title="' + esc("random seed " + e.seed + " · programs run " + (e.runtime === "worker" ? "in a Worker" : "in the page")) + '">' + esc(e.roundLimit) + ' rounds at most · ' + esc(e.adapter) + '</span></span></div></div>';
   if (e.kind === "run-end") return '<div class="tentry slim"><div class="th"><span class="rb">■</span><span class="sum">' + esc(e.text) + '</span></div></div>';
   if (e.kind !== "activation") return '<div class="tentry slim' + (e.kind === "error" ? " err" : "") + '"><div class="th"><span class="rb">!</span><span class="sum">' + esc(e.text || e.error || "") + '</span></div></div>';
@@ -6511,22 +6514,27 @@ function exportSocietyFlow() {
 async function traceDocument(s, trace, run) {
   const parts = [];
   for (const e of trace) {
-    if (e.kind === "run-start") parts.push('<p class="slim">▶ Start: You → ' + esc(e.toName) + ': “' + esc(e.text) + '” · ' + esc(e.adapter) + '</p>');
+    if (e.kind === "run-start") parts.push('<p class="slim">▶ Start: You → ' + esc([e.toName].concat(e.also || []).join(", ")) + ': “' + esc(e.text) + '” · ' + esc(e.adapter) + '</p>');
+    else if (e.kind === "ending" || e.kind === "note") parts.push('<p class="slim">' + (e.kind === "ending" ? "⏳ " : "⏹ ") + esc(e.text) + '</p>');
     else if (e.kind === "run-end") parts.push('<p class="slim">■ ' + esc(e.text) + '</p>');
     else if (e.kind === "activation") {
-      let img = "";
-      if (e.render && !e.render.error) { const url = await imageForRender(e.render, run); if (url) img = '<img src="' + url + '" alt="the drawing">'; }
+      let img = "", got = "";
+      if (e.render && !e.render.error) { const url = await imageForRender(e.render, run); if (url) img = '<img class="zoom" tabindex="0" src="' + url + '" alt="' + esc("the " + e.agentName + "’s picture, round " + e.round) + '" title="Click to see it full size">'; }
+      if (e.message && e.message.renderId) { const r = findRender(trace, e.message.renderId); const url = r ? await imageForRender(r, run) : null; if (url) got = '<img class="zoom" tabindex="0" src="' + url + '" alt="' + esc("the picture " + e.agentName + " was sent") + '" title="Click to see it full size">'; }
+      const logoOf = text => '<pre class="logo">' + logoHTML(text) + '</pre>';
       const said = e.error ? "⚠ " + e.error : e.response ? summaryText(e, s) : "";
       let body = "";
-      if (e.message) body += '<h4>Message in (from ' + esc(e.message.fromName) + ')</h4><pre>' + esc(e.message.text || "") + (e.message.data && Object.keys(e.message.data).length ? "\n" + esc(JSON.stringify(e.message.data, null, 1)) : "") + '</pre>';
-      if (e.call) body += '<h4>System prompt</h4><pre>' + esc(e.call.system || "") + '</pre><h4>Messages</h4>' + (e.call.messages || []).map(m => '<pre><b>' + esc(m.role) + ':</b> ' + esc(m.content) + '</pre>').join("") + '<h4>Reply' + (e.call.pretend ? " (pretend)" : "") + ' — ' + esc(e.call.model || "") + '</h4><pre>' + esc(e.call.reply || "") + '</pre>';
+      if (e.message && !e.render) body += '<h4>Message in (from ' + esc(e.message.fromName) + ')</h4><pre>' + esc(e.message.text || "") + (e.message.data && Object.keys(e.message.data).length ? "\n" + esc(JSON.stringify(e.message.data, null, 1)) : "") + '</pre>' + got;
+      if (e.call) body += '<h4>System prompt</h4><pre>' + esc(e.call.system || "") + '</pre><h4>Messages</h4>' + (e.call.messages || []).map(m => '<pre><b>' + esc(m.role) + ':</b> ' + esc(m.content) + '</pre>').join("") + '<h4>Reply' + (e.call.pretend ? " (pretend)" : "") + ' — ' + esc(e.call.model || "") + '</h4>' + (isProgramReply(e, s) ? logoOf(e.call.reply || "") : '<pre>' + esc(e.call.reply || "") + '</pre>');
       if (e.program) body += '<h4>Program input</h4><pre>' + esc(JSON.stringify(e.program.input, null, 1)) + '</pre><h4>Output</h4><pre>' + esc(JSON.stringify(e.program.output, null, 1)) + '</pre>';
-      if (e.render) body += '<h4>The Logo program it drew</h4><pre>' + esc(e.render.program) + '</pre>' + img;
+      if (e.render) body += '<h4>The Logo program it drew' + (e.message ? " (sent by " + esc(e.message.fromName) + ")" : "") + '</h4>' + logoOf(e.render.program) + img;
       if (e.fired && e.fired.length) body += '<h4>Rules</h4><ul>' + e.fired.map(f => '<li>→ ' + esc(f.toName) + ' ' + esc(firedText(f)) + '</li>').join("") + '</ul>';
       parts.push('<details class="' + esc(e.agentKind) + '"><summary><b>R' + esc(e.round) + ' · ' + esc((e.emoji || "") + " " + e.agentName) + '</b> ← ' + esc(e.message ? e.message.fromName : "") + ': ' + esc(short(said, 200)) + '</summary>' + body + '</details>');
     }
   }
-  const css = "body{font-family:system-ui,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;color:#1D2A44;background:#F7F9FC}h1{font-size:24px}details{background:#fff;border:1px solid #E1E7F0;border-left:5px solid #8A94AB;border-radius:10px;margin:6px 0;padding:6px 10px}details.model{border-left-color:#6655F0}details.program{border-left-color:#12876A}details.renderer{border-left-color:#B96F07}summary{cursor:pointer}pre{white-space:pre-wrap;background:#F3F6FA;border-radius:8px;padding:8px;font-size:12px}img{width:260px;border:1px solid #E1E7F0;border-radius:8px;background:#fff}h4{margin:10px 0 4px;font-size:13px;color:#56627C}.slim{color:#56627C}";
+  const css = "body{font-family:system-ui,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;color:#1D2A44;background:#F7F9FC}h1{font-size:24px}details{background:#fff;border:1px solid #E1E7F0;border-left:5px solid #8A94AB;border-radius:10px;margin:6px 0;padding:6px 10px}details.model{border-left-color:#6655F0}details.program{border-left-color:#12876A}details.renderer{border-left-color:#B96F07}summary{cursor:pointer}pre{white-space:pre-wrap;background:#F3F6FA;border-radius:8px;padding:8px;font-size:12px}pre.logo{background:#FCFBF5;line-height:1.55}img{width:260px;border:1px solid #E1E7F0;border-radius:8px;background:#fff}img.zoom{cursor:zoom-in}h4{margin:10px 0 4px;font-size:13px;color:#56627C}.slim{color:#56627C}" +
+    ".lg-k{color:#5B4BDB;font-weight:700}.lg-n{color:#B05E00}.lg-q{color:#12876A}.lg-v{color:#2563EB}.lg-b{color:#8A94AB;font-weight:700}.lg-c{color:#8A94AB;font-style:italic}" +
+    "img.zoom:focus{position:fixed;inset:0;margin:auto;width:min(92vw,88vh,768px);height:auto;z-index:9;cursor:zoom-out;outline:none;box-shadow:0 0 0 100vmax rgba(20,28,45,.82)}";   // no script: a click focuses the picture, which fills the page; a click anywhere else puts it back
   return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(s.title) + ' trace</title><style>' + css + '</style></head><body><h1>' + esc(s.title) + ': a trace</h1><p>Exported from Agent Kit ' + esc(AK.VERSION) + ' on ' + esc(new Date().toLocaleString()) + '. Open any line to see exactly what was sent and what came back.</p>' + parts.join("") + '</body></html>';
 }
 

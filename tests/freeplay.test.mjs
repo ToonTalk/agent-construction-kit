@@ -52,7 +52,8 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const r = await run(s, { to: "writer-a", text: s.starts[0].value });
     const book = acts(r, "book"), ed = acts(r, "editor");
     const story = book[book.length - 1].response.text;
-    return book[0].message.fromName === "You" && book.length === 12 && /^Once upon a time, a friendly dragon called Pip/.test(story) && /Then she flew home for tea\./.test(story) &&
+    return book[0].message.fromName === "You" && book.length === 13 && book[12].message.fromName === "Writer C" && /^Once upon a time, a friendly dragon called Pip/.test(story) && /Then she flew home for tea\.$/.test(story) &&
+      r.trace.some(e => e.kind === "note" && /won't start another/.test(e.text)) &&
       ed.length === 1 && ed[0].message.text === story && /^The whole story: Once upon a time/.test(ed[0].response.text) && r.note === "Reached the round limit (4).";
   });
   T.test("free play: a blank society is one AI agent and a start, and it validates", ["Seeds"], () => {
@@ -163,5 +164,17 @@ export default function (T, { modelWindow, pageWindow, same }) {
     img.click();
     const big = pw.document.querySelector(".modal .zoom img");
     return all.every(x => x.classList.contains("zoomable") && x.dataset.act === "zoom-img" && x.tabIndex === 0) && !!big && big.src === img.src;
+  });
+  T.test("library: no description shows a raw {placeholder}", ["Library"], () => Object.values(w.AK.Library.LIB).every(L => !/[{}]/.test(L.about || "")));
+  T.test("page: the trace's start line names the models the agents used, not just the main one", ["Engine", "Adapters"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="secret"]').click();
+    const one = (await pw.__ak.runNow()).api.run.trace[0].adapter;
+    pw.__ak.app.settings.extra = [{ connection: "gemini", model: "gemini-3.8-flash" }];
+    pw.__ak.soc().agents.find(a => a.id === "guesser").model = "gemini:gemini-3.8-flash";
+    pw.__ak.soc().roundLimit = 1;
+    await pw.__ak.runNow();
+    const two = pw.__ak.app.runs.secret.api.run.trace[0].adapter;
+    return one === "Scripted stand-ins" && two === "Gemini 3.8 Flash";
   });
 }
