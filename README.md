@@ -5,7 +5,7 @@ Learners (about 10 to 16) build **societies of agents**: language-model agents, 
 turns Logo programs into pictures. Everything is a glass box: every prompt, every reply,
 every program and every message between agents can be opened and read.
 
-Four microworlds ship with it, and each is an ordinary saved society:
+Nine microworlds ship with it, in teaching order, and each is an ordinary saved society:
 
 - **Telephone — “Where does it go?”** An Artist draws a sentence, a Describer describes the
   picture, and the description goes back to the Artist. Learners can add a Loop Spotter or a
@@ -22,6 +22,16 @@ Four microworlds ship with it, and each is an ordinary saved society:
   the clues, or let the Guesser remember. *Memory and bookkeeping versus cleverness.*
 - **Lost and Found — “Where did it end up?”** A Drawer draws a lost thing, the Finder names it,
   and rules send it to a shelf by the words it used. *Routing by words; literal programs.*
+- **Story Chain — “Who remembers the dragon?”** Three writers add a sentence each; a Name Keeper
+  checks the hero is still there. *What each agent can see and remember.*
+- **Three Eyes — “Are three heads better than one?”** Three lookers count the same picture and a
+  Vote program, which collects all their answers, takes the most popular. *Correlated error.*
+- **Fool the Eyes — “Can a drawing trick a looker?”** A Trickster draws pebbles to fool Eyes; a
+  Referee keeps score. *A model as the adversary.*
+- **Small Helper, Big Helper — “When do you need the big one?”** A cheap model tries first; an
+  Escalator hands the job to a strong one when it fails. *Cost against capability.*
+- **Joke Workshop — “Do critics make jokes funnier?”** A Joker writes, Critics suggest, and you
+  rate every version. *Do critics help? The learner as an agent.*
 
 Settings can hold more than one model. Then each AI agent can use the one that suits its job:
 Gemini Nano (free, in Chrome) where a small model is enough, and a stronger one for drawing and

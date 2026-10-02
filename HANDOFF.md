@@ -4,7 +4,7 @@
 
 ## State (2026-10-01)
 
-Agent Kit **1.0.13**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.0.13 follow reviews
+Agent Kit **1.1.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.1.0 follow reviews
 and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -12,7 +12,7 @@ folder is a copy without the §14 log.)
 - **No pretend mode** for learners (1.0.3): a real model is needed. Gemini Nano, built into desktop
   Chrome, is a free choice. The scripted stand-ins (`connection: "pretend"`) remain only for tests.
   Planned, not built: replays of recorded real runs.
-- The app is the single file `index.html` (465 KB): the `ak-model` script is DOM-free, and
+- The app is the single file `index.html` (519 KB): the `ak-model` script is DOM-free, and
   the `ak-ui` script is the interface. There is no build step.
 - **Drawings are Logo.** The Artist, the Designer and the drawing pad write Logo
   (`REPEAT 4 [FORWARD 50 RIGHT 90]`), and a small interpreter in the model layer runs it.
@@ -34,6 +34,10 @@ folder is a copy without the §14 log.)
   rules with word lists send it to four shelves; the Mystery Box keeps what no shelf took.
   The other five designs in `agent-kit-microworlds.md` wait for their features (collecting
   messages, per-agent models and a call counter, You as an agent).
+- **1.1.0: all nine microworlds** (Telephone, Pebble, Lost and Found, Story Chain, Secret Number,
+  Three Eyes, Fool the Eyes, Small Helper Big Helper, Joke Workshop). New features: collecting
+  programs (`collect`, `params.wait`, `input.messages`), You as an agent (`human`), and a call
+  counter on the stage. None of the five new worlds has been run with a real model yet.
 - **Scenarios follow settings** (`"=param"`, `{=param}`), so changing a slot doesn't break them.
   Programmed agents' trace turns can be saved as scenarios. Model agents that see pictures and
   count have a **test bench** (five pictures, N looks each, logged in the Workshop).
@@ -55,7 +59,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**346 PASS, 0 FAIL · fingerprint `da60cc53b63f`** · model modules covered 19/19.
+**398 PASS, 0 FAIL · fingerprint `d7bb46eb93fe`** · model modules covered 19/19.
 
 ## Acceptance criteria (§11)
 
@@ -63,7 +67,7 @@ folder is a copy without the §14 log.)
 |---|---|
 | 1 | Scripted stand-ins (tests only since 1.0.3): both microworlds end to end, deterministic (tested). OpenAI gpt-5.6-terra has been run live by the user and by Claude in Chrome (1.0.2). OpenAI with a key has been run live by the user (v1, before Logo). Keyless and Anthropic-key paths are tested against a fake fetch only. |
 | 2 | Every model call keeps its system prompt, messages, exact request body and raw reply, behind "Show full technical details" (tested). |
-| 3 | All 13 library programs pass all their scenarios; line maps are complete; highlighting works both ways (tested, including in the page). |
+| 3 | All 19 library programs pass all their scenarios; line maps are complete; highlighting works both ways (tested, including in the page). |
 | 4 | Dot Counter isn't fooled by labels, and is fooled by pebbles drawn with CIRCLE (both tested). |
 | 5 | Look inside shows only ordinary agents and rules (schema-validated in tests). |
 | 6 | Editing a shipped agent's pseudocode translates it (a pretend canned variant) and reruns the scenarios (tested). |
@@ -71,7 +75,7 @@ folder is a copy without the §14 log.)
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 465 KB, under 1 MB (tested). |
+| 11 | 519 KB, under 1 MB (tested). |
 
 ## Open issues
 

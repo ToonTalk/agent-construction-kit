@@ -324,6 +324,17 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - The “starting with” box is wider, and unticking a rule's last SEND box says right there that it has to send something.
   - With more than one model set up, each question card adds: “Which agent needs the strongest model? Give it to one agent at a time, in the Models row on the stage, and compare.”
   - Suite: 346 PASS, fingerprint `da60cc53b63f`.
+- 2026-10-02 — **Revision 1.1.0: all seven microworlds from `agent-kit-microworlds.md`** (Ken: “Let's add the remaining microworlds”). Nine ship, in teaching order: Telephone, Pebble Challenge, Lost and Found, Story Chain, Secret Number, Three Eyes, Fool the Eyes, Small Helper Big Helper, Joke Workshop. With nine, the world buttons show names, and the chosen one's question; the others' questions show on hover.
+  - **Story Chain** — “Who remembers the dragon?” Writers A, B and C (models, no memory) add a sentence each, in a ring; the Name Keeper program checks each sentence for the hero {Pip} (whole words, so “Pippy” and “she” don't count, which its scenarios document). Variant: Writer A remembers. 4 rounds.
+  - **Three Eyes** — “Are three heads better than one?” A Designer draws, three Eyes count the pebbles (a new `count` field), Dot Counter counts too, and a **Vote** program collects all four answers and takes the most popular count from the Eyes, checking it against Dot Counter. 1 round.
+  - **Fool the Eyes** — “Can a drawing trick a looker?” The Trickster (a model with memory) draws {12} pebbles to fool Eyes; a **Referee** program collects Eyes and Dot Counter, decides each round (Eyes wins, the Trickster wins, or the Trickster broke the rules) and keeps the score in its memory. 4 rounds.
+  - **Small Helper, Big Helper** — “When do you need the big one?” The Pebble challenges go to an **Escalator** program, which gives each task to the Small Designer and, after {2} rejected tries, to the Big Designer with the task and what went wrong. Dot Counter and the Judge check the work. 6 rounds.
+  - **Joke Workshop** — “Do critics make jokes funnier?” The Joker writes a joke; **You** rate it; two Critics (Clear, Surprise) send notes through a **Collector** (Notes) back to the Joker; the **Scorekeeper** keeps every rating as stars. Variant: No critics. 3 rounds.
+  - **New kit feature: collecting.** A programmed agent can collect (`collect: true`): it waits until it has its {wait} number of messages, then runs once on all of them (`input.messages`, each `{from, text, data}`). The trace shows it waiting (“is waiting: 2 of 4 messages so far”). If an answer never comes, it runs on what it has when nothing else is left to deliver (`input.missing`). Library: Vote, Referee, Collector.
+  - **New kit feature: You as an agent.** A model agent marked `human` is the learner: when a message reaches it, the run waits on the stage, showing what it was sent and what it is asked (its instructions), and the answer goes wherever its rules send it. Its editor is just “What you are asked” and its Connections.
+  - **New kit feature: the call counter.** After a run, each AI agent's button says how many model calls it made and how long they took.
+  - Dot Counter also passes on `count`, how many dots in all. New library programs: Name Keeper, Vote, Referee, Escalator, Collector, Scorekeeper (19 in all). Each microworld's card says which model suits it. The Helper knows about collecting, You and the call counter.
+  - Suite: 398 PASS, fingerprint `d7bb46eb93fe`.
 
 ---
 
