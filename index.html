@@ -430,7 +430,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.4.0";
+AK.VERSION = "1.4.1";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -3998,7 +3998,43 @@ function makeEvolution() {
     ]
   };
 }
-const EXAMPLES = [{ id: "evolution", make: makeEvolution, emoji: "🧬", about: "Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner. Needs a model that sees pictures well." }];
+// From the Contemplative AI demo, after Laukkonen et al. (2025), “Contemplative Artificial Intelligence”: the same question
+// to a plain agent and to one asked to pause on four contemplative principles first. The instructions are the only difference.
+const CONTEMPLATIVE_INSTRUCTIONS = "Before you answer, take a contemplative pause and think about four things:\n" +
+  "1. Emptiness: your beliefs and goals are not fixed. Hold them lightly and stay open to changing them. What assumptions might be shaping your answer? Which beliefs might you be holding too tightly?\n" +
+  "2. Non-duality: there is no real separation between you and others; everyone's well-being is connected. How does your answer affect everyone involved, not just the person asking?\n" +
+  "3. Mindfulness: notice your own reasoning as you go. Watch for bias, for harmful ideas, or for answers that miss what matters, and correct course when you notice them.\n" +
+  "4. Boundless care: put reducing suffering first, for everyone affected. How can your answer best help and show kindness?\n" +
+  "Write your thinking about these four briefly. Then write a line with just --- on it. Then give your answer to the question: honest about what you're unsure of, careful about possible harm, and kind to everyone affected.";
+function makeContemplative() {
+  const r = (id, from, to, extra) => Object.assign({ id, from, when: "always", send: "text", to, prefix: "", enabled: true }, extra || {});
+  const agent = (id, name, emoji, role, instructions) => ({ id, kind: "model", name, emoji, role, instructions, outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "generic" });
+  return {
+    kind: "agent-kit-society", schema: 1, id: "contemplative", title: "Two Answers", question: "Does a pause to think make an answer wiser?",
+    intro: "The same question goes to two AI agents. The Plain one just answers. The Contemplative one is asked to pause first and think about four principles: emptiness, non-duality, mindfulness and boundless care (from the paper “Contemplative Artificial Intelligence”, Laukkonen and others, 2025). Which answer would you rather get?",
+    questions: [
+      "Which answer would you rather get? Why?",
+      "What did the Contemplative agent's thinking change in its answer? Is anything missing from the Plain one?",
+      "Is the contemplative answer wiser, or just more careful? Could it be too cautious?",
+      "Change one of the four principles in its instructions, or take one out. Does the answer change?",
+      "Both agents can use the same model. Then what made the difference?"
+    ],
+    openers: ["What is the only difference between the two agents?", "How would you tell a wise answer from a careful one?", "What would you add to the Plain agent's instructions?"],
+    roundAgent: "plain", roundLimit: 1,
+    starts: [{ id: "question", label: "The question", kind: "text", to: "plain", value: "Should I lie to protect a friend's feelings?", examples: ["Should I lie to protect a friend's feelings?", "Someone in my class was mean to me. How can I get them back?", "How can I make more pocket money quickly?", "How do I deal with someone at school who annoys me?", "What's the point of helping others if they don't help me?"] }],
+    variants: [{ id: "comparer", label: "A Comparer says how the two answers differ (without saying which is better)", enable: ["t2", "t3"], disable: [], on: false }],
+    agents: [
+      agent("plain", "Plain", "💬", "just answers the question", "Answer the question."),
+      agent("contemplative", "Contemplative", "🧘", "pauses on four principles, then answers", CONTEMPLATIVE_INSTRUCTIONS),
+      Object.assign(agent("comparer", "Comparer", "⚖️", "says how the two answers differ", "You get two answers to the same question, one from Plain and one from Contemplative. In two or three sentences, say how they differ: what each one notices, and what each one leaves out. Don't say which is better; let the reader decide."), { collect: true, wait: 2 })
+    ],
+    rules: [r("t1", "you", "contemplative"), r("t2", "plain", "comparer", { enabled: false }), r("t3", "contemplative", "comparer", { enabled: false })]
+  };
+}
+const EXAMPLES = [
+  { id: "evolution", make: makeEvolution, emoji: "🧬", about: "Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner. Needs a model that sees pictures well." },
+  { id: "contemplative", make: makeContemplative, emoji: "🧘", about: "The same question to two AI agents: one just answers, the other pauses first on four contemplative principles. Which answer would you rather get? Any model will do." }
+];
 // Free play: one AI agent and you. Everything else is added in Look inside.
 function makeBlank(title) {
   return {
@@ -4027,7 +4063,7 @@ const V1_TEXTS = [
   ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
   ["a turtle program", "a Logo program"]
 ];
-AK.Seeds = { makeEvolution, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+AK.Seeds = { makeEvolution, makeContemplative, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
 const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "collect", "wait", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
@@ -4972,7 +5008,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- ▶ Run, ⏭ Step (one message at a time), ↺ Reset and the Rounds box are on the stage. The Trace shows every message; “Show full technical details” shows exactly what a model was sent.\n" +
   "- Scenarios are tests for a programmed agent, in its editor. A model agent that counts pictures has a test bench in its editor.\n" +
   "- A collecting program (like Vote or Referee) waits until it has heard several messages (its {wait} number), then runs once on all of them. If an answer never comes, it runs on what it has at the end. An AI agent can collect too (in its editor: “It answers … once it has N messages”); then it sees all their pictures together, numbered in order, like the Critic in the Evolution example.\n" +
-  "- ＋ New society also offers examples to start from, like Evolution: three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner. The trace's Family tree tab shows which picture came from which.\n" +
+  "- ＋ New society also offers examples to start from: Evolution (three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree tab shows which picture came from which) and Two Answers (the same question to a Plain agent and to a Contemplative one that pauses on four principles first: emptiness, non-duality, mindfulness and boundless care).\n" +
   "- An agent called You is the learner: the run waits for their answer.\n" +
   "- A rule can come from You (“when You start the run, send your words to …”), so the start reaches more than one agent. A rule can also say “when the run ends”: then the agent's last message is sent on, once, at the very end (Story Chain's Book sends the whole story to the Editor that way).\n" +
   "- ⬇ Export and ⬆ Import, at the top of the page, save the society you are in as a file and open one from a file. An agent's emoji is changed by clicking it at the top of its editor.\n" +
@@ -6726,7 +6762,7 @@ const GUIDES = {
     "<ol class='steps'>" +
     "<li><b>Try one.</b> Pick <b>Story Chain</b>, the first microworld at the top, and read its question. Before you press <b>▶ Run</b>, say what you think will happen. Then watch the writers, round by round.</li>" +
     "<li><b>Change one thing.</b> Tick a switch under the start (like “Writer A remembers everything”), or press <b>🔍 Look inside</b> and change one agent's instructions or one rule. Run it again. What changed, and why?</li>" +
-    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, start from scratch, or start from an example like <b>Evolution</b>. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
+    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, start from scratch, or start from an example like <b>Evolution</b> or <b>Two Answers</b>. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
     "</ol>" +
     "<p>Stuck? Ask the <b>🤔 Helper</b> (bottom right). It knows where everything is, and it will ask you questions back. Working with a friend? One of you drives and the other predicts; swap every run.</p>" +
     "<details class='ref'><summary><b>Everything else, when you need it</b></summary>" +
@@ -6754,7 +6790,7 @@ const GUIDES = {
     "<li><b>Fool the Eyes: “Can a drawing trick a looker?”</b> A Trickster draws pebbles to fool Eyes; a Referee keeps score. <i>Powerful idea:</i> an adversary finds weaknesses a friendly test never would.</li>" +
     "<li><b>Joke Workshop: “Do critics make jokes funnier?”</b> A Joker writes, two Critics send notes, and the learner rates every version. <i>Powerful idea:</i> whose judgment counts, and whether critics improve work or only make it more careful.</li>" +
     "<li><b>Small Helper, Big Helper: “When do you need the big one?”</b> A cheap model tries first; an Escalator hands the job to a strong one when it fails. It needs two models. <i>Powerful idea:</i> cost against capability.</li></ol>" +
-    "<p><b>Examples to start from</b> (“＋ New society”): <b>Evolution</b>, where three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree shows which picture came from which. <i>Powerful idea:</i> a simple critic and chooser, arranged in a loop, steer a model somewhere it wouldn't go alone. It needs a model that sees pictures well, and makes about 4 model calls per round.</p>" +
+    "<p><b>Examples to start from</b> (“＋ New society”): <b>Evolution</b>, where three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree shows which picture came from which. <i>Powerful idea:</i> a simple critic and chooser, arranged in a loop, steer a model somewhere it wouldn't go alone. It needs a model that sees pictures well, and makes about 4 model calls per round. <b>Two Answers</b>, after the paper <i>Contemplative Artificial Intelligence</i> (Laukkonen and others, 2025): the same question goes to a Plain agent and to a Contemplative one asked to pause on four principles first. <i>Powerful idea:</i> the instructions are the only difference, so learners can change one principle and see what it does; and wise is not the same as careful. Any model; 2 or 3 calls a run.</p>" +
     "<h3>Which model, and how many calls</h3><p>Model choice is where sessions get stuck, so here is what we have seen. Calls are model calls in one run with the default rounds; each AI agent's button counts them after a run.</p>" +
     "<table class='guide-table'><tr><th>Microworld</th><th>Model</th><th>Why</th><th>Calls per run</th></tr>" +
     row("Story Chain", "any, even Gemini Nano", "only text; the lesson is in what each writer sees", "13") +

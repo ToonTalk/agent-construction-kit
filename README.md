@@ -42,7 +42,9 @@ wire them with rules. A rule can send the start to several agents, or wait until
 **Examples to start from:** “＋ New society” also offers **Evolution**, the core of the Logo
 Evolution Lab as a society: three Mutators change a drawing, a Critic looks at the parent and the
 variants together and scores them, and a Selector keeps the winner; the trace's Family tree shows
-which picture came from which. It is also in `examples/evolution.json`, to import.
+which picture came from which. And **Two Answers**, after the paper *Contemplative Artificial
+Intelligence* (Laukkonen and others, 2025): the same question to a Plain agent and to a
+Contemplative one that pauses on four principles first. Both are also in `examples/`, to import.
 
 Settings can hold more than one model. Then each AI agent can use the one that suits its job:
 Gemini Nano (free, in Chrome) where a small model is enough, and a stronger one for drawing and

@@ -4,7 +4,7 @@
 
 ## State (2026-10-01)
 
-Agent Kit **1.4.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.4.0 follow reviews
+Agent Kit **1.4.1**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.4.1 follow reviews
 and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -34,8 +34,8 @@ folder is a copy without the §14 log.)
   rules with word lists send it to four shelves; the Mystery Box keeps what no shelf took.
   The other five designs in `agent-kit-microworlds.md` wait for their features (collecting
   messages, per-agent models and a call counter, You as an agent).
-- **1.4.0: Evolution** (the Logo Evolution Lab's core) is an example in ＋ New society and in
-  `examples/evolution.json`. AI agents can collect (`collect`, `wait`) and see several pictures at
+- **Examples** (＋ New society, and `examples/*.json`): **Evolution** (1.4.0, the Logo Evolution
+  Lab's core) and **Two Answers** (1.4.1, the Contemplative AI demo). AI agents can collect (`collect`, `wait`) and see several pictures at
   once; the Renderer's data carries `program` and `by`; round cards show every picture; the trace
   has a Family tree tab (`lineageOf`). Not yet run with a real model.
 - **1.2.0: free play.** ＋ New society (from scratch or a copy); your own society's card and start
@@ -67,7 +67,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**448 PASS, 0 FAIL · fingerprint `f74411ad5781`** · model modules covered 19/19.
+**451 PASS, 0 FAIL · fingerprint `53fa9f406cc5`** · model modules covered 19/19.
 
 ## Acceptance criteria (§11)
 

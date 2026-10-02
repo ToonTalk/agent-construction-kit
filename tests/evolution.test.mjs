@@ -96,4 +96,34 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const a = pw.__ak.soc().agents.find(x => x.id === "describer");
     return a.collect === true && a.wait === 3 && /seeing their pictures side by side/.test(pw.document.querySelector(".modal-body").textContent);
   });
+  // Two Answers (from the Contemplative AI demo)
+  T.test("Two Answers: the same question goes to both agents; only their instructions differ", ["Seeds", "Engine"], async () => {
+    const s = Seeds.makeContemplative();
+    const errs = Society.validateSociety(s);
+    if (errs.length) throw new Error(errs.join("; "));
+    const q = s.starts[0].value;
+    const api = Engine.createRun(s, { adapter: pretend, runtime: Runtime });
+    api.start({ to: "plain", text: q }); await api.play();
+    const c = acts(api.run, "contemplative")[0], p = acts(api.run, "plain")[0];
+    const sys = c.call.system;
+    return p.message.text === q && c.message.text === q && c.message.fromName === "You" && /Emptiness/.test(sys) && /Non-duality/.test(sys) && /Mindfulness/.test(sys) && /Boundless care/.test(sys) && /---/.test(sys) &&
+      !/Emptiness/.test(p.call.system) && acts(api.run, "comparer").length === 0 && Seeds.EXAMPLES.some(x => x.id === "contemplative") && s.starts[0].examples.every(x => !/revenge/i.test(x));
+  });
+  T.test("Two Answers: with the Comparer on, it waits for both answers and sees them together", ["Seeds", "Engine"], async () => {
+    const s = Seeds.makeContemplative();
+    Society.applyVariant(s, "comparer", true);
+    const api = Engine.createRun(s, { adapter: pretend, runtime: Runtime });
+    api.start({ to: "plain", text: "Should I lie to protect a friend's feelings?" }); await api.play();
+    const cm = acts(api.run, "comparer");
+    const text = cm[0].call.messages[0].content;
+    return cm.length === 1 && cm[0].message.messages.length === 2 && /From Plain/.test(text) && /From Contemplative/.test(text) && api.run.status === "done";
+  });
+  T.test("page: ＋ New society offers Two Answers too", ["Seeds"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="new-society"]').click();
+    Array.from(pw.document.querySelectorAll(".modal-body")).pop().querySelector('[data-new="example"][data-id="contemplative"]').click();
+    await sleep(30);
+    const s = pw.__ak.soc();
+    return s.title === "Two Answers" && s.id === "contemplative" && s.agents.length === 3 && !!pw.document.querySelector('[data-bind="variant"][data-id="comparer"]');
+  });
 }

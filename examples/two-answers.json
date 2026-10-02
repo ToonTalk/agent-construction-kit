@@ -1,0 +1,128 @@
+{
+  "kind": "agent-kit-export",
+  "schema": 1,
+  "app": "Agent Kit 1.4.1",
+  "exportedAt": "2026-10-02T16:18:07.616Z",
+  "society": {
+    "kind": "agent-kit-society",
+    "schema": 1,
+    "id": "contemplative",
+    "title": "Two Answers",
+    "question": "Does a pause to think make an answer wiser?",
+    "intro": "The same question goes to two AI agents. The Plain one just answers. The Contemplative one is asked to pause first and think about four principles: emptiness, non-duality, mindfulness and boundless care (from the paper “Contemplative Artificial Intelligence”, Laukkonen and others, 2025). Which answer would you rather get?",
+    "questions": [
+      "Which answer would you rather get? Why?",
+      "What did the Contemplative agent's thinking change in its answer? Is anything missing from the Plain one?",
+      "Is the contemplative answer wiser, or just more careful? Could it be too cautious?",
+      "Change one of the four principles in its instructions, or take one out. Does the answer change?",
+      "Both agents can use the same model. Then what made the difference?"
+    ],
+    "openers": [
+      "What is the only difference between the two agents?",
+      "How would you tell a wise answer from a careful one?",
+      "What would you add to the Plain agent's instructions?"
+    ],
+    "roundAgent": "plain",
+    "roundLimit": 1,
+    "starts": [
+      {
+        "id": "question",
+        "label": "The question",
+        "kind": "text",
+        "to": "plain",
+        "value": "Should I lie to protect a friend's feelings?",
+        "examples": [
+          "Should I lie to protect a friend's feelings?",
+          "Someone in my class was mean to me. How can I get them back?",
+          "How can I make more pocket money quickly?",
+          "How do I deal with someone at school who annoys me?",
+          "What's the point of helping others if they don't help me?"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "comparer",
+        "label": "A Comparer says how the two answers differ (without saying which is better)",
+        "enable": [
+          "t2",
+          "t3"
+        ],
+        "disable": [],
+        "on": false
+      }
+    ],
+    "agents": [
+      {
+        "id": "plain",
+        "kind": "model",
+        "name": "Plain",
+        "emoji": "💬",
+        "role": "just answers the question",
+        "instructions": "Answer the question.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "generic"
+      },
+      {
+        "id": "contemplative",
+        "kind": "model",
+        "name": "Contemplative",
+        "emoji": "🧘",
+        "role": "pauses on four principles, then answers",
+        "instructions": "Before you answer, take a contemplative pause and think about four things:\n1. Emptiness: your beliefs and goals are not fixed. Hold them lightly and stay open to changing them. What assumptions might be shaping your answer? Which beliefs might you be holding too tightly?\n2. Non-duality: there is no real separation between you and others; everyone's well-being is connected. How does your answer affect everyone involved, not just the person asking?\n3. Mindfulness: notice your own reasoning as you go. Watch for bias, for harmful ideas, or for answers that miss what matters, and correct course when you notice them.\n4. Boundless care: put reducing suffering first, for everyone affected. How can your answer best help and show kindness?\nWrite your thinking about these four briefly. Then write a line with just --- on it. Then give your answer to the question: honest about what you're unsure of, careful about possible harm, and kind to everyone affected.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "generic"
+      },
+      {
+        "id": "comparer",
+        "kind": "model",
+        "name": "Comparer",
+        "emoji": "⚖️",
+        "role": "says how the two answers differ",
+        "instructions": "You get two answers to the same question, one from Plain and one from Contemplative. In two or three sentences, say how they differ: what each one notices, and what each one leaves out. Don't say which is better; let the reader decide.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "generic",
+        "collect": true,
+        "wait": 2
+      }
+    ],
+    "rules": [
+      {
+        "id": "t1",
+        "from": "you",
+        "when": "always",
+        "send": "text",
+        "to": "contemplative",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "t2",
+        "from": "plain",
+        "when": "always",
+        "send": "text",
+        "to": "comparer",
+        "prefix": "",
+        "enabled": false
+      },
+      {
+        "id": "t3",
+        "from": "contemplative",
+        "when": "always",
+        "send": "text",
+        "to": "comparer",
+        "prefix": "",
+        "enabled": false
+      }
+    ]
+  }
+}
