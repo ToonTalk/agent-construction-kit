@@ -144,6 +144,7 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .add-model{flex-wrap:wrap;gap:6px}.add-model .field{max-width:260px}
 .bubbles.wide{min-height:60px}
 .send-group{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.send-parts{display:inline-flex;gap:3px}.sendp{display:inline-flex;align-items:center;gap:3px;border:1.5px solid var(--line);border-radius:999px;padding:1px 8px 1px 5px;font-size:12px;cursor:pointer;background:#fff;color:var(--ink-soft)}.sendp.on{border-color:var(--accent);background:var(--accent-bg);color:var(--ink)}.sendp input{margin:0}
+.models-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:8px 0 2px}.mpick{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--ink-soft)}.mpick select{font-size:12.5px;max-width:200px}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -407,7 +408,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.0.9";
+AK.VERSION = "1.0.10";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -4288,7 +4289,15 @@ AK.Bench = Bench;
 const HELPER_SYSTEM = PREAMBLE +
   "You are the Helper in Agent Kit, a kit where learners build societies of agents: model agents (which call an AI), programmed agents (small programs written in pseudocode and translated to JavaScript), and a Renderer that draws Logo programs. Rules wire the agents together.\n" +
   "You can read the learner's society, the latest run and the scenarios (tests), but you cannot change anything.\n" +
-  "How you help: ask questions rather than giving answers. Never tell the learner the fix for a failing scenario or a broken rule; instead, ask a question that points at the evidence, such as what a scenario expected compared with what happened, or which line of pseudocode decides it. Offer the next small step the learner can almost reach on their own. Be kind and encouraging. Keep replies to two to four short sentences.";
+  "How you help: ask questions rather than giving answers. Never tell the learner the fix for a failing scenario or a broken rule; instead, ask a question that points at the evidence, such as what a scenario expected compared with what happened, or which line of pseudocode decides it. Offer the next small step the learner can almost reach on their own. Be kind and encouraging. Keep replies to two to four short sentences.\n" +
+  "But when the learner asks how to do something in the kit itself (where a button is, how to change a setting), tell them plainly, using the facts below, then you may ask a question. Never say something can't be done if a fact below says how.\n" +
+  "Facts about the kit:\n" +
+  "- 🔍 Look inside shows every agent and every rule. Click an agent (there, or its button on the stage) to open its editor and change it.\n" +
+  "- A rule says WHEN an agent responds, and IF something is true, SEND its words, its data and/or its picture (three checkboxes) TO another agent.\n" +
+  "- Models: a grown-up adds models (and any keys) in ⚙️ Settings. When more than one model is set up, the learner chooses which model each AI agent uses without Settings: in the Models row on the stage, under the agent buttons, or in the agent's editor under “Its model”. The MODELS section below says what is set up now.\n" +
+  "- “You be the …” on the stage lets the learner take an agent's place in the run.\n" +
+  "- ▶ Run, ⏭ Step (one message at a time), ↺ Reset and the Rounds box are on the stage. The Trace shows every message; “Show full technical details” shows exactly what a model was sent.\n" +
+  "- Scenarios are tests for a programmed agent, in its editor. A model agent that counts pictures has a test bench in its editor.";
 function describeSociety(soc) {
   if (!soc) return "(no society)";
   const nameOf = id => (id === "*" ? "anyone" : (agentById(soc, id) || { name: id }).name);
@@ -4334,16 +4343,24 @@ function failingForHelper(soc) {
   }
   return out;
 }
-function helperRequest(soc, trace, question, chat) {
+// models: { available: ["Gemini Nano", …], uses: { agentId: "Gemini Nano" } }, from the page's settings.
+function describeModels(soc, models) {
+  const av = (models && models.available) || [];
+  if (!av.length) return "No model is set up yet. A grown-up chooses one in ⚙️ Settings.";
+  if (av.length === 1) return "One model is set up: " + av[0] + ". Every AI agent uses it. A grown-up can add more models in ⚙️ Settings, under “More models”; then the learner can choose each AI agent's model on the stage.";
+  const uses = (soc && soc.agents || []).filter(a => a.kind === "model").map(a => a.name + " uses " + ((models.uses || {})[a.id] || av[0]));
+  return "Models set up (by a grown-up, in Settings): " + av.join(", ") + ". The first is the main one. The learner can change any AI agent's model without Settings: in the Models row on the stage, or in the agent's editor under “Its model”. Now: " + (uses.join("; ") || "there are no AI agents") + ".";
+}
+function helperRequest(soc, trace, question, chat, models) {
   const prior = (chat || []).slice(-6).map(m => (m.who === "you" ? "Learner: " : "Helper: ") + m.text).join("\n");
   return {
     system: HELPER_SYSTEM,
-    messages: [{ role: "user", content: "THE SOCIETY:\n" + describeSociety(soc) + "\n\nTHE LATEST RUN:\n" + describeTrace(trace) + "\n\nSCENARIOS:\n" + describeScenarioResults(soc) + (prior ? "\n\nEARLIER IN THIS CHAT:\n" + prior : "") + "\n\nThe learner says: " + question }],
+    messages: [{ role: "user", content: "THE SOCIETY:\n" + describeSociety(soc) + "\n\nMODELS:\n" + describeModels(soc, models) + "\n\nTHE LATEST RUN:\n" + describeTrace(trace) + "\n\nSCENARIOS:\n" + describeScenarioResults(soc) + (prior ? "\n\nEARLIER IN THIS CHAT:\n" + prior : "") + "\n\nThe learner says: " + question }],
     images: [], outputFields: [], replyKind: "prose", maxTokens: 4000,
     meta: { persona: "helper", helperState: { question, openers: soc && soc.openers, failing: failingForHelper(soc) } }
   };
 }
-AK.Helper = { HELPER_SYSTEM, describeSociety, describeTrace, describeScenarioResults, helperRequest };
+AK.Helper = { HELPER_SYSTEM, describeSociety, describeModels, describeTrace, describeScenarioResults, helperRequest };
 
 /* ===== SECTION: WORDS (data said in plain words, so the trace needn't show JSON) ===== */
 const FIELD_WORDS = { cols: "columns", rowList: "rows from the top", dots: "dots", segments: "lines", labels: "labels" };
@@ -4999,7 +5016,8 @@ function modelAdviceHTML(s) {
   const weak = (adv.strong || []).map(id => Society.agentById(s, id)).filter(a => a && a.kind === "model" && (refOfAgent(a) || {}).connection === "nano");
   if (weak.length) {
     const names = weak.map(a => "the " + a.name).join(" and ");
-    h += '<div class="warnline">' + esc(names.charAt(0).toUpperCase() + names.slice(1)) + (weak.length === 1 ? " is" : " are") + ' using Gemini Nano. In ⚙️ Settings, add a stronger model under “More models”, then choose it in ' + (weak.length === 1 ? "its editor" : "their editors") + '. <button class="btn tiny" data-act="settings">Settings</button></div>';
+    const better = modelRefs().some(r => r.connection !== "nano");   // a grown-up already added a stronger one
+    h += '<div class="warnline">' + esc(names.charAt(0).toUpperCase() + names.slice(1)) + (weak.length === 1 ? " is" : " are") + ' using Gemini Nano. ' + (better ? "Choose a stronger model for " + (weak.length === 1 ? "it" : "them") + " in the Models row on the stage." : 'A grown-up can add a stronger model in ⚙️ Settings, under “More models”. <button class="btn tiny" data-act="settings">Settings</button>') + '</div>';
   }
   return h;
 }
@@ -5065,6 +5083,15 @@ function viewState(s, run, trace) {
 function achipHTML(a, s, view) {
   const v = a.gate || view.verdicts[a.id] === false ? view.verdicts[a.id] : undefined;
   return '<button class="achip kind-' + a.kind + (view.active === a.id ? " active" : "") + '" data-act="open-agent" data-id="' + esc(a.id) + '" title="Open ' + esc(a.name) + ' to read or change it"><span class="e">' + esc(a.emoji) + '</span>' + esc(a.name) + (a.id === s.roundAgent ? '<span class="round-mark" title="starts each round">↻</span>' : "") + (a.kind === "model" && modelRefs().length > 1 ? '<span class="mdl">' + esc(shortModel(refOfAgent(a).label)) + '</span>' : "") + (v === true ? '<span class="v-ok" title="pass">✓</span>' : v === false ? '<span class="v-bad" title="block">✗</span>' : "") + '</button>';
+}
+// With more than one model set up, each AI agent's model can be chosen right here.
+function modelsRowHTML(s) {
+  const refs = modelRefs(), ms = s.agents.filter(a => a.kind === "model");
+  if (refs.length < 2 || !ms.length) return "";
+  return '<div class="models-row"><span class="small muted">Models:</span>' + ms.map(a => {
+    const own = (refOfAgent(a) || refs[0]).key;
+    return '<label class="mpick"><span>' + esc(a.emoji + " " + a.name) + '</span><select data-bind="stage-model" data-id="' + esc(a.id) + '" aria-label="' + esc(a.name) + '’s model">' + refs.map(r => '<option value="' + esc(r.key) + '"' + sel(r.key === own) + '>' + esc(r.label) + '</option>').join("") + '</select></label>';
+  }).join("") + '</div>';
 }
 function bubbleHTML(b) { return '<div class="bubble kind-' + esc(b.kind) + (b.err ? " err" : "") + '"><div class="who">R' + b.round + " · " + esc(b.who) + '</div>' + (b.md ? md(clip(b.text, 420), true) : nl2br(short(b.text, 420))) + '</div>'; }
 function rcardHTML(r, prev, run, view) {
@@ -5152,7 +5179,7 @@ function renderStage() {
   h += '<div class="status-line">' + statusLineHTML(s, rec, run) + '</div>';
   if (status === "waiting") h += yourTurnHTML(s, run);
   const view = viewState(s, run, trace);
-  h += '<div class="agent-strip">' + s.agents.map(a => achipHTML(a, s, view)).join("") + '</div>';
+  h += '<div class="agent-strip">' + s.agents.map(a => achipHTML(a, s, view)).join("") + '</div>' + modelsRowHTML(s);
   if (hasPictures(s)) h += '<div class="picture-wrap"><div class="picture"><canvas id="stageCanvas" width="512" height="512" aria-label="The latest picture"></canvas>' +
     (view.render ? '<span class="tag">' + (view.replay ? "replay · " : "") + "round " + view.renderRound + '</span>' : '<div class="empty">' + (trace.length ? "No picture yet." : "Press ▶ Run to start.<br>Every message will show up in the Trace.") + '</div>') + '</div>' +
     '<div class="bubbles">' + view.bubbles.map(bubbleHTML).join("") + '</div></div>';
@@ -5740,7 +5767,7 @@ function renderSettings() {
 function moreModelsHTML(st) {
   const extra = st.extra || [], refs = modelRefs();
   const add = app.ui.addModel || { connection: "", model: "" };
-  let h = '<div class="section"><h3>More models (optional)</h3><p class="hint">With more than one model, each AI agent can use the one that suits its job: a free one where a small model is enough, and a stronger one for drawing or seeing pictures. Choose an agent\'s model in its editor. With only one model, every agent uses it.</p><div class="extra-list">' +
+  let h = '<div class="section"><h3>More models (optional)</h3><p class="hint">With more than one model, each AI agent can use the one that suits its job: a free one where a small model is enough, and a stronger one for drawing or seeing pictures. Learners then choose each AI agent\'s model themselves, in the Models row on the stage or in the agent\'s editor, without opening Settings. With only one model, every agent uses it.</p><div class="extra-list">' +
     '<div class="extra"><b>' + esc(refs[0] ? refs[0].label : "") + '</b><span class="small muted">the main model, chosen above</span></div>' +
     extra.map((x, i) => '<div class="extra"><b>' + esc(Adapters.modelLabel(x.connection, x.model)) + '</b>' + (needsKey(x.connection) && !st.keys[x.connection] ? '<span class="badge warn">needs a key</span>' : "") + '<span class="grow"></span><span class="small" id="extraResult' + i + '"></span><button class="btn tiny" data-act="test-extra" data-i="' + i + '">Test</button><button class="btn tiny danger" data-act="del-extra" data-i="' + i + '">Remove</button></div>').join("") + '</div>';
   h += '<div class="add-model row"><select class="field" data-bind="add-conn" aria-label="Add a model"><option value="">＋ Add a model…</option>' + connList(st).filter(c => c[3] && c[0] !== "pretend").map(c => '<option value="' + c[0] + '"' + sel(add.connection === c[0]) + '>' + esc(c[1]) + '</option>').join("") + '</select>';
@@ -5792,7 +5819,9 @@ async function askHelper(q) {
   chat.push({ who: "you", text: util.cleanText(q, 1000) });
   app.ui.helperBusy = true;
   renderHelper();
-  const req = Helper.helperRequest(s, runOrLastTrace(s.id), q, chat.slice(0, -1));
+  const refs = modelRefs(), uses = {};
+  for (const a of s.agents) if (a.kind === "model") uses[a.id] = (refOfAgent(a) || {}).label;
+  const req = Helper.helperRequest(s, runOrLastTrace(s.id), q, chat.slice(0, -1), { available: refs.map(r => r.label), uses });
   const adapter = getAdapter();
   let text;
   try {
@@ -6257,6 +6286,13 @@ async function handleBind(t, evt) {
     case "remember": { app.settings.rememberKeys = t.checked; save(); return; }
     case "add-conn": { app.ui.addModel = t.value ? { connection: t.value, model: "" } : null; renderSettings(); return; }
     case "add-model": { app.ui.addModel = Object.assign(app.ui.addModel || {}, { model: util.cleanName(t.value, 80) }); return; }
+    case "stage-model": {
+      const a = Society.agentById(s, t.dataset.id), refs = modelRefs();
+      if (!a || !refs.length) return;
+      if (t.value && t.value !== refs[0].key) a.model = t.value; else delete a.model;
+      save(); renderStage(); renderLeft();
+      return;
+    }
     case "agent-model": { const a = editorAgent(); if (!a) return; if (t.value) a.model = t.value; else delete a.model; save(); renderEditor(); renderStage(); renderLeft(); return; }
     case "society-secret": {
       if (!change || !s.random) return;

@@ -306,6 +306,11 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 336 PASS, fingerprint `9294dc5094cd`.
 - 2026-10-02 — **Revision 1.0.9.** A rule's SEND was a menu of text, data, “both” and image, and “both” was unclear (it meant text and data), with no way to send all three. It is now three checkboxes, **words**, **data** and **picture**, in any combination (stored as `"text+data+image"` and so on). A rule must send at least one. Saved and imported rules that say “both” become `"text+data"`. Rules read as English say “SEND words and data”.
   - Suite: 338 PASS, fingerprint `f80bc21b67b2`.
+- 2026-10-02 — **Revision 1.0.10.** Settings is for grown-ups; choosing among the models they added is for learners. Ken asked the Helper how to change an agent's model without Settings, and it said that couldn't be done.
+  - **A Models row on the stage**, under the agent buttons, whenever more than one model is set up: each AI agent has a menu of the models added in Settings. The editor's “Its model” stays.
+  - **The Helper knows the kit.** Its system prompt has a short list of facts (Look inside, rules, models, “You be the …”, Run/Step/Reset, scenarios, the test bench) and says to answer how-to questions plainly, never claiming something can't be done when a fact says how. Each request has a MODELS section: what is set up, which agent uses which, and where to change it.
+  - The question card's Gemini Nano warning points to the Models row when a stronger model is already set up, and asks a grown-up to add one in Settings only when none is.
+  - Suite: 341 PASS, fingerprint `a6cad6ff1ff8`.
 
 ---
 

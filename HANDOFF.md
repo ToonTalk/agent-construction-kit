@@ -4,7 +4,7 @@
 
 ## State (2026-10-01)
 
-Agent Kit **1.0.9**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.0.9 follow reviews
+Agent Kit **1.0.10**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.0.10 follow reviews
 and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -41,7 +41,8 @@ folder is a copy without the §14 log.)
   waits for their answer. The Logo in any trace entry can be changed, redrawn, and used as
   Telephone's drawing start.
 - **More than one model** (1.0.6): Settings → More models. With two or more, each AI agent
-  picks its model in its editor (`agent.model`); one model behaves as before. Each microworld's
+  picks its model in the stage's Models row or its editor (`agent.model`); one model behaves as
+  before. Settings is for grown-ups; learners choose among the models without it. Each microworld's
   card says which model suits it (`Seeds.MODEL_ADVICE`).
 - **Models:** with a key, each provider starts on its cheapest model that sees pictures
   (Claude Haiku 4.5, Gemini 3.5 Flash-Lite, GPT-6 Luna; checked October 2026). Haiku 4.5 may
@@ -54,7 +55,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**338 PASS, 0 FAIL · fingerprint `f80bc21b67b2`** · model modules covered 19/19.
+**341 PASS, 0 FAIL · fingerprint `a6cad6ff1ff8`** · model modules covered 19/19.
 
 ## Acceptance criteria (§11)
 

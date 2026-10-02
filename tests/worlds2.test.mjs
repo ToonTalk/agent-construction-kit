@@ -1,7 +1,7 @@
 // Secret Number and Lost and Found, scenarios that follow an agent's settings, and the test bench for Eyes.
 export default function (T, { modelWindow, pageWindow, same }) {
   const w = modelWindow();
-  const { Seeds, Society, Engine, Adapters, Runtime, Scenarios, Bench } = w.AK;
+  const { Seeds, Society, Engine, Adapters, Runtime, Scenarios, Bench, Helper } = w.AK;
   const pretend = Adapters.makePretendAdapter();
   const run = async (soc, spec) => { const r = Engine.createRun(soc, { adapter: pretend, runtime: Runtime }); r.start(spec); await r.play(); return r.run; };
   const texts = (r, id) => r.trace.filter(e => e.kind === "activation" && e.agentId === id).map(e => (e.response ? e.response.text : "ERROR " + e.error));
@@ -313,5 +313,40 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const all = r.send === "text+data+image";
     set("text", false); set("data", false); set("image", false);
     return before && all && r.send === "image" && box("image").checked;
+  });
+  T.test("Helper: it is told which models are set up, who uses which, and that learners choose them on the stage", ["Helper"], () => {
+    const s = Seeds.makeSecretNumber();
+    s.agents.find(a => a.id === "guesser").model = "gemini:gemini-3.8-flash";
+    const two = Helper.helperRequest(s, [], "how can I change which model powers the agents without using settings?", [], { available: ["Gemini Nano", "Gemini 3.8 Flash"], uses: { guesser: "Gemini 3.8 Flash" } }).messages[0].content;
+    const one = Helper.describeModels(s, { available: ["Gemini Nano"], uses: {} });
+    return /Models row on the stage/.test(two) && /Guesser uses Gemini 3\.8 Flash/.test(two) && /More models/.test(one) && /Models row on the stage/.test(Helper.HELPER_SYSTEM) && /Never say something can't be done/.test(Helper.HELPER_SYSTEM);
+  });
+  T.test("page: with two models, the stage has a Models row where each AI agent's model is chosen", ["Adapters"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="lost"]').click();
+    const none = !pw.document.querySelector(".models-row");
+    pw.__ak.app.settings.extra = [{ connection: "gemini", model: "gemini-3.8-flash" }];
+    pw.__ak.renderAll();
+    const picks = pw.document.querySelectorAll('.models-row [data-bind="stage-model"]');
+    const finderPick = pw.document.querySelector('[data-bind="stage-model"][data-id="finder"]');
+    finderPick.value = "gemini:gemini-3.8-flash";
+    finderPick.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    const finder = pw.__ak.soc().agents.find(a => a.id === "finder");
+    const set = finder.model === "gemini:gemini-3.8-flash";
+    const back = pw.document.querySelector('[data-bind="stage-model"][data-id="finder"]');
+    back.value = back.options[0].value;
+    back.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    return none && picks.length === 2 && set && !finder.model;
+  });
+  T.test("page: with a stronger model set up, the Nano warning points to the Models row, not Settings", ["Seeds"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="lost"]').click();
+    pw.__ak.app.settings.connection = "nano";
+    pw.__ak.renderAll();
+    const alone = pw.document.querySelector(".qcard .warnline").textContent;
+    pw.__ak.app.settings.extra = [{ connection: "gemini", model: "gemini-3.8-flash" }];
+    pw.__ak.renderAll();
+    const two = pw.document.querySelector(".qcard .warnline").textContent;
+    return /grown-up can add/.test(alone) && /Models row on the stage/.test(two) && !/Settings/.test(two);
   });
 }
