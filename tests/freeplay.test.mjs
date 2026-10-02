@@ -124,4 +124,28 @@ export default function (T, { modelWindow, pageWindow, same }) {
     return /When .*You start the run, send your words to .*Book\./.test(c0) && /When the run ends, send .*Book’s last words to .*Editor\./.test(c10) && whenSel.value === "end" &&
       !!pw.document.querySelector('.rule-editing [data-field="from"] option[value="you"]');
   });
+  T.test("page: wherever text is cut short, its “…” is a button that shows all of it, even inside a trace entry's header", ["Engine"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="story"]').click();
+    const rec = await pw.__ak.runNow();
+    await sleep(40);
+    const story = rec.api.run.trace.filter(e => e.kind === "activation" && e.agentId === "editor")[0].response.text;
+    const bubble = Array.from(pw.document.querySelectorAll(".bubble")).find(b => /Editor/.test(b.textContent));
+    const more = bubble.querySelector('.more[data-act="show-full"]');
+    more.click();
+    const modal = Array.from(pw.document.querySelectorAll(".modal-body")).pop();
+    const whole = modal.textContent.replace(/\s+/g, " ").trim() === story.replace(/\s+/g, " ").trim();
+    pw.document.querySelector(".modal [data-close]").click();
+    // inside a trace entry's header: the "…" opens the text, and doesn't open the entry
+    const head = Array.from(pw.document.querySelectorAll('[data-act="trace-toggle"]')).find(b => /Editor/.test(b.textContent) && b.querySelector(".more"));
+    const before = pw.__ak.app.ui.expanded.size;
+    head.querySelector(".more").click();
+    const opened = !!pw.document.querySelector(".modal .full-text") && pw.__ak.app.ui.expanded.size === before;
+    pw.document.querySelector(".modal [data-close]").click();
+    // and from the keyboard
+    const k = pw.document.querySelector(".bubble .more");
+    k.focus();
+    k.dispatchEvent(new pw.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    return story.length > 420 && whole && opened && !!pw.document.querySelector(".modal .full-text") && k.getAttribute("role") === "button" && k.tabIndex === 0;
+  });
 }

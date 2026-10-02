@@ -155,6 +155,8 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .world.add{border-style:dashed;color:var(--ink-soft)}.worlds-list{display:contents}
 .new-choices{display:grid;gap:4px;margin-top:12px}.new-choices .hint{margin:0 0 8px}
 .about-edit{margin:6px 0 10px;padding:8px 10px;border:1.5px solid var(--line);border-radius:12px;background:#fff}.about-edit summary{cursor:pointer}.about-edit .form-grid{grid-template-columns:1fr;gap:4px}.about-edit .form-grid label{margin-top:6px}.about-edit .row{flex-wrap:wrap}
+.more{display:inline-block;margin-left:2px;padding:0 6px;border-radius:8px;background:var(--accent-bg);color:var(--accent);font-weight:800;cursor:pointer;line-height:1.35}.more:hover,.more:focus{outline:2px solid var(--accent);outline-offset:1px}
+.full-text{white-space:normal;max-height:70vh;overflow:auto}pre.full-text{white-space:pre-wrap}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -418,7 +420,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.2.0";
+AK.VERSION = "1.2.1";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -4963,6 +4965,18 @@ const raf = window.requestAnimationFrame ? f => window.requestAnimationFrame(f) 
 const lineCount = t => String(t || "").split("\n").filter(l => l.trim()).length;
 const plural = util.plural;
 const clip = (s, n) => { s = String(s == null ? "" : s).trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };   // like short, but keeps the lines
+// Wherever text is cut short on screen, its "…" is a button that shows all of it.
+const moreBtn = (full, title, pre) => '<span class="more" role="button" tabindex="0" data-act="show-full" data-full="' + esc(full) + '"' + (title ? ' data-title="' + esc(title) + '"' : "") + (pre ? ' data-pre="1"' : "") + ' title="Show all of it" aria-label="Show all of it">…</span>';
+function shortHTML(s, n, title) { const full = String(s == null ? "" : s), flat = full.replace(/\s+/g, " ").trim(); return flat.length > n ? esc(flat.slice(0, n - 1).replace(/\s+\S*$/, "")) + " " + moreBtn(full, title) : esc(flat); }
+function clipMdHTML(s, n, title) {
+  const full = String(s == null ? "" : s).trim();
+  if (full.length <= n) return md(full, true);
+  const h = md(full.slice(0, n - 1).replace(/\s+\S*$/, ""), true), b = moreBtn(full, title);   // cut at a word, and keep the "…" on the last line
+  const m = /<\/(p|li|div)>\s*(<\/(ul|ol|div)>\s*)*$/.exec(h);
+  return m ? h.slice(0, m.index) + " " + b + h.slice(m.index) : h + " " + b;
+}
+// Data said in plain words shortens long lists and texts with "…": each one shows all of the data.
+function wordsHTML(words, data, title) { let js = ""; try { js = JSON.stringify(data, null, 2); } catch (e) { js = String(data); } return esc(words).split("…").join(moreBtn(js, title || "All of the data", true)); }
 
 /* ===== SECTION: ENVIRONMENT ===== */
 const ENV = (() => {
@@ -5658,11 +5672,11 @@ function callCounts(trace) {
   return out;
 }
 const callsHTML = c => (c ? '<span class="calls" title="Model calls in this run, and how long they took">' + c.n + (c.n === 1 ? " call" : " calls") + " · " + (c.ms / 1000).toFixed(1) + " s</span>" : "");
-function bubbleHTML(b) { return '<div class="bubble kind-' + esc(b.kind) + (b.err ? " err" : "") + '"><div class="who">R' + b.round + " · " + esc(b.who) + '</div>' + (b.md ? md(clip(b.text, 420), true) : nl2br(short(b.text, 420))) + '</div>'; }
+function bubbleHTML(b) { return '<div class="bubble kind-' + esc(b.kind) + (b.err ? " err" : "") + '"><div class="who">R' + b.round + " · " + esc(b.who) + '</div>' + (b.md ? clipMdHTML(b.text, 420, b.who) : shortHTML(b.text, 420, b.who)) + '</div>'; }
 function rcardHTML(r, prev, run, view) {
   const here = view && view.replay && view.renderRound === r.round;
   return '<div class="rcard' + (prev ? " prev" : "") + (here ? " here" : "") + '"><div class="rn">Round ' + r.round + '</div>' + (r.render ? imgTag(r.render, "", "round " + r.round, prev ? null : run) : r.pics === false ? "" : '<div class="noimg">no picture</div>') +
-    r.lines.slice(0, r.pics === false ? 4 : 3).map(l => '<div class="ln' + (l.pass === true ? " p-ok" : l.pass === false ? " p-bad" : "") + '">' + esc(l.emoji) + " " + esc(short(l.text, 90)) + '</div>').join("") + '</div>';
+    r.lines.slice(0, r.pics === false ? 4 : 3).map(l => '<div class="ln' + (l.pass === true ? " p-ok" : l.pass === false ? " p-bad" : "") + '">' + esc(l.emoji) + " " + shortHTML(l.text, 90) + '</div>').join("") + '</div>';
 }
 function statusLineHTML(s, rec, run) {
   if (!run) { const t = app.traces[s.id]; return t && t.length ? "Showing the last run. Press ▶ Run for a new one." : (app.settings.connection === "none" ? "Choose a model in ⚙️ Settings, then press ▶ Run." : "Ready."); }
@@ -5753,7 +5767,7 @@ function renderStage() {
   const rounds = stripOf(trace, s);
   if (rounds.length) h += '<div class="strip-title">Round by round' + (run ? "" : ' <span class="badge plain">last run</span>') + '</div><div class="strip">' + rounds.map(r => rcardHTML(r, false, run, view)).join("") + '</div>';
   const prev = app.prevStrips[s.id];
-  if (prev && prev.rounds.length) h += '<div class="strip-title">The run before <span class="small muted">— it started with “' + esc(short(prev.start, 60)) + '”</span></div><div class="strip">' + prev.rounds.map(r => rcardHTML(r, true, null, null)).join("") + '</div>';
+  if (prev && prev.rounds.length) h += '<div class="strip-title">The run before <span class="small muted">— it started with “' + shortHTML(prev.start, 60, "How the run before started") + '”</span></div><div class="strip">' + prev.rounds.map(r => rcardHTML(r, true, null, null)).join("") + '</div>';
   host.innerHTML = h + '</div>';
   hydrateImages(host);
   paintInto($("#stageCanvas"), view.render, run);
@@ -5812,7 +5826,7 @@ function paintPad() {
 }
 
 /* ===== SECTION: TRACE PANEL ===== */
-function jsonBox(v) { let t = ""; try { t = JSON.stringify(v, null, 2); } catch (e) { t = String(v); } if (t && t.length > 20000) t = t.slice(0, 20000) + "\n…"; return '<pre class="box">' + esc(t == null ? "undefined" : t) + '</pre>'; }
+function jsonBox(v) { let t = ""; try { t = JSON.stringify(v, null, 2); } catch (e) { t = String(v); } if (t && t.length > 20000) return '<pre class="box">' + esc(t.slice(0, 20000)) + "\n" + moreBtn(t, "All of the data", true) + '</pre>'; return '<pre class="box">' + esc(t == null ? "undefined" : t) + '</pre>'; }
 function findRender(trace, renderId) { for (const e of trace || []) if (e.render && e.render.renderId === renderId) return e.render; return null; }
 function callHTML(c, run, trace) {
   let h = '<div class="tsec"><h4>Model call' + (c.pretend ? " (pretend)" : "") + '</h4><dl class="kv"><dt>through</dt><dd>' + esc(c.adapterLabel || c.adapter || "") + '</dd><dt>model</dt><dd>' + esc(c.model || "") + (c.persona ? " — played by " + esc(c.persona) : "") + '</dd>' +
@@ -5872,7 +5886,7 @@ function responseHTML(e, s, run) {
   const rest = {};
   for (const k of Object.keys(data)) if (!(verdict && k === "pass") && k !== "memory") rest[k] = data[k];
   const words = Words.paraphrase(rest);
-  if (words) body += text ? '<div class="also">It also sent data: ' + esc(words) + '</div>' : '<div class="said data-only"><span class="dl">In plain words. It sent data, not words:</span> ' + esc(words) + '</div>';
+  if (words) body += text ? '<div class="also">It also sent data: ' + wordsHTML(words, rest) + '</div>' : '<div class="said data-only"><span class="dl">In plain words. It sent data, not words:</span> ' + wordsHTML(words, rest) + '</div>';
   else if (!text && !verdict) body += '<p class="small muted">It said nothing.</p>';
   if (a && a.kind === "program" && e.program && e.program.input && e.program.output && !e.program.error) body += '<div class="row" style="margin-top:6px"><button class="btn tiny" data-act="save-scn-from" data-i="' + e.i + '" title="Keep this input, and this answer as what ' + esc(a.name) + ' should say, as a test">＋ Save as a scenario</button></div>';
   return h + '<div class="tsec"><h4>Response</h4>' + body + '</div>';
@@ -5910,9 +5924,9 @@ function incomingHTML(e, s, run, trace) {
   const m = e.message;
   if (!m) return "";
   let body = "";
-  if (m.text) body += e.agentKind === "renderer" ? '<div class="heard small">a Logo program (' + plural(lineCount(m.text), "line") + ')</div>' : '<div class="heard">' + md(clip(m.text, 600), true) + '</div>';
+  if (m.text) body += e.agentKind === "renderer" ? '<div class="heard small">a Logo program (' + plural(lineCount(m.text), "line") + ')</div>' : '<div class="heard">' + clipMdHTML(m.text, 600, "What " + (e.agentName || "it") + " got") + '</div>';
   if (m.renderId) { const r = findRender(trace, m.renderId); if (r) body += imgTag(r, "thumb", "the picture it was sent", run); }
-  if (m.data && Object.keys(m.data).length && Society.sendParts(m.send).data) { const w = Words.paraphrase(m.data); if (w) body += '<div class="heard small">Data, in plain words: ' + esc(w) + '</div>'; }
+  if (m.data && Object.keys(m.data).length && Society.sendParts(m.send).data) { const w = Words.paraphrase(m.data); if (w) body += '<div class="heard small">Data, in plain words: ' + wordsHTML(w, m.data) + '</div>'; }
   return body ? '<div class="tsec"><h4>It got, from ' + esc(m.fromName) + '</h4>' + body + '</div>' : "";
 }
 function entryBodyHTML(e, s, run, trace) {
@@ -5934,7 +5948,7 @@ function summaryText(e, s) {
 }
 function traceEntryHTML(e, s, run, trace, currentI) {
   if (e.kind === "ending") return '<div class="tentry slim"><div class="th"><span class="rb">⏳</span><span class="sum">' + esc(e.text) + '</span></div></div>';
-  if (e.kind === "run-start") return '<div class="tentry slim"><div class="th"><span class="rb">▶</span><span class="sum">Start: <b>You → ' + esc([e.toName].concat(e.also || []).join(", ")) + '</b>: “' + esc(short(e.text, 160)) + '”<br><span class="small muted" title="' + esc("random seed " + e.seed + " · programs run " + (e.runtime === "worker" ? "in a Worker" : "in the page")) + '">' + esc(e.roundLimit) + ' rounds at most · ' + esc(e.adapter) + '</span></span></div></div>';
+  if (e.kind === "run-start") return '<div class="tentry slim"><div class="th"><span class="rb">▶</span><span class="sum">Start: <b>You → ' + esc([e.toName].concat(e.also || []).join(", ")) + '</b>: “' + shortHTML(e.text, 160, "The start") + '”<br><span class="small muted" title="' + esc("random seed " + e.seed + " · programs run " + (e.runtime === "worker" ? "in a Worker" : "in the page")) + '">' + esc(e.roundLimit) + ' rounds at most · ' + esc(e.adapter) + '</span></span></div></div>';
   if (e.kind === "run-end") return '<div class="tentry slim"><div class="th"><span class="rb">■</span><span class="sum">' + esc(e.text) + '</span></div></div>';
   if (e.kind !== "activation") return '<div class="tentry slim' + (e.kind === "error" ? " err" : "") + '"><div class="th"><span class="rb">!</span><span class="sum">' + esc(e.text || e.error || "") + '</span></div></div>';
   const open = app.ui.expanded.has(e.i);
@@ -5943,10 +5957,10 @@ function traceEntryHTML(e, s, run, trace, currentI) {
   const quiet = !e.error && resp && !String(resp.text || "").trim() && !e.render && !(e.fired || []).length;
   let sum = '<b>' + esc((e.emoji || "") + " " + e.agentName) + '</b> <span class="muted">← ' + esc(e.message ? e.message.fromName : "") + '</span>';
   if (resp && resp.data && typeof resp.data.pass === "boolean" && (resp.data.pass === false || (a && a.gate))) sum = (resp.data.pass ? '<span class="badge ok">pass</span> ' : '<span class="badge bad">block</span> ') + sum;
-  if (e.error) sum += '<br><span style="color:var(--bad)">⚠ ' + esc(short(e.error, 170)) + '</span>';
+  if (e.error) sum += '<br><span style="color:var(--bad)">⚠ ' + shortHTML(e.error, 170, "The problem") + '</span>';
   else if (e.collecting) sum += ' <span class="muted">is waiting: ' + e.collecting.have + ' of ' + e.collecting.want + ' messages so far</span>';
-  else if (quiet) sum += ' <span class="muted">' + esc(short(summaryText(e, s), 120)) + '</span>';
-  else if (resp) sum += '<br>' + esc(short(summaryText(e, s), 170));
+  else if (quiet) sum += ' <span class="muted">' + shortHTML(summaryText(e, s), 120, e.agentName) + '</span>';
+  else if (resp) sum += '<br>' + shortHTML(summaryText(e, s), 170, e.agentName);
   if (e.call && e.call.pretend) sum += ' <span class="badge warn" title="Played by a small built-in program, not an AI">pretend</span>';
   if (e.byYou) sum += ' <span class="badge ok" title="You played this agent">you</span>';
   if (e.parseError) sum += ' <span class="badge bad" title="' + esc(e.parseError) + '">data missing</span>';
@@ -5972,7 +5986,7 @@ function workshopHTML(s) {
   return '<div class="trace-list">' + log.slice().reverse().map(x => {
     const open = app.ui.expandedW.has(x.id);
     const badge = x.status === "ok" ? '<span class="badge ok">ok</span>' : x.status === "wrong" ? '<span class="badge warn">wrong answer</span>' : x.status === "refused" ? '<span class="badge warn">question</span>' : x.status === "needs" ? '<span class="badge warn">needs translation</span>' : '<span class="badge bad">problem</span>';
-    return '<div class="tentry kind-model"><button class="th" data-act="workshop-toggle" data-id="' + esc(x.id) + '"><span class="rb">' + (x.kind === "helper" ? "🤔" : x.kind === "bench" ? "🧪" : "🔤") + '</span><span class="sum"><b>' + esc(x.title) + '</b> ' + badge + '<br><span class="small muted">' + esc(x.when) + '</span></span><span class="faint">' + (open ? "▾" : "▸") + '</span></button>' +
+    return '<div class="tentry kind-model"><button class="th" data-act="workshop-toggle" data-id="' + esc(x.id) + '"><span class="rb">' + (x.kind === "helper" ? "🤔" : x.kind === "bench" ? "🧪" : "🔤") + '</span><span class="sum"><b>' + shortHTML(x.title, 80, "In the Workshop") + '</b> ' + badge + '<br><span class="small muted">' + esc(x.when) + '</span></span><span class="faint">' + (open ? "▾" : "▸") + '</span></button>' +
       (open ? '<div class="tbody">' + (x.error ? '<div class="errline">' + esc(x.error) + '</div>' : "") + (x.call ? callHTML(x.call, null, []) : "") + '</div>' : "") + '</div>';
   }).join("") + '</div>';
 }
@@ -6426,7 +6440,7 @@ async function askHelper(q) {
   try {
     const r = await adapter.call(req);
     text = r.text || r.raw;
-    logWorkshop(s.id, { kind: "helper", title: "Helper: " + short(q, 60), status: "ok", call: { adapter: adapter.id, adapterLabel: adapter.label, model: r.model, persona: r.persona, pretend: !!r.pretend, system: r.system, messages: req.messages, request: r.request, reply: r.raw, ms: Math.round(r.ms || 0), warning: r.warning } });
+    logWorkshop(s.id, { kind: "helper", title: "Helper: " + q, status: "ok", call: { adapter: adapter.id, adapterLabel: adapter.label, model: r.model, persona: r.persona, pretend: !!r.pretend, system: r.system, messages: req.messages, request: r.request, reply: r.raw, ms: Math.round(r.ms || 0), warning: r.warning } });
   } catch (e) {
     text = "😕 " + e.message;
     logWorkshop(s.id, { kind: "helper", title: "Helper (didn't answer)", status: "error", error: e.message, call: Object.assign({ adapter: adapter.id, adapterLabel: adapter.label, system: req.system, messages: req.messages }, e.trace || {}) });
@@ -6695,6 +6709,10 @@ const ACTIONS = {
   "export-society"() { exportSocietyFlow(); },
   "import-society"() { pickFile(".json,application/json", text => { importSocietyText(text).catch(e => toast("Couldn't import: " + e.message, "bad")); }); },
   "new-society"() { openNewSociety(); },
+  "show-full"(t) {
+    const full = t.dataset.full || "";
+    openModal({ title: t.dataset.title || "All of it", wide: full.length > 600, body: t.dataset.pre ? '<pre class="box full-text">' + esc(full) + '</pre>' : '<div class="full-text">' + md(full) + '</div>' });
+  },
   "save-copy"() { const s = soc(); const c = clone(s); c.id = uniqueSocietyId(s.id + "-copy"); c.title = util.cleanName(s.title + " (copy)", 60); app.societies[c.id] = c; app.order.push(c.id); app.activeId = c.id; rerunAll().then(renderAll); save(); renderAll(); toast("Saved a copy."); },
   async "reset-world"() {
     const s = soc();
@@ -6999,6 +7017,7 @@ function wire() {
   document.addEventListener("keydown", e => {
     const t = e.target;
     if (e.key === "Enter" && t.classList && t.classList.contains("slot")) { e.preventDefault(); t.blur(); }
+    if ((e.key === "Enter" || e.key === " ") && t.classList && t.classList.contains("more")) { e.preventDefault(); e.stopPropagation(); t.click(); }
     if (e.key === "Enter" && !e.shiftKey && t.id === "helperInput") { e.preventDefault(); const q = t.value; t.value = ""; askHelper(q); }
   });
   let rt = null;

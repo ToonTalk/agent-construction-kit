@@ -343,6 +343,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **Book**, a new library program with memory: it keeps every sentence it is sent, in order, and says the whole story so far. **Story Chain** now has a Book (it hears You's first sentence and every writer) and an **Editor** that gets the Book's last words when the run ends and tells the story again.
   - Joke Workshop's You agent has the id `rater`: `you` is reserved for the start.
   - Suite: 416 PASS, fingerprint `d1f12462b4a1`.
+- 2026-10-02 — **Revision 1.2.1.** Wherever the screen cuts text short, its “…” is a button (Ken's request) that opens the whole text in a window: speech bubbles, the round-by-round cards, trace entries (where it opens the text without opening the entry), what an agent got, problems, the start, Workshop titles, data said in plain words (it shows all of the data), and very long JSON. It works from the keyboard too, and cuts happen at a word. The exported web page keeps its own fold-outs.
+  - Suite: 417 PASS, fingerprint `5759d2519a9f`.
 
 ---
 
