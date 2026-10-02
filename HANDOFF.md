@@ -4,7 +4,7 @@
 
 ## State (2026-10-01)
 
-Agent Kit **1.0.5**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.0.5 follow reviews
+Agent Kit **1.0.6**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.0.6 follow reviews
 and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -12,7 +12,7 @@ folder is a copy without the §14 log.)
 - **No pretend mode** for learners (1.0.3): a real model is needed. Gemini Nano, built into desktop
   Chrome, is a free choice. The scripted stand-ins (`connection: "pretend"`) remain only for tests.
   Planned, not built: replays of recorded real runs.
-- The app is the single file `index.html` (450 KB): the `ak-model` script is DOM-free, and
+- The app is the single file `index.html` (465 KB): the `ak-model` script is DOM-free, and
   the `ak-ui` script is the interface. There is no build step.
 - **Drawings are Logo.** The Artist, the Designer and the drawing pad write Logo
   (`REPEAT 4 [FORWARD 50 RIGHT 90]`), and a small interpreter in the model layer runs it.
@@ -40,6 +40,9 @@ folder is a copy without the §14 log.)
 - **A learner can play** the round agent ("You be the Designer", "You be the Artist"): the run
   waits for their answer. The Logo in any trace entry can be changed, redrawn, and used as
   Telephone's drawing start.
+- **More than one model** (1.0.6): Settings → More models. With two or more, each AI agent
+  picks its model in its editor (`agent.model`); one model behaves as before. Each microworld's
+  card says which model suits it (`Seeds.MODEL_ADVICE`).
 - **Models:** with a key, each provider starts on its cheapest model that sees pictures
   (Claude Haiku 4.5, Gemini 3.5 Flash-Lite, GPT-6 Luna; checked October 2026). Haiku 4.5 may
   retire after 15 October 2026; the Anthropic adapter then falls back to Sonnet 5.5.
@@ -51,7 +54,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**324 PASS, 0 FAIL · fingerprint `83d84b79b94c`** · model modules covered 19/19.
+**334 PASS, 0 FAIL · fingerprint `b899278acfef`** · model modules covered 19/19.
 
 ## Acceptance criteria (§11)
 
@@ -67,7 +70,7 @@ folder is a copy without the §14 log.)
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 450 KB, under 1 MB (tested). |
+| 11 | 465 KB, under 1 MB (tested). |
 
 ## Open issues
 
@@ -79,7 +82,9 @@ folder is a copy without the §14 log.)
   v1 challenges too easy for gpt-5.6-terra). Check that they are: a good Designer should
   need two to four tries on Mystery rows, and Eyes should sometimes miscount the big grid.
 - Keyless (claude.ai chat artifact) and Anthropic-key runs still need a first live session.
-- **Secret Number and Lost and Found are untested with real models.** The guess in the design:
+- **First Nano run (Claude in Chrome, 1.0.5):** Nano is fine for Secret Number, but fails
+  Telephone and Lost and Found before anything can be studied; hence per-agent models.
+- **Secret Number and Lost and Found are barely tested with real models.** The guess in the design:
   no memory wanders, memory does OK, the Notebook gets close to halving (about 7 guesses).
   The review's advice: stop here and try them with children before building more.
 - **Stray lines:** Dot Counter ignores lines, but Eyes may not. Whether every Judge should

@@ -23,6 +23,10 @@ Four microworlds ship with it, and each is an ordinary saved society:
 - **Lost and Found — “Where did it end up?”** A Drawer draws a lost thing, the Finder names it,
   and rules send it to a shelf by the words it used. *Routing by words; literal programs.*
 
+Settings can hold more than one model. Then each AI agent can use the one that suits its job:
+Gemini Nano (free, in Chrome) where a small model is enough, and a stronger one for drawing and
+seeing pictures.
+
 ## Run it
 
 - **Anywhere:** open `index.html` in a browser, then choose a model in ⚙️ Settings. On desktop

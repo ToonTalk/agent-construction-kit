@@ -292,6 +292,14 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Variants and a society's secret switch now show for any start, not only challenges. Each microworld has its own version, so an unchanged one (Telephone) isn't replaced; Pebble Challenge is replaced, for its new scenarios.
   - Not built yet, as the review recommends: Story Chain, Three Eyes, Fool the Eyes, Small Helper Big Helper and Joke Workshop (each waits for its new feature), and the Notebook option for Mystery rows. Open question for Ken: should every Judge ignore stray lines?
   - Suite: 324 PASS, fingerprint `83d84b79b94c`.
+- 2026-10-02 — **Revision 1.0.6** (from Claude in Chrome's test run with Gemini Nano).
+  - **More than one model.** Settings has “More models”: add any other connection and model (Gemini Nano, Claude, Gemini or OpenAI with a key). With more than one, each AI agent's editor has “Its model”, the stage chips show each agent's model, and a run calls each agent through its own model (`deps.adapterFor`). With one model, nothing changes. An agent's choice (`agent.model`, like `gemini:gemini-3.8-flash`) is saved and exported; where that model isn't set up, the agent uses the main one.
+  - **Which model suits each microworld** is on its question card: Gemini Nano is enough for Secret Number; Telephone and Lost and Found need something stronger for the agents that draw and see. If those agents are using Nano, the card says so and points to More models.
+  - **Logo:** a blank picture from a command that was taught but never used says “You taught the turtle DOG but never asked it to draw DOG.” The bug itself stays: the Renderer adds the hint to what it says, and the drawing pad and Logo editors show it too.
+  - **Secret Number's stage** shows the guesses and answers round by round, with no empty picture. With random secrets off, a box on the stage takes your own secret. The Keeper's own secret is 83 (37 was the third guess on the halving path).
+  - The Critic is told it's about pebbles, so small models don't borrow “agents” from the preamble. The Finder can say “nothing”, and the Mystery Box leaves that alone; “a toy robot” still lands in the Mystery Box, and a question asks why.
+  - Gemini Nano: Chrome pauses it while its tab is hidden. Settings says so, and a note appears when you come back to a run. The Gemini list no longer calls 3.1 Pro (preview) the strongest: 3.8 Flash beats it on most shared benchmarks and costs less.
+  - Suite: 334 PASS, fingerprint `b899278acfef`.
 
 ---
 

@@ -138,6 +138,11 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .achip.kind-program{border-color:#BFE8D8}
 .achip.kind-renderer{border-color:#F4DBA8}
 .achip.active{color:var(--ink);background:var(--kb);border-color:var(--k);box-shadow:0 0 0 3px color-mix(in srgb,var(--k) 22%,transparent);transform:translateY(-1px)}
+.achip .mdl{font-size:10.5px;font-weight:600;color:var(--ink-faint);margin-left:2px}
+.model-note{margin:10px 0 0;font-size:13px;color:var(--ink-soft)}
+.extra-list{display:grid;gap:6px;margin:6px 0 8px}.extra{display:flex;flex-wrap:wrap;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:10px;padding:6px 8px;font-size:13px}
+.add-model{flex-wrap:wrap;gap:6px}.add-model .field{max-width:260px}
+.bubbles.wide{min-height:60px}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -400,7 +405,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.0.5";
+AK.VERSION = "1.0.6";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -1184,7 +1189,7 @@ const Logo = (() => {
 
   // Running. T is a turtle from makeTurtle; rng gives RANDOM and PICK their numbers.
   function interpreter(T, guard, rng) {
-    const procs = new Map(), globals = new Map(), frames = [], reps = [];
+    const procs = new Map(), globals = new Map(), frames = [], reps = [], used = new Set();
     let depth = 0;
     const where = () => T.api.state();
     const r6 = v => Math.round(v * 1e6) / 1e6;
@@ -1452,6 +1457,7 @@ const Logo = (() => {
         return p.out ? v : undefined;
       }
       const up = procs.get(t.v);
+      used.add(t.v);
       if (args.length !== up.params.length) fail(t.line, t.text + " needs " + plural(up.params.length, "input") + ".");
       if (depth >= MAX_DEPTH) fail(t.line, up.text + " was used inside itself too many times (more than " + MAX_DEPTH + " deep). Does it ever STOP?");
       const frame = new Map();
@@ -1506,7 +1512,8 @@ const Logo = (() => {
         throw e;
       }
     }
-    return { runTop, names: Object.keys(P) };
+    const unused = () => Array.from(procs.keys()).filter(k => !used.has(k)).map(k => procs.get(k).text);
+    return { runTop, unused, names: Object.keys(P) };
   }
   const NAMES = interpreter(makeTurtle(makeGuard(1)), makeGuard(1), Math.random).names;
 
@@ -1523,8 +1530,15 @@ const Logo = (() => {
     const done = (ok, error, line) => Object.assign({ ok, output: T.result(), ticks: guard.ticks, ms: now() - t0, mode: "logo" }, ok ? {} : { error, line: line || null });
     if (!text.trim()) return done(false, "There was no program to draw.");
     try {
-      interpreter(T, guard, mulberry32((opts.seed >>> 0) || 1)).runTop(tokenize(text));
-      return done(true);
+      const I = interpreter(T, guard, mulberry32((opts.seed >>> 0) || 1));
+      I.runTop(tokenize(text));
+      const res = done(true), out = res.output, idle = I.unused();
+      // Children do this on day one: the picture stays blank, so say why.
+      if (idle.length && !out.dots.length && !out.segments && !out.labels.length) {
+        const names = idle.length === 1 ? idle[0] : idle.slice(0, -1).join(", ") + " and " + idle[idle.length - 1];
+        res.note = "You taught the turtle " + names + " but never asked it to draw " + (idle.length === 1 ? idle[0] : "them") + ". Add a line that says " + idle[0] + " after the END.";
+      }
+      return res;
     } catch (e) {
       let msg = e instanceof RangeError ? "The program is nested too deeply to run." : String((e && e.message) || e);
       if (e && e.logoLine) msg = "Line " + e.logoLine + ": " + msg;
@@ -2304,7 +2318,7 @@ const Pretend = (() => {
     helper: { id: "helper", title: "Pretend Helper", about: "A small built-in program, not an AI. It can only ask simple questions about what it sees in your society.",
       reply: ctx => helperReply(ctx.helperState || {}) },
     finder: { id: "finder", title: "Pretend Finder", about: "Used by the tests. It reads the words written in the picture with LABEL; with none, it describes the shapes.",
-      reply: ctx => !ctx.sees ? "I can't see pictures." : ctx.render && ctx.render.labels && ctx.render.labels.length ? ctx.render.labels.join(" ") : describePicture(ctx.render) },
+      reply: ctx => !ctx.sees ? "I can't see pictures." : ctx.render && ctx.render.labels && ctx.render.labels.length ? ctx.render.labels.join(" ") : ctx.render && !ctx.render.segments && !(ctx.render.dots || []).length ? "nothing" : describePicture(ctx.render) },
     generic: { id: "generic", title: "Pretend agent", about: "This agent has no pretend program of its own, so in pretend mode it just repeats the start of what it was told.",
       reply: genericReply }
   };
@@ -2323,7 +2337,7 @@ const ANTHROPIC_FALLBACK_MODEL = "claude-sonnet-5-5";   // if Haiku 4.5 is retir
 const MODEL_CHOICES = {
   keyless: [["claude-sonnet-4-6", "Claude Sonnet 4.6 (proven through the chat proxy)"], ["claude-haiku-4-5", "Claude Haiku 4.5"], ["claude-sonnet-5-5", "Claude Sonnet 5.5"], ["claude-opus-5-5", "Claude Opus 5.5"]],
   anthropic: [["claude-haiku-4-5", "Claude Haiku 4.5 · cheapest"], ["claude-sonnet-5-5", "Claude Sonnet 5.5"], ["claude-opus-5-5", "Claude Opus 5.5"], ["claude-fable-5-1", "Claude Fable 5.1 · strongest"]],
-  gemini: [["gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite · cheapest"], ["gemini-3.8-flash", "Gemini 3.8 Flash"], ["gemini-3.1-pro-preview", "Gemini 3.1 Pro (preview) · strongest"]],
+  gemini: [["gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite · cheapest"], ["gemini-3.8-flash", "Gemini 3.8 Flash · newest, good with pictures"], ["gemini-3.1-pro-preview", "Gemini 3.1 Pro (preview) · costs more"]],
   openai: [["gpt-6-luna", "GPT-6 Luna · cheapest"], ["gpt-5.6-terra", "GPT-5.6 Terra"], ["gpt-6.1-sol", "GPT-6.1 Sol"], ["gpt-6-astra", "GPT-6 Astra · strongest"]]
 };
 const EFFORT_RE = /^claude-(opus-5|sonnet-5|fable|opus-4-[678]|sonnet-4-6)/;
@@ -2604,12 +2618,21 @@ async function probeAdapter(adapter, signal) {
   } catch (e) { return { ok: false, kind: e.kind || "error", error: e.message }; }
 }
 // Saved settings that still name 1.0's (expensive or retired) defaults get the new cheap ones; a model you typed yourself stays.
+// A short name for a connection and model, like "Gemini 3.8 Flash" or "Claude Haiku 4.5 (keyless)".
+const CONN_NAMES = { keyless: "Claude", anthropic: "Claude", gemini: "Gemini", openai: "OpenAI", nano: "Gemini Nano", pretend: "Scripted stand-ins", none: "no model" };
+function modelLabel(conn, model) {
+  if (conn === "nano" || conn === "pretend" || conn === "none") return CONN_NAMES[conn];
+  const m = model || DEFAULT_MODELS[conn] || "";
+  const pick = (MODEL_CHOICES[conn] || []).find(c => c[0] === m);
+  const name = pick ? pick[1].split(" · ")[0].replace(/ \(proven[^)]*\)/, "") : (CONN_NAMES[conn] || conn) + " " + m;
+  return conn === "keyless" ? name + " (keyless)" : name;
+}
 function updateSavedModels(models) {
   const out = Object.assign({}, DEFAULT_MODELS, models || {});
   for (const p of Object.keys(OLD_DEFAULT_MODELS)) if (OLD_DEFAULT_MODELS[p].indexOf(out[p]) >= 0) out[p] = DEFAULT_MODELS[p];
   return out;
 }
-AK.Adapters = { makeAdapter, makePretendAdapter, probeAdapter, nanoStatus, nanoPrepare, parseReply, outputInstruction, anthropicMessages, redactImages, updateSavedModels, MODEL_CHOICES, DEFAULT_MODELS, KEYLESS_MODEL, ANTHROPIC_FALLBACK_MODEL, FIELD_TYPES };
+AK.Adapters = { makeAdapter, makePretendAdapter, probeAdapter, nanoStatus, nanoPrepare, parseReply, outputInstruction, anthropicMessages, redactImages, updateSavedModels, modelLabel, MODEL_CHOICES, DEFAULT_MODELS, KEYLESS_MODEL, ANTHROPIC_FALLBACK_MODEL, FIELD_TYPES };
 
 /* ===== SECTION: LIBRARY (shipped programmed agents — Appendix A, with hand-authored line maps) ===== */
 const LIB = {};
@@ -2874,7 +2897,7 @@ libAgent({
   typeId: "keeper", name: "Keeper", emoji: "🤫", gate: true, note: "gate · keeps a secret number and says higher or lower",
   about: "A gate that keeps a secret number. It reads the first number in a guess and says “higher”, “lower” or “yes!”.",
   pseudo: [
-    "the secret is {37}, from {1} to {100}",
+    "the secret is {83}, from {1} to {100}",
     "the guess is the first number in what was said",
     "if there is no guess, or it is outside the range",
     "  block, and say \"Please say a number from {1} to {100}.\"",
@@ -2909,8 +2932,8 @@ libAgent({
   ],
   lineMap: [{ pseudo: [1, 1], js: [9, 9] }, { pseudo: [1, 1], js: [12, 12] }, { pseudo: [2, 2], js: [2, 8] }, { pseudo: [3, 3], js: [9, 9] }, { pseudo: [4, 4], js: [10, 10] }, { pseudo: [5, 5], js: [12, 12] }, { pseudo: [6, 6], js: [13, 13] },
     { pseudo: [7, 7], js: [14, 14] }, { pseudo: [8, 8], js: [15, 15] }, { pseudo: [9, 9], js: [16, 16] }, { pseudo: [10, 10], js: [17, 17] }, { pseudo: [11, 11], js: [10, 10] }, { pseudo: [11, 11], js: [13, 13] }, { pseudo: [11, 11], js: [15, 15] }, { pseudo: [11, 11], js: [17, 17] }],
-  params: { secret: 37, lowest: 1, highest: 100 },
-  slots: [{ line: 1, text: "37", param: "secret" }, { line: 1, text: "1", param: "lowest" }, { line: 1, text: "100", param: "highest" }, { line: 4, text: "1", param: "lowest" }, { line: 4, text: "100", param: "highest" }],
+  params: { secret: 83, lowest: 1, highest: 100 },
+  slots: [{ line: 1, text: "83", param: "secret" }, { line: 1, text: "1", param: "lowest" }, { line: 1, text: "100", param: "highest" }, { line: 4, text: "1", param: "lowest" }, { line: 4, text: "100", param: "highest" }],
   scenarios: [
     { id: "s1", name: "the secret", input: { text: "=secret" }, expect: { pass: true, say: "yes!" } },
     { id: "s2", name: "one below the secret", input: { text: "=secret-1" }, expect: { pass: false, say: "higher" } },
@@ -2992,7 +3015,7 @@ libAgent({
   about: "Hears every description and keeps the ones that have none of the shelves' words. Its word list has to match the rules by hand.",
   pseudo: [
     "the shelves take the words {ball, doll, kite, teddy, hat, sock, shirt, shoe, dog, cat, bird, fish, hammer, key, spoon, saw}",
-    "if the description has none of those words",
+    "if the description has none of those words, and isn't just \"nothing\"",
     "  say \"Nobody else took it: {the description}.\"",
     "otherwise",
     "  say nothing"
@@ -3002,7 +3025,7 @@ libAgent({
     "  const shelfWords = String(params.words).split(\",\").map(word => word.trim().toLowerCase());",
     "  const said = h.words(input.text);",
     "  const taken = said.some(word => shelfWords.indexOf(word) >= 0);",
-    "  if (!taken && said.length > 0) {",
+    "  if (!taken && said.length > 0 && !(said.length === 1 && said[0] === \"nothing\")) {",
     "    return { say: \"Nobody else took it: \" + input.text + \".\", taken: false };",
     "  } else {",
     "    return { say: \"\", taken: taken };",
@@ -3016,7 +3039,9 @@ libAgent({
     { id: "s1", name: "something no shelf wants", input: { text: "a teapot" }, expect: { say: "Nobody else took it: a teapot.", taken: false } },
     { id: "s2", name: "a red hat goes to a shelf", input: { text: "a red hat" }, expect: { say: "", taken: true } },
     { id: "s3", name: "“dogs” isn't “dog”: the Animals rule takes it, but this program doesn't see “dog”", input: { text: "two dogs" }, expect: { taken: false } },
-    { id: "s4", name: "an empty description", input: { text: "" }, expect: { say: "" } }
+    { id: "s4", name: "an empty description", input: { text: "" }, expect: { say: "" } },
+    { id: "s5", name: "the Finder couldn't tell what it was", input: { text: "Nothing." }, expect: { say: "", taken: false } },
+    { id: "s6", name: "“a toy robot”: “toy” isn't one of the words", input: { text: "a toy robot" }, expect: { say: "Nobody else took it: a toy robot.", taken: false } }
   ]
 });
 libAgent({
@@ -3232,12 +3257,18 @@ const ARTIST_INSTRUCTIONS = "You are the Artist in a game of Telephone. You get 
 const DESCRIBER_INSTRUCTIONS = "You are the Describer in a game of Telephone. You are shown a picture. Describe it in one short sentence of at most 15 words: say what shapes you see, their colors, and where they are. Reply with only the sentence.";
 const DESIGNER_INSTRUCTIONS = "You are the Designer. You get a pebble challenge, and you answer with a Logo program that draws it. Draw each pebble as a dot, like SETPENCOLOR \"red DOT 20, using plain color names such as red or blue. You may also write words on the picture with LABEL [some words].\n" + LOGO_HELP + "\nIf the Critic tells you what went wrong, fix it. Reply with only the Logo program.";
 const EYES_INSTRUCTIONS = "You are Eyes. You look at a picture of pebbles and report exactly what you see, even if it looks like a mistake. Count carefully. Say what you see in one sentence, then give the numbers.";
-const CRITIC_INSTRUCTIONS = "You are the Critic. The Judge rejected the Designer's picture and said why. Write one or two blunt, specific sentences telling the Designer exactly what is wrong with the picture and what to change. Talk only about the drawing.";
+const CRITIC_INSTRUCTIONS = "You are the Critic. The Designer drew pebbles (dots) in Logo, and the Judge rejected the picture and said why. Write one or two blunt, specific sentences telling the Designer exactly what is wrong with the pebbles and what to change: how many rows, how many pebbles in each row, which colors. Talk only about the pebbles in the drawing.";
 const MYSTERY_TASK = "The Mystery Judge has a secret: how many pebbles each of 3 rows should have. Each row has between 1 and 8 pebbles. Draw 3 rows of pebbles, one under another. After each try, the Critic will tell you which rows need more pebbles and which need fewer.";
 // Bump this when a microworld changes: saved copies of the older version are then replaced (and can be kept as copies).
 const SEED_VERSION = 5;   // the newest; each microworld has its own, so one that didn't change isn't replaced
-const SEED_VERSIONS = { telephone: 4, pebbles: 5, secret: 5, lost: 5 };
-const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, and they follow its settings, so changing a slot doesn't break them." };
+const SEED_VERSIONS = { telephone: 4, pebbles: 6, secret: 6, lost: 6 };
+const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, which follow its settings, and the Critic talks only about the pebbles.", secret: "The Keeper's own secret is 83 now, and you can type a secret on the stage.", lost: "The Finder can say “nothing”, and there's a question about a toy robot." };
+// Which model suits each microworld, from testing with Gemini Nano (October 2026). strong: agents a small model lets down.
+const MODEL_ADVICE = {
+  telephone: { text: "Which model? One that writes Logo and sees pictures well. Gemini Nano usually fails here before there is anything to study.", strong: ["artist", "describer"] },
+  secret: { text: "Which model? Gemini Nano is enough: the Guesser only has to say a number. That makes this a good place to see what a notebook adds.", strong: [] },
+  lost: { text: "Which model? Something stronger than Gemini Nano for the Drawer and the Finder: Nano often can't draw or name a thing well enough to sort it.", strong: ["drawer", "finder"] }
+};
 function makeTelephone() {
   return {
     kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSIONS.telephone, id: "telephone", title: "Telephone", question: "Where does it go?",
@@ -3323,7 +3354,7 @@ function makePebbles() {
 }
 const GUESSER_INSTRUCTIONS = "You are the Guesser. Someone has picked a secret whole number from 1 to 100. Guess it. Reply with just one number.";
 const DRAWER_INSTRUCTIONS = "You are the Drawer. You get the name of a lost thing, and you write a Logo program that draws it simply.\n" + LOGO_HELP + "\nReply with only the Logo program, with no explanation.";
-const FINDER_INSTRUCTIONS = "You are the Finder. You are shown a drawing of a lost thing. Say what it is in at most five words, like “a red hat”. Reply with only those words.";
+const FINDER_INSTRUCTIONS = "You are the Finder. You are shown a drawing of a lost thing. Say what it is in at most five words, like “a red hat”. If the picture is empty, or you can't tell what it is, say just: nothing. Reply with only those words.";
 function makeSecretNumber() {
   return {
     kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSIONS.secret, id: "secret", title: "Secret Number", question: "Can a notebook make it smarter?",
@@ -3366,7 +3397,8 @@ function makeLostAndFound() {
       "Which things went to two shelves at once? Which went nowhere?",
       "“A hat on a dog”: where should it go? Change a rule so it goes where you think.",
       "Can you find a thing the Finder names correctly but the rules still put in the wrong place?",
-      "Why might “two dogs” go to Animals but also into the Mystery Box?"
+      "Why might “two dogs” go to Animals but also into the Mystery Box?",
+      "The Finder said “a toy robot”. Why did it land in the Mystery Box and not on Toys? Can you fix that?"
     ],
     openers: ["Which shelf do you think a spoon will go to?", "What exactly does a rule look at?", "What happens if the Finder uses a word no rule knows?"],
     roundAgent: "drawer", roundLimit: 1,
@@ -3400,10 +3432,10 @@ const V1_TEXTS = [
   ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
   ["a turtle program", "a Logo program"]
 ];
-AK.Seeds = { makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+AK.Seeds = { makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
-const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
+const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
 const agentById = (soc, id) => (soc && soc.agents || []).find(a => a.id === id) || null;
 const clampInt = (v, lo, hi, d) => { const n = Math.round(+v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 const arr = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
@@ -3628,6 +3660,7 @@ function sanitizeAgent(a, ids) {
     out.history = a.history === "full" ? "full" : "stateless";
     out.replyKind = a.replyKind === "program" ? "program" : "prose";
     out.pretend = Object.prototype.hasOwnProperty.call(Pretend.personas, a.pretend) ? a.pretend : "generic";
+    if (a.model) out.model = String(a.model).replace(/[^\w.:\/-]/g, "").slice(0, 100);   // "provider:model"; the main model if this one isn't set up
   } else if (a.kind === "program") {
     out.typeId = cleanId(a.typeId) || "custom";
     out.gate = !!a.gate;
@@ -3998,8 +4031,9 @@ function createRun(society, deps) {
     const images = sees && render.image ? [render.image] : [];
     const req = { system: PREAMBLE + (agent.instructions || ""), messages, images, outputFields: agent.outputFields || [], replyKind: agent.replyKind || "prose", maxTokens: 8000, signal: abort ? abort.signal : undefined,
       meta: { persona: agent.pretend || "generic", agent, message: msg, history: hist.slice(), render: sees ? render : null, sees, society: soc } };
-    entry.call = { adapter: deps.adapter.id, adapterLabel: deps.adapter.label, system: req.system, messages: messages.map((m, i) => (i === messages.length - 1 && sees ? Object.assign({}, m, { renderId: msg.renderId }) : m)) };
-    const res = await deps.adapter.call(req);
+    const adapter = (deps.adapterFor && deps.adapterFor(agent)) || deps.adapter;   // an agent may have its own model
+    entry.call = { adapter: adapter.id, adapterLabel: adapter.label, system: req.system, messages: messages.map((m, i) => (i === messages.length - 1 && sees ? Object.assign({}, m, { renderId: msg.renderId }) : m)) };
+    const res = await adapter.call(req);
     Object.assign(entry.call, { model: res.model, persona: res.persona || null, pretend: !!res.pretend, endpoint: res.endpoint, headers: res.headers, system: res.system, request: res.request, reply: res.raw, parsed: { text: res.text, data: res.data }, parseError: res.parseError || null, ms: Math.round(res.ms || 0), stopReason: res.stopReason, warning: res.warning || "", imageRenderId: sees ? msg.renderId : null });
     if (agent.history === "full") { hist.push({ role: "user", content: userText }); hist.push({ role: "assistant", content: res.raw }); }
     if (res.parseError) entry.parseError = res.parseError;
@@ -4029,11 +4063,11 @@ function createRun(society, deps) {
     let image = null;
     try { image = deps.rasterize ? deps.rasterize(out.ops) : null; } catch (e) { image = null; }
     run.renders[renderId] = { program, ops: out.ops, dots: out.dots, labels: out.labels, segments: out.segments, image, error: res.ok ? null : res.error, seed: run.seed };
-    entry.render = { renderId, program, seed: run.seed, dots: out.dots, labels: out.labels, segments: out.segments, ms: Math.round(res.ms || 0), ticks: res.ticks, mode: res.mode, error: res.ok ? null : res.error };
+    entry.render = { renderId, program, seed: run.seed, dots: out.dots, labels: out.labels, segments: out.segments, ms: Math.round(res.ms || 0), ticks: res.ticks, mode: res.mode, error: res.ok ? null : res.error, note: res.note || "" };
     if (!res.ok) return { text: "The program did not run. " + res.error, data: { pass: false, error: res.error, program, dots: out.dots, segments: out.segments, labels: out.labels }, renderId };
     const bits = [plural(strokesOf(out.ops).length, "shape"), plural(out.dots.length, "dot")];   // a circle is one shape, not 36 little lines
     if (out.labels.length) bits.push(plural(out.labels.length, "label"));
-    return { text: "I drew " + bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1] + ".", data: { pass: true, dots: out.dots, segments: out.segments, labels: out.labels }, renderId };
+    return { text: "I drew " + bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1] + "." + (res.note ? " " + res.note : ""), data: { pass: true, dots: out.dots, segments: out.segments, labels: out.labels }, renderId };
   }
   function buildMessage(rule, agent, response) {
     const prefix = rule.prefix ? String(rule.prefix) : "";
@@ -4405,8 +4439,37 @@ const PROJECT_URL = "https://github.com/ToonTalk/agent-construction-kit";
 let storage = null;
 try { const k = LS_KEY + ".probe"; localStorage.setItem(k, "1"); localStorage.removeItem(k); storage = localStorage; } catch (e) { storage = null; }
 function defaultSettings() {
-  return { connection: ENV.chatArtifact ? "keyless" : "none", keys: { anthropic: "", gemini: "", openai: "" }, rememberKeys: false, models: clone(Adapters.DEFAULT_MODELS), speed: "normal" };
+  return { connection: ENV.chatArtifact ? "keyless" : "none", keys: { anthropic: "", gemini: "", openai: "" }, rememberKeys: false, models: clone(Adapters.DEFAULT_MODELS), extra: [], speed: "normal" };
 }
+// More models: each is a connection and a model ({connection: "gemini", model: "gemini-3.8-flash"}). The main one is
+// settings.connection; an agent that names another (agent.model = "gemini:gemini-3.8-flash") uses that one.
+const EXTRA_CONNS = ["nano", "keyless", "anthropic", "gemini", "openai"];
+const needsKey = c => c === "anthropic" || c === "gemini" || c === "openai";
+function sanitizeExtra(list) {
+  return (Array.isArray(list) ? list : []).filter(x => x && EXTRA_CONNS.indexOf(x.connection) >= 0).slice(0, 6).map(x => ({ connection: x.connection, model: x.connection === "nano" ? "" : util.cleanName(x.model || "", 80) }));
+}
+function refOf(conn, model) {
+  const m = conn === "nano" || conn === "pretend" || conn === "none" ? "" : (model || Adapters.DEFAULT_MODELS[conn] || "");
+  return { key: conn + (m ? ":" + m : ""), connection: conn, model: m, label: Adapters.modelLabel(conn, m) };
+}
+function modelRefs() {
+  const st = app.settings, out = [];
+  if (st.connection === "none") return out;
+  out.push(refOf(st.connection, st.models[st.connection]));
+  for (const x of st.extra || []) { const r = refOf(x.connection, x.model); if (!out.some(o => o.key === r.key)) out.push(r); }
+  return out;
+}
+const adapterCache = {};
+function adapterForRef(r) {
+  const st = app.settings;
+  const key = JSON.stringify([r.connection, r.model, st.keys[r.connection] || ""]);
+  if (!adapterCache[key]) adapterCache[key] = Adapters.makeAdapter(Object.assign({}, st, { connection: r.connection, models: Object.assign({}, st.models, { [r.connection]: r.model }) }));
+  return adapterCache[key];
+}
+// The model an agent will use: its own if that one is set up here, otherwise the main one.
+function refOfAgent(a) { const refs = modelRefs(); return (a && a.model && refs.find(r => r.key === a.model)) || refs[0] || null; }
+function adapterFor(a) { const refs = modelRefs(), r = refOfAgent(a); return r && refs.length && r.key !== refs[0].key ? adapterForRef(r) : getAdapter(); }
+const shortModel = label => String(label || "").replace(/^(Claude|Gemini|OpenAI) /, "");
 const app = {
   settings: defaultSettings(),
   societies: {}, order: [], activeId: "telephone",
@@ -4448,7 +4511,7 @@ async function load() {
     const d = await Store.unpack(raw);
     if (!d || d.schema !== 1) return;
     const st = d.settings || {};
-    app.settings = Object.assign(defaultSettings(), st, { keys: Object.assign({ anthropic: "", gemini: "", openai: "" }, st.keys || {}), models: Adapters.updateSavedModels(st.models) });
+    app.settings = Object.assign(defaultSettings(), st, { keys: Object.assign({ anthropic: "", gemini: "", openai: "" }, st.keys || {}), models: Adapters.updateSavedModels(st.models), extra: sanitizeExtra(st.extra) });
     if (app.settings.connection === "pretend") app.settings.connection = "none";   // pretend mode was dropped in 1.0.3
     for (const id of d.order || []) {
       const s = d.societies && d.societies[id];
@@ -4776,13 +4839,14 @@ function startSpec(s) {
   return { to: st.to, text: st.value || "" };
 }
 function traceStartText(trace) { const e = (trace || []).find(x => x.kind === "run-start"); return e ? e.text : ""; }
+const hasPictures = s => (s.agents || []).some(a => a.kind === "renderer");
 function stripOf(trace, s) {
-  const rounds = new Map();
+  const rounds = new Map(), pics = hasPictures(s);
   for (const e of trace || []) {
     if (e.kind !== "activation") continue;
-    const r = rounds.get(e.round) || { round: e.round, render: null, lines: [] };
+    const r = rounds.get(e.round) || { round: e.round, render: null, lines: [], pics };
     if (e.render && !e.render.error) r.render = e.render;
-    else if (e.agentKind !== "renderer" && e.agentId !== s.roundAgent && e.response) {
+    else if (e.agentKind !== "renderer" && (e.agentId !== s.roundAgent || !pics) && e.response) {   // with pictures, the round agent's turn is the picture
       const txt = util.stripMd(e.response.text || "");
       const pass = e.response.data && typeof e.response.data.pass === "boolean" ? e.response.data.pass : null;
       if (txt) r.lines.push({ emoji: e.emoji || "", text: txt, pass });
@@ -4806,7 +4870,7 @@ function beginRun(override) {
     if (secret != null) for (const a of s.agents || []) if (a.kind === "program" && a.params && a.params.secret !== undefined) rerunScenarios(a);
   }
   // A new seed every run: programs that pick at random pick differently, like the models do.
-  const api = Engine.createRun(s, { adapter: getAdapter(), runtime: Runtime, rasterize, delayMs: speedDelay(), seed: 1 + Math.floor(Math.random() * 2147483646), playAs: app.ui.playAs[s.id] || null });
+  const api = Engine.createRun(s, { adapter: getAdapter(), adapterFor, runtime: Runtime, rasterize, delayMs: speedDelay(), seed: 1 + Math.floor(Math.random() * 2147483646), playAs: app.ui.playAs[s.id] || null });
   const rec = { api, startText: spec.text, working: null, socId: s.id };
   app.runs[s.id] = rec;
   app.ui.replay = null;
@@ -4876,7 +4940,8 @@ function renderWorlds() {
     const c = app.settings.connection;
     const label = c === "none" ? "No model yet" : c === "pretend" ? "Scripted stand-ins" : c === "nano" ? "Gemini Nano · in Chrome" : c === "keyless" ? "Claude · no key" : c === "anthropic" ? "Claude · your key" : c === "gemini" ? "Gemini · your key" : "OpenAI · your key";
     chip.className = "mode-chip " + (liveConnection() ? "live" : "pretend");
-    chip.innerHTML = '<span class="dot"></span>' + esc(label);
+    const more = modelRefs().length - 1;
+    chip.innerHTML = '<span class="dot"></span>' + esc(label) + (more > 0 ? ' <span class="muted">+ ' + more + ' more</span>' : "");
   }
   const tabs = $("#mobileTabs");
   if (tabs) tabs.innerHTML = [["stage", "Stage"], ["inside", "Look inside"], ["trace", "Trace"]].map(t => '<button class="seg' + (app.ui.mobileTab === t[0] ? " on" : "") + '" data-act="mtab" data-id="' + t[0] + '">' + t[1] + '</button>').join("");
@@ -4900,7 +4965,7 @@ function renderLeft() {
   if (!host || !s) return;
   const showInside = app.ui.lookInside || app.ui.mobileTab === "inside";
   let h = '<div class="card qcard"><div class="kicker">' + esc(s.title) + '</div>' + (s.intro ? '<p class="intro">' + esc(s.intro) + '</p>' : "") + '<div class="big-q">' + esc(s.question || s.title) + '</div>' +
-    (questionsFor(s).length ? '<ul>' + questionsFor(s).map(q => "<li>" + esc(q) + "</li>").join("") + '</ul>' : "") +
+    (questionsFor(s).length ? '<ul>' + questionsFor(s).map(q => "<li>" + esc(q) + "</li>").join("") + '</ul>' : "") + modelAdviceHTML(s) +
     '<div class="row" style="margin-top:10px"><button class="btn ' + (showInside ? "" : "primary") + '" data-act="look">' + (showInside ? "Hide the inside" : "🔍 Look inside") + '</button></div></div>';
   if (showInside) h += insideHTML(s);
   host.innerHTML = h;
@@ -4908,6 +4973,17 @@ function renderLeft() {
   if (layout) layout.classList.toggle("inside-open", showInside);
 }
 const questionsFor = s => s.questions || [];
+function modelAdviceHTML(s) {
+  const adv = isMicroworld(s.id) && Seeds.MODEL_ADVICE[s.id];
+  if (!adv) return "";
+  let h = '<p class="model-note">💡 ' + esc(adv.text) + '</p>';
+  const weak = (adv.strong || []).map(id => Society.agentById(s, id)).filter(a => a && a.kind === "model" && (refOfAgent(a) || {}).connection === "nano");
+  if (weak.length) {
+    const names = weak.map(a => "the " + a.name).join(" and ");
+    h += '<div class="warnline">' + esc(names.charAt(0).toUpperCase() + names.slice(1)) + (weak.length === 1 ? " is" : " are") + ' using Gemini Nano. In ⚙️ Settings, add a stronger model under “More models”, then choose it in ' + (weak.length === 1 ? "its editor" : "their editors") + '. <button class="btn tiny" data-act="settings">Settings</button></div>';
+  }
+  return h;
+}
 function agentOptions(s, cur, withAnyone) {
   return (withAnyone ? '<option value="*"' + sel(cur === "*") + '>anyone</option>' : "") + s.agents.map(a => '<option value="' + esc(a.id) + '"' + sel(a.id === cur) + '>' + esc(a.name) + '</option>').join("");
 }
@@ -4921,6 +4997,7 @@ function agentCardHTML(a, s) {
     if (a.results && a.results.length) { const ok = a.results.filter(r => r.ok).length; badges += '<span class="badge ' + (ok === a.results.length ? "ok" : "bad") + '" title="scenarios passing">' + ok + "/" + a.results.length + " ✓</span>"; }
   }
   if (a.kind === "model" && a.canSeeImages) badges += '<span class="badge plain">sees pictures</span>';
+  if (a.kind === "model" && modelRefs().length > 1) badges += '<span class="badge plain">' + esc(refOfAgent(a).label) + '</span>';
   return '<button class="acard kind-' + a.kind + '" data-act="open-agent" data-id="' + esc(a.id) + '"><span class="nm"><span>' + esc(a.emoji) + '</span>' + esc(a.name) + '</span><span class="rl">' + esc(a.role || a.note || "") + '</span><span class="bd">' + badges + '</span></button>';
 }
 function ruleHTML(r, s) {
@@ -4967,13 +5044,13 @@ function viewState(s, run, trace) {
 }
 function achipHTML(a, s, view) {
   const v = a.gate || view.verdicts[a.id] === false ? view.verdicts[a.id] : undefined;
-  return '<button class="achip kind-' + a.kind + (view.active === a.id ? " active" : "") + '" data-act="open-agent" data-id="' + esc(a.id) + '" title="Open ' + esc(a.name) + ' to read or change it"><span class="e">' + esc(a.emoji) + '</span>' + esc(a.name) + (a.id === s.roundAgent ? '<span class="round-mark" title="starts each round">↻</span>' : "") + (v === true ? '<span class="v-ok" title="pass">✓</span>' : v === false ? '<span class="v-bad" title="block">✗</span>' : "") + '</button>';
+  return '<button class="achip kind-' + a.kind + (view.active === a.id ? " active" : "") + '" data-act="open-agent" data-id="' + esc(a.id) + '" title="Open ' + esc(a.name) + ' to read or change it"><span class="e">' + esc(a.emoji) + '</span>' + esc(a.name) + (a.id === s.roundAgent ? '<span class="round-mark" title="starts each round">↻</span>' : "") + (a.kind === "model" && modelRefs().length > 1 ? '<span class="mdl">' + esc(shortModel(refOfAgent(a).label)) + '</span>' : "") + (v === true ? '<span class="v-ok" title="pass">✓</span>' : v === false ? '<span class="v-bad" title="block">✗</span>' : "") + '</button>';
 }
 function bubbleHTML(b) { return '<div class="bubble kind-' + esc(b.kind) + (b.err ? " err" : "") + '"><div class="who">R' + b.round + " · " + esc(b.who) + '</div>' + (b.md ? md(clip(b.text, 420), true) : nl2br(short(b.text, 420))) + '</div>'; }
 function rcardHTML(r, prev, run, view) {
   const here = view && view.replay && view.renderRound === r.round;
-  return '<div class="rcard' + (prev ? " prev" : "") + (here ? " here" : "") + '"><div class="rn">Round ' + r.round + '</div>' + (r.render ? imgTag(r.render, "", "round " + r.round, prev ? null : run) : '<div class="noimg">no picture</div>') +
-    r.lines.slice(0, 3).map(l => '<div class="ln' + (l.pass === true ? " p-ok" : l.pass === false ? " p-bad" : "") + '">' + esc(l.emoji) + " " + esc(short(l.text, 90)) + '</div>').join("") + '</div>';
+  return '<div class="rcard' + (prev ? " prev" : "") + (here ? " here" : "") + '"><div class="rn">Round ' + r.round + '</div>' + (r.render ? imgTag(r.render, "", "round " + r.round, prev ? null : run) : r.pics === false ? "" : '<div class="noimg">no picture</div>') +
+    r.lines.slice(0, r.pics === false ? 4 : 3).map(l => '<div class="ln' + (l.pass === true ? " p-ok" : l.pass === false ? " p-bad" : "") + '">' + esc(l.emoji) + " " + esc(short(l.text, 90)) + '</div>').join("") + '</div>';
 }
 function statusLineHTML(s, rec, run) {
   if (!run) { const t = app.traces[s.id]; return t && t.length ? "Showing the last run. Press ▶ Run for a new one." : (app.settings.connection === "none" ? "Choose a model in ⚙️ Settings, then press ▶ Run." : "Ready."); }
@@ -5014,7 +5091,11 @@ function challengeHTML(s) {
 // Switches that go with any start: the society's own secret, and its variants.
 function switchesHTML(s) {
   let h = "";
-  if (s.random) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="new-secret" data-id=""' + (s.random.on !== false ? " checked" : "") + '> ' + esc(nameOf(s, s.random.agent)) + ' picks a new secret every run (switch it off to choose the secret yourself)</label>';
+  if (s.random) {
+    h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="new-secret" data-id=""' + (s.random.on !== false ? " checked" : "") + '> ' + esc(nameOf(s, s.random.agent)) + ' picks a new secret every run (switch it off to choose the secret yourself)</label>';
+    const k = Society.agentById(s, s.random.agent);
+    if (s.random.on === false && k && k.params) h += '<label class="row small" style="margin:4px 0 0 26px">The secret: <input class="num" type="number" min="' + s.random.lo + '" max="' + s.random.hi + '" data-bind="society-secret" value="' + esc(k.params[s.random.param]) + '" aria-label="The secret"><span class="muted">only ' + esc(k.name) + ' knows it</span></label>';
+  }
   for (const v of s.variants || []) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="variant" data-id="' + esc(v.id) + '"' + (v.on ? " checked" : "") + '> ' + esc(v.label) + '</label>';
   return h;
 }
@@ -5052,9 +5133,10 @@ function renderStage() {
   if (status === "waiting") h += yourTurnHTML(s, run);
   const view = viewState(s, run, trace);
   h += '<div class="agent-strip">' + s.agents.map(a => achipHTML(a, s, view)).join("") + '</div>';
-  h += '<div class="picture-wrap"><div class="picture"><canvas id="stageCanvas" width="512" height="512" aria-label="The latest picture"></canvas>' +
+  if (hasPictures(s)) h += '<div class="picture-wrap"><div class="picture"><canvas id="stageCanvas" width="512" height="512" aria-label="The latest picture"></canvas>' +
     (view.render ? '<span class="tag">' + (view.replay ? "replay · " : "") + "round " + view.renderRound + '</span>' : '<div class="empty">' + (trace.length ? "No picture yet." : "Press ▶ Run to start.<br>Every message will show up in the Trace.") + '</div>') + '</div>' +
     '<div class="bubbles">' + view.bubbles.map(bubbleHTML).join("") + '</div></div>';
+  else h += '<div class="bubbles wide">' + (view.bubbles.length ? view.bubbles.map(bubbleHTML).join("") : '<p class="hint">' + (trace.length ? "No messages yet." : "Press ▶ Run to start. Every message will show up here and in the Trace.") + '</p>') + '</div>';
   const rounds = stripOf(trace, s);
   if (rounds.length) h += '<div class="strip-title">Round by round' + (run ? "" : ' <span class="badge plain">last run</span>') + '</div><div class="strip">' + rounds.map(r => rcardHTML(r, false, run, view)).join("") + '</div>';
   const prev = app.prevStrips[s.id];
@@ -5096,7 +5178,7 @@ function paintYours() {
     try { ctx = c.getContext("2d"); } catch (e) { ctx = null; }
     if (ctx) paintOps(ctx, (r.output && r.output.ops) || [], c.width / 512);
     const err = $("#yourErr");
-    if (err) err.textContent = r.ok || !text.trim() ? "Write Logo. The preview shows what the Renderer will draw." : "⚠ " + r.error;
+    if (err) err.textContent = r.ok && r.note ? "💡 " + r.note : r.ok || !text.trim() ? "Write Logo. The preview shows what the Renderer will draw." : "⚠ " + r.error;
   }, 120);
 }
 let padTimer = null;
@@ -5111,7 +5193,7 @@ function paintPad() {
     try { ctx = c.getContext("2d"); } catch (e) { ctx = null; }
     if (ctx) paintOps(ctx, (r.output && r.output.ops) || [], c.width / 512);
     const err = $("#padErr");
-    if (err) err.textContent = r.ok || !String(st.value || "").trim() ? "This is Logo: every button adds one command. You can type your own too." : "⚠ " + r.error;
+    if (err) err.textContent = r.ok && r.note ? "💡 " + r.note : r.ok || !String(st.value || "").trim() ? "This is Logo: every button adds one command. You can type your own too." : "⚠ " + r.error;
   }, 150);
 }
 
@@ -5151,7 +5233,7 @@ function paintLogoEdit() {
     try { ctx = c.getContext("2d"); } catch (e) { ctx = null; }
     if (ctx) paintOps(ctx, (r.output && r.output.ops) || [], c.width / 512);
     const err = $("#logoEditErr");
-    if (err) err.textContent = r.ok ? "Change the Logo: the drawing on the right follows." : "⚠ " + r.error;
+    if (err) err.textContent = r.ok && r.note ? "💡 " + r.note : r.ok ? "Change the Logo: the drawing on the right follows." : "⚠ " + r.error;
   }, 120);
 }
 function responseHTML(e, s, run) {
@@ -5376,7 +5458,7 @@ function modelEditorHTML(a, s) {
   h += '<div class="section"><h3>Instructions</h3><p class="hint">Its system prompt: exactly what the model is told, right after the safety preamble.</p><textarea class="field" rows="9" data-bind="agent" data-field="instructions" aria-label="Instructions">' + esc(a.instructions) + '</textarea></div>';
   h += '<div class="section"><h3>How it works</h3><div class="form-grid"><label>Its reply is</label><select class="field" data-bind="agent" data-field="replyKind"><option value="prose"' + sel(a.replyKind !== "program") + '>words</option><option value="program"' + sel(a.replyKind === "program") + '>a Logo drawing program</option></select>' +
     '<label>Pictures</label><label class="row small"><input type="checkbox" data-bind="agent" data-field="canSeeImages"' + (a.canSeeImages ? " checked" : "") + '> it can see pictures that are sent to it</label>' +
-    '<label>It remembers</label><select class="field" data-bind="agent" data-field="history"><option value="stateless"' + sel(a.history !== "full") + '>nothing: each message is new</option><option value="full"' + sel(a.history === "full") + '>the whole conversation in this run</option></select></div></div>';
+    '<label>It remembers</label><select class="field" data-bind="agent" data-field="history"><option value="stateless"' + sel(a.history !== "full") + '>nothing: each message is new</option><option value="full"' + sel(a.history === "full") + '>the whole conversation in this run</option></select>' + agentModelHTML(a) + '</div></div>';
   h += '<div class="section"><h3>Output fields</h3><p class="hint">Data it must send back, as JSON after its answer. Rules can test these (IF data.rows = 3), and programmed agents read them.</p><div class="fields-edit">' +
     (a.outputFields || []).map((f, i) => '<div class="frow"><input class="field" data-bind="ofield" data-i="' + i + '" data-field="name" value="' + esc(f.name) + '" placeholder="name" aria-label="Field name"><select class="field" data-bind="ofield" data-i="' + i + '" data-field="type" aria-label="Field type">' + Adapters.FIELD_TYPES.map(t => '<option' + sel(f.type === t) + '>' + t + '</option>').join("") + '</select><input class="field" data-bind="ofield" data-i="' + i + '" data-field="about" value="' + esc(f.about || "") + '" placeholder="what it means" aria-label="Field meaning"><button class="icon-btn" data-act="field-del" data-i="' + i + '" aria-label="Delete field">🗑</button></div>').join("") +
     '</div><button class="btn tiny" data-act="field-add" style="margin-top:6px">+ Add a field</button></div>';
@@ -5399,6 +5481,15 @@ function benchHTML(a, s) {
       (rs.length ? '<div class="small"><span class="badge ' + (ok === rs.length ? "ok" : ok ? "warn" : "bad") + '">right ' + ok + ' of ' + rs.length + '</span> ' + rs.map(r => '<span class="bench-ans ' + (r.ok ? "ok" : "bad") + '">' + (r.ok ? "✓ " : "✗ ") + esc(r.error ? "no answer" : r.answer || "nothing") + '</span>').join(" ") + '</div>' : b.running ? '<div class="small muted">waiting…</div>' : "") + '</div></div>';
   }
   return h + '</div></div>';
+}
+function agentModelHTML(a) {
+  const refs = modelRefs();
+  if (refs.length < 2) return "";
+  const own = a.model && a.model !== refs[0].key ? a.model : "";
+  const missing = own && !refs.some(r => r.key === own);
+  return '<label>Its model</label><select class="field" data-bind="agent-model" aria-label="Its model"><option value=""' + sel(!own) + '>the main model: ' + esc(refs[0].label) + '</option>' +
+    refs.slice(1).map(r => '<option value="' + esc(r.key) + '"' + sel(own === r.key) + '>' + esc(r.label) + '</option>').join("") +
+    (missing ? '<option value="' + esc(own) + '" selected>' + esc(own) + ' (not set up here, so it uses the main model)</option>' : "") + '</select>';
 }
 function rendererEditorHTML(a, s) {
   return editorHead(a, s, "built-in") + '<div class="section"><h3>What the Renderer does</h3><p>The Renderer is not a model. It runs the Logo program it is sent and makes a picture (white background, 512 by 512). Along with the picture it sends data:</p><ul><li><code>dots</code>: every dot drawn with <code>DOT</code>, as <code>{x, y, color}</code>, counted in pixels from the top-left corner</li><li><code>segments</code>: how many straight pieces of line were drawn</li><li><code>labels</code>: the words written with <code>LABEL</code></li><li><code>pass</code>: false if the program didn\'t run (then its ALWAYS rules wait)</li></ul><h3 style="margin-top:12px">The Logo it understands</h3><p class="hint">This is also what the Artist and the Designer are told.</p>' + logoBox(Prompts.LOGO_HELP, "", true) + '<p class="hint">Logo is never turned into JavaScript: a small interpreter reads it, so a drawing can only move the turtle. A drawing that takes more than ' + Runtime.tickLimit.toLocaleString("en-US") + ' steps is stopped. It also knows SETX, SETY, ARC, CLEARSCREEN, FOR, WHILE, RANDOM, PICK and the usual arithmetic, like SUM and SQRT.</p></div>';
@@ -5591,17 +5682,20 @@ function openSettings() {
   app.ui.settingsModal = openModal({ title: "⚙️ Settings", onClose: () => { app.ui.settingsModal = null; renderWorlds(); } });
   renderSettings();
 }
-function renderSettings() {
-  const m = app.ui.settingsModal;
-  if (!m) return;
-  const st = app.settings;
-  const conns = [
-    ["nano", "Gemini Nano, built into Chrome", nanoHere() ? "Free, and nothing leaves this computer. It is a small model, so it makes more mistakes. The first time, Chrome downloads it (a few GB)." : "Needs desktop Chrome 138 or later on a fairly powerful computer.", nanoHere() || st.connection === "nano"],
+function connList(st) {
+  return [
+    ["nano", "Gemini Nano, built into Chrome", nanoHere() ? "Free, and nothing leaves this computer. It is a small model, so it makes more mistakes. The first time, Chrome downloads it (a few GB). Chrome pauses it while this tab is hidden, so keep the tab in front during a run." : "Needs desktop Chrome 138 or later on a fairly powerful computer.", nanoHere() || st.connection === "nano"],
     ["keyless", "Claude, inside a claude.ai chat", ENV.chatArtifact ? "No key needed: it uses your claude.ai sign-in, and pictures are sent too." : "Only works when this page runs as an artifact inside a claude.ai chat." + (ENV.codeArtifact ? " A published artifact can't make these calls." : ""), ENV.chatArtifact || st.connection === "keyless"],
     ["anthropic", "Claude, with your Anthropic key", ENV.codeArtifact ? "Blocked inside published artifacts." : ENV.chatArtifact ? "Works here too; calls go straight from this page to Anthropic." : "Calls go straight from this page to Anthropic.", !ENV.codeArtifact],
     ["gemini", "Gemini, with your Google key", ENV.artifact ? "Blocked inside claude.ai artifacts: open the page from GitHub Pages or a file to use it." : "Calls go straight from this page to Google.", !ENV.artifact],
     ["openai", "OpenAI, with your key", ENV.artifact ? "Blocked inside claude.ai artifacts." : "OpenAI often refuses calls straight from a web page, so you may need your own proxy.", !ENV.artifact]
   ];
+}
+function renderSettings() {
+  const m = app.ui.settingsModal;
+  if (!m) return;
+  const st = app.settings;
+  const conns = connList(st);
   let h = '<h3 style="font-size:16px;margin-bottom:8px">How the model agents think</h3><div class="conn-list">' + conns.map(c => '<label class="conn' + (st.connection === c[0] ? " on" : "") + (c[3] ? "" : " disabled") + '"><input type="radio" name="conn" data-bind="conn" value="' + c[0] + '"' + (st.connection === c[0] ? " checked" : "") + (c[3] ? "" : " disabled") + '><span><span class="t">' + esc(c[1]) + '</span><br><span class="d">' + esc(c[2]) + '</span></span></label>').join("") + '</div>';
   const p = st.connection;
   if (p === "nano") h += '<div class="row" style="margin-top:10px"><button class="btn" data-act="test-conn">Test the connection</button><span class="small" id="connResult"></span></div>';
@@ -5614,6 +5708,7 @@ function renderSettings() {
     if (p !== "keyless") h += '<label class="row small" style="margin-top:8px"><input type="checkbox" data-bind="remember"' + (st.rememberKeys ? " checked" : "") + '> Remember my keys in this browser. Keys are never put in exported files.</label>';
     h += '<div class="row" style="margin-top:10px"><button class="btn" data-act="test-conn">Test the connection</button><span class="small" id="connResult"></span></div>';
   }
+  if (p !== "none") h += moreModelsHTML(st);
   h += '<div class="section"><h3>How programs run here</h3><p class="small">' + esc(Runtime.note) + ' Drawings are Logo, read by a small interpreter, so they never run as JavaScript.</p></div>';
   h += '<div class="section"><h3>Guides</h3><div class="row"><button class="btn" data-act="guide" data-id="learner">📘 For learners</button><button class="btn" data-act="guide" data-id="teacher">📕 For teachers</button></div></div>';
   h += '<div class="section"><h3>The safety preamble</h3><p class="hint">This fixed text starts every model call, so every agent writes for young people.</p><pre class="box">' + esc(Prompts.PREAMBLE) + '</pre></div>';
@@ -5622,6 +5717,23 @@ function renderSettings() {
   const focusId = document.activeElement && document.activeElement.id;
   m.body.innerHTML = h;
   if (focusId) { const f = document.getElementById(focusId); if (f && f.focus) f.focus(); }
+}
+function moreModelsHTML(st) {
+  const extra = st.extra || [], refs = modelRefs();
+  const add = app.ui.addModel || { connection: "", model: "" };
+  let h = '<div class="section"><h3>More models (optional)</h3><p class="hint">With more than one model, each AI agent can use the one that suits its job: a free one where a small model is enough, and a stronger one for drawing or seeing pictures. Choose an agent\'s model in its editor. With only one model, every agent uses it.</p><div class="extra-list">' +
+    '<div class="extra"><b>' + esc(refs[0] ? refs[0].label : "") + '</b><span class="small muted">the main model, chosen above</span></div>' +
+    extra.map((x, i) => '<div class="extra"><b>' + esc(Adapters.modelLabel(x.connection, x.model)) + '</b>' + (needsKey(x.connection) && !st.keys[x.connection] ? '<span class="badge warn">needs a key</span>' : "") + '<span class="grow"></span><span class="small" id="extraResult' + i + '"></span><button class="btn tiny" data-act="test-extra" data-i="' + i + '">Test</button><button class="btn tiny danger" data-act="del-extra" data-i="' + i + '">Remove</button></div>').join("") + '</div>';
+  h += '<div class="add-model row"><select class="field" data-bind="add-conn" aria-label="Add a model"><option value="">＋ Add a model…</option>' + connList(st).filter(c => c[3] && c[0] !== "pretend").map(c => '<option value="' + c[0] + '"' + sel(add.connection === c[0]) + '>' + esc(c[1]) + '</option>').join("") + '</select>';
+  if (add.connection) {
+    if (add.connection !== "nano") h += '<input class="field" id="addModelIn" data-bind="add-model" value="' + esc(add.model || Adapters.DEFAULT_MODELS[add.connection] || "") + '" spellcheck="false" autocomplete="off" placeholder="model name" aria-label="Model name">';
+    if (needsKey(add.connection) && !st.keys[add.connection]) h += '<input class="field" type="password" autocomplete="off" data-bind="key" data-id="' + add.connection + '" placeholder="paste your key" aria-label="Key">';
+    h += '<button class="btn primary" data-act="add-extra">Add</button>';
+  }
+  h += '</div>';
+  if (add.connection && add.connection !== "nano") h += '<div class="picks"><span class="small muted">Or pick one:</span>' + (Adapters.MODEL_CHOICES[add.connection] || []).map(c => '<button class="pick' + ((add.model || Adapters.DEFAULT_MODELS[add.connection]) === c[0] ? " on" : "") + '" data-act="pick-add-model" data-model="' + esc(c[0]) + '" title="' + esc(c[0]) + '">' + esc(c[1]) + '</button>').join("") + '</div>';
+  if (!needsKey(st.connection) && (needsKey(add.connection) || extra.some(x => needsKey(x.connection)))) h += '<label class="row small" style="margin-top:8px"><input type="checkbox" data-bind="remember"' + (st.rememberKeys ? " checked" : "") + '> Remember my keys in this browser. Keys are never put in exported files.</label>';
+  return h + '</div>';
 }
 async function testConnection() {
   const out = $("#connResult");
@@ -5843,10 +5955,10 @@ const ACTIONS = {
     const key = s.id + "/" + a.id;
     const b = app.ui.bench[key] = { times: (app.ui.bench[key] && app.ui.bench[key].times) || 3, results: [], running: true, stop: false };
     renderEditor();
-    await Bench.run(a, { adapter: getAdapter(), runtime: Runtime, rasterize, times: b.times, shouldStop: () => b.stop,
+    await Bench.run(a, { adapter: adapterFor(a), runtime: Runtime, rasterize, times: b.times, shouldStop: () => b.stop,
       onResult: r => {
         b.results.push(r);
-        logWorkshop(s.id, { kind: "bench", title: "Test bench: " + a.name + " looks at " + r.pictureName + (r.error ? "" : r.ok ? ", right" : ", wrong"), status: r.error ? "error" : r.ok ? "ok" : "wrong", error: r.error, call: r.call ? Object.assign({ adapterLabel: getAdapter().label }, r.call) : null });
+        logWorkshop(s.id, { kind: "bench", title: "Test bench: " + a.name + " looks at " + r.pictureName + (r.error ? "" : r.ok ? ", right" : ", wrong"), status: r.error ? "error" : r.ok ? "ok" : "wrong", error: r.error, call: r.call ? Object.assign({ adapterLabel: adapterFor(a).label }, r.call) : null });
         if (editorAgent() === a) renderEditor();
       } });
     b.running = false;
@@ -5870,6 +5982,30 @@ const ACTIONS = {
     await resumeRun();
   },
   "pick-model"(t) { app.settings.models[t.dataset.id] = t.dataset.model; save(); renderSettings(); },
+  "pick-add-model"(t) { app.ui.addModel = Object.assign(app.ui.addModel || {}, { model: t.dataset.model }); renderSettings(); },
+  "add-extra"() {
+    const a = app.ui.addModel;
+    if (!a || !a.connection) return;
+    const typed = $("#addModelIn");
+    const model = a.connection === "nano" ? "" : util.cleanName((typed && typed.value) || a.model || Adapters.DEFAULT_MODELS[a.connection] || "", 80);
+    app.settings.extra = sanitizeExtra((app.settings.extra || []).concat([{ connection: a.connection, model }]));
+    app.ui.addModel = null;
+    save(); renderSettings(); renderAll();
+    toast("Added " + Adapters.modelLabel(a.connection, model) + ". Choose it in an agent's editor.");
+  },
+  "del-extra"(t) { (app.settings.extra || []).splice(+t.dataset.i, 1); save(); renderSettings(); renderAll(); },
+  async "test-extra"(t) {
+    const i = +t.dataset.i, x = (app.settings.extra || [])[i];
+    if (!x) return;
+    const out = $("#extraResult" + i);
+    if (out) out.textContent = "Testing…";
+    if (x.connection === "nano") {   // still inside the click, so Chrome may start the download
+      try { await Adapters.nanoPrepare(f => { if (out) out.textContent = "Downloading: " + Math.round(f * 100) + "%"; }); }
+      catch (e) { if (out) out.textContent = "✗ " + e.message; return; }
+    }
+    const r = await Adapters.probeAdapter(adapterForRef(refOf(x.connection, x.model)));
+    if (out) out.textContent = r.ok ? "✓ Working" : "✗ " + r.error;
+  },
   "keep-old"() {
     for (const old of app.replaced) {
       try {
@@ -6025,7 +6161,7 @@ async function handleBind(t, evt) {
     case "roundAgent": if (change) { s.roundAgent = t.value; save(); renderAll(); } return;
     case "variant": { Society.applyVariant(s, t.dataset.id, t.checked); save(); renderAll(); return; }
     case "bench-times": { const a = editorAgent(); if (!a) return; const key = s.id + "/" + a.id; app.ui.bench[key] = Object.assign(app.ui.bench[key] || { results: [] }, { times: Math.max(1, Math.min(10, Math.round(+t.value) || 3)) }); renderEditor(); return; }
-    case "new-secret": { const ch = (s.challenges || []).find(c => c.id === t.dataset.id); const r = ch ? ch.random : !t.dataset.id && s.random; if (r) { r.on = t.checked; save(); } return; }
+    case "new-secret": { const ch = (s.challenges || []).find(c => c.id === t.dataset.id); const r = ch ? ch.random : !t.dataset.id && s.random; if (r) { r.on = t.checked; save(); if (!ch) renderStage(); } return; }
     case "play-as": {
       app.ui.playAs[s.id] = t.checked ? s.roundAgent : null;
       renderStage();
@@ -6086,6 +6222,17 @@ async function handleBind(t, evt) {
     case "key": { app.settings.keys[t.dataset.id] = String(t.value).trim(); save(); return; }
     case "model": { const v = util.cleanName(t.value, 80); if (v) { app.settings.models[t.dataset.id] = v; save(); if (change) renderSettings(); } return; }
     case "remember": { app.settings.rememberKeys = t.checked; save(); return; }
+    case "add-conn": { app.ui.addModel = t.value ? { connection: t.value, model: "" } : null; renderSettings(); return; }
+    case "add-model": { app.ui.addModel = Object.assign(app.ui.addModel || {}, { model: util.cleanName(t.value, 80) }); return; }
+    case "agent-model": { const a = editorAgent(); if (!a) return; if (t.value) a.model = t.value; else delete a.model; save(); renderEditor(); renderStage(); renderLeft(); return; }
+    case "society-secret": {
+      if (!change || !s.random) return;
+      const k = Society.agentById(s, s.random.agent);
+      if (!k) return;
+      const n = Math.max(s.random.lo, Math.min(s.random.hi, Math.round(+t.value) || s.random.lo));
+      await applyParamChange(k, { [s.random.param]: n });
+      return;
+    }
   }
 }
 
@@ -6096,6 +6243,13 @@ function wire() {
     if (!t || t.disabled) return;
     const fn = ACTIONS[t.dataset.act];
     if (fn) { e.preventDefault(); Promise.resolve(fn(t, e)).catch(err => toast(err.message, "bad")); }
+  });
+  document.addEventListener("visibilitychange", () => {
+    const rec = app.runs[app.activeId];
+    const live = !!rec && ["running", "stepping"].indexOf(rec.api.run.status) >= 0;
+    if (document.hidden) { app.ui.hiddenDuringNano = live && modelRefs().some(r => r.connection === "nano"); return; }
+    if (app.ui.hiddenDuringNano && live) toast("Gemini Nano pauses while this tab is hidden. It carries on now.");
+    app.ui.hiddenDuringNano = false;
   });
   document.addEventListener("change", e => { if (e.target.dataset && e.target.dataset.bind) handleBind(e.target, "change").catch(err => toast(err.message, "bad")); });
   document.addEventListener("input", e => { const t = e.target; if (t.dataset && t.dataset.bind && (t.tagName === "TEXTAREA" || (t.tagName === "INPUT" && t.type !== "checkbox" && t.type !== "radio"))) handleBind(t, "input").catch(err => toast(err.message, "bad")); });
@@ -6137,7 +6291,7 @@ async function boot() {
   if (app.settings.connection === "keyless" && ENV.chatArtifact) Adapters.probeAdapter(getAdapter()).then(r => { if (!r.ok) handleCallError({ errorKind: r.kind || "signedout" }); });
   window.__akReady = true;
 }
-window.__ak = { app, ENV, AK, soc, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
+window.__ak = { app, ENV, AK, soc, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, adapterFor, modelRefs, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
 window.__akBoot = boot();
 })();
 </script>

@@ -45,7 +45,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
   });
 
   // Secret Number
-  T.test("Secret Number: with no notebook and no memory, the Guesser wanders and never finds 37", ["Seeds", "Engine"], async () => {
+  T.test("Secret Number: with no notebook and no memory, the Guesser wanders and never finds 83", ["Seeds", "Engine"], async () => {
     const r = await run(secret(), start(secret()));
     const g = texts(r, "guesser");
     return g.length === 10 && texts(r, "keeper").indexOf("yes!") < 0 && new Set(g).size < g.length;
@@ -54,7 +54,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const s = secret(["notebook"]);
     const r = await run(s, start(s));
     const k = texts(r, "keeper");
-    return k[k.length - 1] === "yes!" && k.length <= 7 && /It is between 1 and 49\./.test(texts(r, "notebook")[0]);
+    return Society.agentById(s, "keeper").params.secret === 83 && k[k.length - 1] === "yes!" && k.length === 7 && k.length > 3 && /It is between 51 and 100\./.test(texts(r, "notebook")[0]);
   });
   T.test("Secret Number: “the Guesser remembers” switches its memory, and then it finds it too", ["Seeds", "Engine", "Society"], async () => {
     const s = secret(["remember"]);
@@ -147,7 +147,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
     await sleep(60);
     const keeper = s.agents.find(a => a.id === "keeper");
     const m = pw.document.querySelector(".modal-body");
-    return keeper.scenarios.length === 7 && /^from round 1/.test(keeper.scenarios[6].name) && keeper.scenarios[6].expect.say === "lower" && keeper.results.every(r => r.ok) && !!m && m.querySelectorAll(".scn.ok").length === 7;
+    return keeper.scenarios.length === 7 && /^from round 1/.test(keeper.scenarios[6].name) && keeper.scenarios[6].expect.say === "higher" && keeper.results.every(r => r.ok) && !!m && m.querySelectorAll(".scn.ok").length === 7;
   });
   T.test("page: the Eyes editor has a test bench that runs and logs its calls in the Workshop", ["Engine"], async () => {
     const { w: pw } = await boot();
@@ -162,5 +162,106 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const log = pw.__ak.app.log.pebbles || [];
     if (!(/right \d of 5/.test(m.textContent) && m.querySelectorAll(".bench-ans").length === 5 && log.filter(x => x.kind === "bench").length === 5)) throw new Error(m.textContent.slice(0, 900) + " LOG " + JSON.stringify(log.map(x => [x.kind, x.status, x.error])));
     return true;
+  });
+
+  // 1.0.6: Logo's day-one bug, a model for each agent, a stage without pictures
+  T.test("Logo: a blank picture from a command that was taught but never used says so", ["Logo"], async () => {
+    const a = await Runtime.runTurtle("TO DOG\n  REPEAT 4 [FORWARD 50 RIGHT 90]\nEND", { seed: 1 });
+    const b = await Runtime.runTurtle("TO DOG\n  REPEAT 4 [FORWARD 50 RIGHT 90]\nEND\nDOG", { seed: 1 });
+    const c = await Runtime.runTurtle("TO DOG\n  FORWARD 10\nEND\nTO CAT\n  FORWARD 10\nEND", { seed: 1 });
+    const d = await Runtime.runTurtle("TO DOG\n  FORWARD 10\nEND\nFORWARD 50", { seed: 1 });
+    return a.ok && a.note === "You taught the turtle DOG but never asked it to draw DOG. Add a line that says DOG after the END." && b.ok && !b.note && /DOG and CAT but never asked it to draw them/.test(c.note) && d.ok && !d.note;
+  });
+  T.test("Logo: the Renderer passes that hint on with its picture", ["Engine", "Logo"], async () => {
+    const r = await run(Seeds.makeTelephone(), { to: "renderer", text: "TO DOG\n  FORWARD 50\nEND" });
+    const e = r.trace.find(x => x.kind === "activation" && x.agentId === "renderer");
+    return /never asked it to draw DOG/.test(e.response.text) && /never asked/.test(e.render.note) && e.response.data.pass === true;
+  });
+  T.test("models: an agent can have its own model, and the run uses it for that agent only", ["Engine", "Adapters"], async () => {
+    const s = secret();
+    s.roundLimit = 1;
+    const fake = { id: "fake", label: "A fake model", call: async req => ({ text: "83", raw: "83", data: {}, model: "fake-1", system: req.system }) };
+    const r = Engine.createRun(s, { adapter: pretend, adapterFor: a => (a.model === "fake:one" ? fake : null), runtime: Runtime });
+    Society.agentById(s, "guesser").model = "fake:one";
+    r.start(start(s));
+    await r.play();
+    const g = r.run.trace.find(e => e.kind === "activation" && e.agentId === "guesser");
+    return g.call.adapter === "fake" && g.call.model === "fake-1" && texts(r.run, "keeper")[0] === "yes!";
+  });
+  T.test("models: short names for each model, and an agent's model survives export", ["Adapters", "Society"], () => {
+    const L = Adapters.modelLabel;
+    const s = Seeds.makeLostAndFound();
+    Society.agentById(s, "finder").model = "gemini:gemini-3.8-flash";
+    const back = Society.importSociety(Society.exportSociety(s, null)).society;
+    return L("gemini", "gemini-3.8-flash") === "Gemini 3.8 Flash" && L("nano", "") === "Gemini Nano" && L("keyless", "claude-sonnet-4-6") === "Claude Sonnet 4.6 (keyless)" && L("openai", "gpt-x") === "OpenAI gpt-x" &&
+      !/strongest/.test(JSON.stringify(Adapters.MODEL_CHOICES.gemini)) && Society.agentById(back, "finder").model === "gemini:gemini-3.8-flash";
+  });
+  T.test("Lost and Found: the Finder may say “nothing”, and the Mystery Box leaves it alone; a toy robot still lands there", ["Seeds", "Engine"], async () => {
+    const s = lost();
+    const r = await run(s, { to: "renderer", text: "PENUP" });
+    const t = await find("a toy robot");
+    return same(texts(r, "finder"), ["nothing"]) && same(texts(r, "mystery-box"), [""]) && /nothing/.test(Society.agentById(s, "finder").instructions) &&
+      t.said("toys").length === 0 && /Nobody else took it: a toy robot/.test(t.said("mystery-box")[0]) && s.questions.some(q => /toy robot/.test(q));
+  });
+  T.test("Pebble: the Critic is told it's about pebbles", ["Seeds"], () => /pebbles/.test(Society.agentById(Seeds.makePebbles(), "critic").instructions) && !/agents/.test(Society.agentById(Seeds.makePebbles(), "critic").instructions));
+
+  T.test("page: with one model there's no model menu; add a second and each AI agent can choose", ["Adapters"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="lost"]').click();
+    pw.__ak.openAgent("finder");
+    const before = !pw.document.querySelector('[data-bind="agent-model"]') && !pw.document.querySelector(".achip .mdl");
+    pw.__ak.app.settings.extra = [{ connection: "gemini", model: "gemini-3.8-flash" }];
+    pw.__ak.app.settings.keys.gemini = "test-key";
+    pw.__ak.openAgent("finder");
+    const sel = pw.document.querySelector('[data-bind="agent-model"]');
+    sel.value = "gemini:gemini-3.8-flash";
+    sel.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    await sleep(20);
+    const s = pw.__ak.soc();
+    const finder = s.agents.find(a => a.id === "finder"), drawer = s.agents.find(a => a.id === "drawer");
+    const chips = Array.from(pw.document.querySelectorAll(".achip .mdl")).map(x => x.textContent);
+    return before && sel.options.length === 2 && finder.model === "gemini:gemini-3.8-flash" && pw.__ak.adapterFor(finder).id === "gemini" && pw.__ak.adapterFor(drawer).id === "pretend" && chips.indexOf("3.8 Flash") >= 0;
+  });
+  T.test("page: Settings lists the main model and adds another", ["Adapters"], async () => {
+    const { w: pw } = await boot();
+    pw.__ak.openSettings();
+    const m = () => pw.document.querySelector(".modal-body");
+    const pick = m().querySelector('[data-bind="add-conn"]');
+    pick.value = "gemini";
+    pick.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    m().querySelector('[data-act="pick-add-model"][data-model="gemini-3.8-flash"]').click();
+    m().querySelector('[data-act="add-extra"]').click();
+    const refs = pw.__ak.modelRefs();
+    return refs.length === 2 && refs[1].key === "gemini:gemini-3.8-flash" && /More models/.test(m().textContent) && /Gemini 3.8 Flash/.test(m().textContent) && /needs a key/.test(m().textContent);
+  });
+  T.test("page: Secret Number shows the guesses round by round, with no empty picture, and a box for your own secret", ["Seeds"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="secret"]').click();
+    const s = pw.__ak.soc();
+    s.roundLimit = 3;
+    const cb = pw.document.querySelector('[data-bind="new-secret"]');
+    cb.checked = false;
+    cb.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    const box = pw.document.querySelector('[data-bind="society-secret"]');
+    box.value = "64";
+    box.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    await sleep(40);
+    await pw.__ak.runNow();
+    await sleep(40);
+    const st = pw.document.querySelector(".stage");
+    const cards = Array.from(st.querySelectorAll(".rcard"));
+    return s.agents.find(a => a.id === "keeper").params.secret === 64 && s.random.on === false && !st.querySelector("#stageCanvas") && !st.querySelector(".noimg") && cards.length === 3 && /🙋 50/.test(cards[0].textContent) && /higher/.test(cards[0].textContent);
+  });
+  T.test("page: the question card says which model suits the world, and warns when the Drawer and the Finder use Gemini Nano", ["Seeds"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="lost"]').click();
+    const ok = /Something stronger than Gemini Nano/.test(pw.document.querySelector(".qcard").textContent) && !pw.document.querySelector(".qcard .warnline");
+    pw.__ak.app.settings.connection = "nano";
+    pw.__ak.renderAll();
+    const warn = pw.document.querySelector(".qcard .warnline");
+    pw.__ak.app.settings.extra = [{ connection: "openai", model: "gpt-6-luna" }];
+    for (const a of pw.__ak.soc().agents) if (a.id === "drawer" || a.id === "finder") a.model = "openai:gpt-6-luna";
+    pw.__ak.renderAll();
+    return ok && !!warn && /The Drawer and the Finder are using Gemini Nano/.test(warn.textContent) && !pw.document.querySelector(".qcard .warnline");
   });
 }
