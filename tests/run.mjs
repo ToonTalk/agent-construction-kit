@@ -37,7 +37,7 @@ async function pageWindow(opts = {}) {
   const vc = new VirtualConsole();
   vc.on("jsdomError", e => { if (!/Not implemented/i.test(String(e && e.message))) errors.push(String(e && e.message)); });
   vc.on("error", (...a) => errors.push(a.map(String).join(" ")));
-  const dom = new JSDOM(HTML, {
+  const dom = new JSDOM(opts.html || HTML, {   // opts.html: another page, e.g. the artifact build
     runScripts: "dangerously", pretendToBeVisual: true, url: "http://localhost/index.html", virtualConsole: vc,
     beforeParse(w) { if (opts.storage) for (const [k, v] of Object.entries(opts.storage)) w.localStorage.setItem(k, v); if (opts.before) opts.before(w); }
   });

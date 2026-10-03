@@ -441,6 +441,11 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Settings → **Other languages**: links to the languages there are (`LANGUAGES`: English, Svenska) and a guide to making another with a coding agent: where the files are on GitHub and which it needs, what to tell it, how to try it, and a request to raise an issue so it can join the main release. TRANSLATING.md says the same, plus `LANGUAGES` and `SAY` for translators.
   - The Swedish copy has all of this, in Swedish (patched with the same script, its own phrases).
   - Suite: 518 PASS, fingerprint `7452728daaf9`.
+- 2026-10-03 — **Revision 1.12.0: a Helper you can move, and claude.ai artifact builds** (Ken).
+  - The Helper covered the Read aloud button in one of Ken's tests. It can now be dragged by its top bar (a ⠿ grip shows where) and resized from its bottom corner; it stays where it was put across redraws and reloads (`settings.helperBox`), within the window; a double-click on its top bar puts it back in its corner. Dialogs still open over everything, as dialogs.
+  - **Artifact builds** (`python tools/build_artifact.py` → `artifact/agent-kit-claude-artifact.html` and `…-sv.html`, about 680 KB each, scripts under 400 KB): `ARTIFACT_BUILD` on, so Settings offers only Claude through the claude.ai sign-in (keyless) and Gemini Nano where Chrome has it, keyless is chosen by default (a saved fuller choice is set back to it), the language links go to the site in a new tab, and a note says where the full version is. `PAGE_LANG` is fixed in the build, since an artifact may not keep `<html lang>`. To use: upload the file to a claude.ai chat and ask Claude to copy it, exactly as it is, into an HTML artifact.
+  - The test runner's `pageWindow({ html })` loads another page; `tests/artifact.test.mjs` checks the build.
+  - Suite: 520 PASS, fingerprint `7218999db7ed`.
 
 ---
 

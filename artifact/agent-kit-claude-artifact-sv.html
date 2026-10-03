@@ -5606,11 +5606,11 @@ const ENV = (() => {
 
 /* ===== SECTION: STATE & PERSISTENCE ===== */
 const LS_KEY = "agentkit.v1.sv";   // a translated copy uses its own key (agentkit.v1.sv …), so the languages don't share saved work
-const PAGE_LANG = document.documentElement.lang || "en";
+const PAGE_LANG = "sv";   // fixed: an artifact may not keep <html lang>
 // The languages Agent Kit has been made in (Settings → Other languages). A new copy adds itself here, and to the main release.
 const LANGUAGES = [{ code: "en", name: "English", path: "" }, { code: "sv", name: "Svenska", path: "sv/" }];
 // The claude.ai artifact build (tools/build_artifact.py sets this true): only keyless Claude, and Gemini Nano where Chrome has it.
-const ARTIFACT_BUILD = false;
+const ARTIFACT_BUILD = true;
 const ARTIFACT_CONNS = ["keyless", "nano"];
 const SITE_URL = "https://toontalk.github.io/agent-construction-kit/";   // speech listens and speaks in this language
 const PROJECT_URL = "https://github.com/ToonTalk/agent-construction-kit";

@@ -4,7 +4,7 @@
 
 ## State (2026-10-01)
 
-Agent Kit **1.11.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.11.0 follow reviews
+Agent Kit **1.12.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.12.0 follow reviews
 and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -12,7 +12,7 @@ folder is a copy without the §14 log.)
 - **No pretend mode** for learners (1.0.3): a real model is needed. Gemini Nano, built into desktop
   Chrome, is a free choice. The scripted stand-ins (`connection: "pretend"`) remain only for tests.
   Planned, not built: replays of recorded real runs.
-- The app is the single file `index.html` (669 KB): the `ak-model` script is DOM-free, and
+- The app is the single file `index.html` (673 KB): the `ak-model` script is DOM-free, and
   the `ak-ui` script is the interface. There is no build step.
 - **Drawings are Logo.** The Artist, the Designer and the drawing pad write Logo
   (`REPEAT 4 [FORWARD 50 RIGHT 90]`), and a small interpreter in the model layer runs it.
@@ -34,6 +34,8 @@ folder is a copy without the §14 log.)
   rules with word lists send it to four shelves; the Mystery Box keeps what no shelf took.
   The other five designs in `agent-kit-microworlds.md` wait for their features (collecting
   messages, per-agent models and a call counter, You as an agent).
+- **Artifact builds** (1.12.0): `python tools/build_artifact.py` after any change writes `artifact/*.html` (keyless Claude
+  and Gemini Nano only). Rebuild before committing a change to index.html or sv/index.html.
 - **Translated copies** (1.10.1): `sv/index.html` is a Swedish snapshot made by coding agents from `sv/GLOSSARY.md`
   (see TRANSLATING.md). It does not follow later changes: remake it, or patch both files with one script and two
   phrase tables (as 1.11.0 did). Check copies with `AK_HTML=sv/index.html node tests/run.mjs "any language"`.
@@ -78,7 +80,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**518 PASS, 0 FAIL · fingerprint `7452728daaf9`** · model modules covered 19/19.
+**520 PASS, 0 FAIL · fingerprint `7218999db7ed`** · model modules covered 19/19.
 
 ## Acceptance criteria (§11)
 
@@ -94,7 +96,7 @@ folder is a copy without the §14 log.)
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 669 KB, under 1 MB (tested). |
+| 11 | 673 KB, under 1 MB (tested). |
 
 ## Open issues
 

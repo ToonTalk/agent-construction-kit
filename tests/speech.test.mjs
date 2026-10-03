@@ -105,5 +105,22 @@ export default function (T, { pageWindow }) {
     return !!sv && sv.getAttribute("href") === "./sv/" && /Other languages/.test(m.textContent) && /Download ZIP/.test(g.textContent) && /TRANSLATING\.md/.test(g.textContent) &&
       !!g.querySelector('a[href="https://github.com/ToonTalk/agent-construction-kit/issues/new"]') && /English, Svenska/.test(g.textContent);
   });
+  T.test("the Helper can be dragged out of the way, stays there when it redraws, and a double-click puts it back", ["Speech"], async () => {
+    const w = await boot();
+    w.document.querySelector('[data-act="helper"]').click();
+    await sleep(30);
+    const head = () => w.document.querySelector(".drawer .dh");
+    const ev = (type, x, y) => new w.MouseEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0 });
+    head().dispatchEvent(ev("pointerdown", 10, 10));
+    w.document.dispatchEvent(ev("pointermove", 110, 60));
+    w.document.dispatchEvent(ev("pointerup", 110, 60));
+    const moved = w.document.querySelector(".drawer").style.left === "100px" && w.document.querySelector(".drawer").style.top === "50px";
+    w.__ak.renderAll();
+    w.document.querySelector('[data-act="helper-clear"]').click();
+    await sleep(20);
+    const kept = w.document.querySelector(".drawer").style.left === "100px" && !!w.__ak.app.settings.helperBox;
+    head().dispatchEvent(new w.MouseEvent("dblclick", { bubbles: true }));
+    return moved && kept && !w.__ak.app.settings.helperBox && !w.document.querySelector(".drawer").getAttribute("style");
+  });
 }
 

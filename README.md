@@ -51,6 +51,10 @@ program keeps track of who has what. **Artist and Critic**, Ken Kahn's society: 
 Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper
 keeps the scores. All five are also in `examples/`, to import.
 
+**As a claude.ai artifact:** [artifact/](artifact/) has versions for a claude.ai chat, in English and Swedish, whose
+AI agents need no key: they use Claude through your claude.ai sign-in (and Gemini Nano where Chrome has it). Upload
+one to a claude.ai chat and ask Claude to copy it, exactly as it is, into an HTML artifact.
+
 **Other languages:** there is a Swedish copy at [sv/](https://toontalk.github.io/agent-construction-kit/sv/)
 (*på svenska*). Anyone with a coding agent can make a copy in another language: see [TRANSLATING.md](TRANSLATING.md).
 

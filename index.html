@@ -334,7 +334,7 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 
 /* helper drawer */
 .drawer{position:fixed;right:14px;bottom:14px;z-index:50;width:min(420px,calc(100vw - 28px));max-height:min(620px,calc(100vh - 28px));background:#fff;border:1.5px solid var(--line-strong);border-radius:18px;box-shadow:0 16px 44px rgba(21,30,50,.28);display:flex;flex-direction:column}
-.drawer .dh{display:flex;align-items:center;gap:8px;padding:11px 12px 9px 15px;border-bottom:1px solid var(--line)}
+.drawer .dh{display:flex;align-items:center;gap:8px;padding:11px 12px 9px 15px;border-bottom:1px solid var(--line);cursor:move;touch-action:none;user-select:none}.drawer{resize:both;overflow:hidden;min-width:280px;min-height:240px}.drawer .grip{color:var(--ink-soft);font-size:16px;line-height:1;margin-left:-6px}
 .drawer .dh h3{flex:1;font-size:17px}
 .drawer .log{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .hmsg{border-radius:12px;padding:8px 10px;font-size:13.5px;max-width:92%;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -432,7 +432,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.11.0";
+AK.VERSION = "1.12.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -5608,12 +5608,16 @@ const ENV = (() => {
 const LS_KEY = "agentkit.v1";   // a translated copy uses its own key (agentkit.v1.sv …), so the languages don't share saved work
 const PAGE_LANG = document.documentElement.lang || "en";
 // The languages Agent Kit has been made in (Settings → Other languages). A new copy adds itself here, and to the main release.
-const LANGUAGES = [{ code: "en", name: "English", path: "" }, { code: "sv", name: "Svenska", path: "sv/" }];   // speech listens and speaks in this language
+const LANGUAGES = [{ code: "en", name: "English", path: "" }, { code: "sv", name: "Svenska", path: "sv/" }];
+// The claude.ai artifact build (tools/build_artifact.py sets this true): only keyless Claude, and Gemini Nano where Chrome has it.
+const ARTIFACT_BUILD = false;
+const ARTIFACT_CONNS = ["keyless", "nano"];
+const SITE_URL = "https://toontalk.github.io/agent-construction-kit/";   // speech listens and speaks in this language
 const PROJECT_URL = "https://github.com/ToonTalk/agent-construction-kit";
 let storage = null;
 try { const k = LS_KEY + ".probe"; localStorage.setItem(k, "1"); localStorage.removeItem(k); storage = localStorage; } catch (e) { storage = null; }
 function defaultSettings() {
-  return { connection: ENV.chatArtifact ? "keyless" : "none", keys: { anthropic: "", gemini: "", openai: "" }, rememberKeys: false, models: clone(Adapters.DEFAULT_MODELS), extra: [], speed: "normal", readAloud: false, micButtons: true, voice: "", speechRate: 1 };
+  return { connection: ARTIFACT_BUILD || ENV.chatArtifact ? "keyless" : "none", keys: { anthropic: "", gemini: "", openai: "" }, rememberKeys: false, models: clone(Adapters.DEFAULT_MODELS), extra: [], speed: "normal", readAloud: false, micButtons: true, voice: "", speechRate: 1 };
 }
 // More models: each is a connection and a model ({connection: "gemini", model: "gemini-3.8-flash"}). The main one is
 // settings.connection; an agent that names another (agent.model = "gemini:gemini-3.8-flash") uses that one.
@@ -5703,6 +5707,8 @@ async function load() {
     const d = await Store.unpack(raw);
     if (!d || d.schema !== 1) return;
     const st = d.settings || {};
+    if (ARTIFACT_BUILD && st && ARTIFACT_CONNS.indexOf(st.connection) < 0) st.connection = "keyless";   // saved by a fuller version: the artifact has only these
+    if (ARTIFACT_BUILD && st && Array.isArray(st.extra)) st.extra = st.extra.filter(x => x && ARTIFACT_CONNS.indexOf(x.connection) >= 0);
     app.settings = Object.assign(defaultSettings(), st, { keys: Object.assign({ anthropic: "", gemini: "", openai: "" }, st.keys || {}), models: Adapters.updateSavedModels(st.models), extra: sanitizeExtra(st.extra) });
     if (app.settings.connection === "pretend") app.settings.connection = "none";   // pretend mode was dropped in 1.0.3
     for (const id of d.order || []) {
@@ -7177,20 +7183,21 @@ function openSettings() {
   renderSettings();
 }
 function connList(st) {
-  return [
+  return (ARTIFACT_BUILD ? list => list.filter(c => c[0] === "keyless" || (c[0] === "nano" && nanoHere())) : list => list)([
     ["nano", "Gemini Nano, built into Chrome", nanoHere() ? "Free, and nothing leaves this computer. It is a small model, so it makes more mistakes. The first time, Chrome downloads it (a few GB). Chrome pauses it while this tab is hidden, so keep the tab in front during a run." : "Needs desktop Chrome 138 or later on a fairly powerful computer.", nanoHere() || st.connection === "nano"],
     ["keyless", "Claude, inside a claude.ai chat", ENV.chatArtifact ? "No key needed: it uses your claude.ai sign-in, and pictures are sent too." : "Only works when this page runs as an artifact inside a claude.ai chat." + (ENV.codeArtifact ? " A published artifact can't make these calls." : ""), ENV.chatArtifact || st.connection === "keyless"],
     ["anthropic", "Claude, with your Anthropic key", ENV.codeArtifact ? "Blocked inside published artifacts." : ENV.chatArtifact ? "Works here too; calls go straight from this page to Anthropic." : "Calls go straight from this page to Anthropic.", !ENV.codeArtifact],
     ["gemini", "Gemini, with your Google key", ENV.artifact ? "Blocked inside claude.ai artifacts: open the page from GitHub Pages or a file to use it." : "Calls go straight from this page to Google.", !ENV.artifact],
     ["openai", "OpenAI, with your key", ENV.artifact ? "Blocked inside claude.ai artifacts." : "OpenAI often refuses calls straight from a web page, so you may need your own proxy.", !ENV.artifact]
-  ];
+  ]);
 }
 function renderSettings() {
   const m = app.ui.settingsModal;
   if (!m) return;
   const st = app.settings;
   const conns = connList(st);
-  let h = '<h3 style="font-size:16px;margin-bottom:8px">How the model agents think</h3><div class="conn-list">' + conns.map(c => '<label class="conn' + (st.connection === c[0] ? " on" : "") + (c[3] ? "" : " disabled") + '"><input type="radio" name="conn" data-bind="conn" value="' + c[0] + '"' + (st.connection === c[0] ? " checked" : "") + (c[3] ? "" : " disabled") + '><span><span class="t">' + esc(c[1]) + '</span><br><span class="d">' + esc(c[2]) + '</span></span></label>').join("") + '</div>';
+  const artifactNote = ARTIFACT_BUILD ? '<p class="hint">This is the claude.ai artifact version of Agent Kit. Its AI agents use Claude through your claude.ai sign-in (no key), or Gemini Nano if this Chrome has it. The full version, with more models, is at <a href="https://toontalk.github.io/agent-construction-kit/" target="_blank" rel="noopener">toontalk.github.io/agent-construction-kit</a>.</p>' : "";
+  let h = '<h3 style="font-size:16px;margin-bottom:8px">How the model agents think</h3>' + artifactNote + '<div class="conn-list">' + conns.map(c => '<label class="conn' + (st.connection === c[0] ? " on" : "") + (c[3] ? "" : " disabled") + '"><input type="radio" name="conn" data-bind="conn" value="' + c[0] + '"' + (st.connection === c[0] ? " checked" : "") + (c[3] ? "" : " disabled") + '><span><span class="t">' + esc(c[1]) + '</span><br><span class="d">' + esc(c[2]) + '</span></span></label>').join("") + '</div>';
   const p = st.connection;
   if (p === "nano") h += '<div class="row" style="margin-top:10px"><button class="btn" data-act="test-conn">Test the connection</button><span class="small" id="connResult"></span></div>';
   else if (p !== "none" && p !== "pretend") {
@@ -7216,7 +7223,7 @@ function renderSettings() {
   }
   h += '<div class="section"><h3>Guides</h3><div class="row"><button class="btn" data-act="guide" data-id="learner">📘 For learners</button><button class="btn" data-act="guide" data-id="teacher">📕 For teachers</button></div></div>';
   h += '<div class="section"><h3>The safety preamble</h3><p class="hint">This fixed text starts every model call, so every agent writes for young people.</p><pre class="box">' + esc(Prompts.PREAMBLE) + '</pre></div>';
-  h += '<div class="section"><h3>Other languages</h3><p>Agent Kit in: ' + LANGUAGES.map(l => l.code === PAGE_LANG ? '<b>' + esc(l.name) + '</b>' : '<a href="' + esc((PAGE_LANG === "en" ? "./" : "../") + l.path) + '" lang="' + esc(l.code) + '">' + esc(l.name) + '</a>').join(" · ") + '</p><p class="hint">Anyone with a coding agent, such as Claude Code or Codex, can make Agent Kit in another language.</p><button class="btn tiny" data-act="lang-guide">🌍 How to make a version in another language</button></div>';
+  h += '<div class="section"><h3>Other languages</h3><p>Agent Kit in: ' + LANGUAGES.map(l => l.code === PAGE_LANG ? '<b>' + esc(l.name) + '</b>' : '<a href="' + esc((ARTIFACT_BUILD ? SITE_URL : PAGE_LANG === "en" ? "./" : "../") + l.path) + '" lang="' + esc(l.code) + '"' + (ARTIFACT_BUILD ? ' target="_blank" rel="noopener"' : "") + '>' + esc(l.name) + '</a>').join(" · ") + '</p><p class="hint">Anyone with a coding agent, such as Claude Code or Codex, can make Agent Kit in another language.</p><button class="btn tiny" data-act="lang-guide">🌍 How to make a version in another language</button></div>';
   const off = savingOff();
   h += '<div class="section"><h3>Your work</h3>' + (!storage ? '<p class="hint">This page can\'t save in this browser, so your work is gone when you close or refresh the tab. Export your society to keep it.</p>' :
     '<p class="hint">' + (off ? "<b>Saving is off.</b> Nothing is kept in this browser: when you close or refresh this tab, your work is gone. ⬇ Export makes a copy as a file." :
@@ -7270,12 +7277,44 @@ function renderHelper() {
   fab.classList.add("hidden");
   const s = soc();
   const chat = app.helperChat[s.id] || [];
-  host.innerHTML = '<div class="drawer" role="dialog" aria-label="Helper"><div class="dh"><h3>🤔 Helper</h3><button class="btn tiny ghost" data-act="helper-clear">Clear</button><button class="icon-btn" data-act="helper" aria-label="Close">✕</button></div><div class="log" id="helperLog">' +
+  host.innerHTML = '<div class="drawer" role="dialog" aria-label="Helper"><div class="dh" title="Drag here to move the Helper; drag its bottom corner to resize it; double-click here to put it back"><span class="grip" aria-hidden="true">⠿</span><h3>🤔 Helper</h3><button class="btn tiny ghost" data-act="helper-clear">Clear</button><button class="icon-btn" data-act="helper" aria-label="Close">✕</button></div><div class="log" id="helperLog">' +
     '<div class="hmsg ai">I can read your society, the last run and your scenarios, but I can\'t change anything. I\'ll mostly ask questions. Here are some to start with:</div><div class="chips">' + (s.openers || []).map(q => '<button data-act="helper-ask" data-text="' + esc(q) + '">' + esc(q) + '</button>').join("") + '</div>' +
     chat.map(m => m.who === "you" ? '<div class="hmsg you">' + esc(m.text) + '</div>' : '<div class="hmsg ai">' + md(m.text) + '</div>').join("") + (app.ui.helperBusy ? '<div class="hmsg ai">…</div>' : "") +
     '</div><div class="ask"><textarea class="field" id="helperInput" placeholder="Ask the helper…" rows="2" aria-label="Your question"></textarea><button class="btn mic" data-act="helper-mic" title="Ask by talking: the answer is read to you" aria-label="Ask by talking">🎤</button><button class="btn primary" data-act="helper-send"' + (app.ui.helperBusy ? " disabled" : "") + '>Ask</button></div></div>';
   const log = $("#helperLog");
   if (log) log.scrollTop = log.scrollHeight;
+  const d = host.querySelector(".drawer");
+  if (d) { placeDrawer(d); wireDrawer(d); }
+}
+// The Helper can be moved (drag its top bar) and resized (drag its bottom corner), so it never has to hide a
+// button you need; double-click the top bar to put it back in its corner. Where it is is kept with the settings.
+function placeDrawer(d) {
+  const b = app.settings.helperBox;
+  if (!b) return;
+  const W = window.innerWidth || 1024, H = window.innerHeight || 768;
+  const w = Math.min(Math.max(280, b.w || 420), W - 16), h = Math.min(Math.max(240, b.h || 520), H - 16);
+  Object.assign(d.style, { width: w + "px", height: h + "px", maxHeight: "none", left: Math.min(Math.max(8, b.x || 0), W - w - 8) + "px", top: Math.min(Math.max(8, b.y || 0), H - h - 8) + "px", right: "auto", bottom: "auto" });
+}
+function wireDrawer(d) {
+  const head = d.querySelector(".dh");
+  if (!head) return;
+  head.addEventListener("pointerdown", ev => {
+    if (ev.target.closest("button") || (ev.button != null && ev.button !== 0)) return;
+    const r = d.getBoundingClientRect(), dx = ev.clientX - r.left, dy = ev.clientY - r.top, w = r.width || d.offsetWidth, h = r.height || d.offsetHeight;
+    ev.preventDefault();
+    const move = e => { app.settings.helperBox = { x: e.clientX - dx, y: e.clientY - dy, w, h }; placeDrawer(d); };
+    const up = () => { document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); save(); };
+    document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
+  });
+  head.addEventListener("dblclick", ev => { if (ev.target.closest("button")) return; app.settings.helperBox = null; d.removeAttribute("style"); save(); });
+  if (typeof ResizeObserver === "function") {
+    let first = true, t = null;
+    new ResizeObserver(() => {
+      if (first) { first = false; return; }   // its first report is just its size now, not a resize
+      clearTimeout(t);
+      t = setTimeout(() => { if (!d.isConnected) return; const r = d.getBoundingClientRect(); if (r.width < 50) return; app.settings.helperBox = { x: r.left, y: r.top, w: r.width, h: r.height }; save(); }, 250);
+    }).observe(d);
+  }
 }
 async function askHelper(q) {
   q = String(q || "").trim();
