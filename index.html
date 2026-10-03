@@ -432,7 +432,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.10.1";
+AK.VERSION = "1.11.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -5606,7 +5606,9 @@ const ENV = (() => {
 
 /* ===== SECTION: STATE & PERSISTENCE ===== */
 const LS_KEY = "agentkit.v1";   // a translated copy uses its own key (agentkit.v1.sv …), so the languages don't share saved work
-const PAGE_LANG = document.documentElement.lang || "en";   // speech listens and speaks in this language
+const PAGE_LANG = document.documentElement.lang || "en";
+// The languages Agent Kit has been made in (Settings → Other languages). A new copy adds itself here, and to the main release.
+const LANGUAGES = [{ code: "en", name: "English", path: "" }, { code: "sv", name: "Svenska", path: "sv/" }];   // speech listens and speaks in this language
 const PROJECT_URL = "https://github.com/ToonTalk/agent-construction-kit";
 let storage = null;
 try { const k = LS_KEY + ".probe"; localStorage.setItem(k, "1"); localStorage.removeItem(k); storage = localStorage; } catch (e) { storage = null; }
@@ -6382,7 +6384,7 @@ function viewState(s, run, trace) {
   const bubbles = shown.filter(e => e.error || (e.response && String(e.response.text || "").trim())).slice(-4).reverse().map(e => {
     const prog = isProgramReply(e, s);
     const text = e.error ? "⚠ " + e.error : prog ? "wrote a Logo program (" + plural(lineCount(e.response.text), "line") + ")" : e.response.text;
-    return { who: (e.emoji || "") + " " + e.agentName + " ← " + (e.message ? e.message.fromName : ""), kind: e.agentKind, text, md: !e.error && !prog, err: !!e.error, round: e.round };
+    return { say: sayEntry(e, s), who: (e.emoji || "") + " " + e.agentName + " ← " + (e.message ? e.message.fromName : ""), kind: e.agentKind, text, md: !e.error && !prog, err: !!e.error, round: e.round };
   });
   return { replay, render, renderRound, active, verdicts, bubbles, index: upto - 1, total: acts.length, currentI: replay && last ? last.i : null };
 }
@@ -6406,7 +6408,26 @@ function callCounts(trace) {
   return out;
 }
 const callsHTML = c => (c ? '<span class="calls" title="Model calls in this run, and how long they took">' + c.n + (c.n === 1 ? " call" : " calls") + " · " + (c.ms / 1000).toFixed(1) + " s</span>" : "");
-function bubbleHTML(b) { return '<div class="bubble kind-' + esc(b.kind) + (b.err ? " err" : "") + '"><div class="who">R' + b.round + " · " + esc(b.who) + '</div>' + (b.md ? clipMdHTML(b.text, 420, b.who) : shortHTML(b.text, 420, b.who)) + '</div>'; }
+// What Read aloud says for a message: who sent it to whom, and what they said, in full, with no symbols.
+const SAY = {
+  round: n => "Round " + n + ".",
+  told: (from, to) => (from ? from + " informed " + to + ", who " : to + " "),
+  said: t => "said: " + t,
+  wrote: n => "wrote a Logo program of " + plural(n, "line") + ".",
+  waiting: (have, want) => "is waiting: " + have + " of " + want + " messages so far.",
+  problem: t => "had a problem: " + t,
+  outOf: "out of"
+};
+function sayEntry(e, s) {
+  const from = e.message ? e.message.fromName : "", to = e.agentName;
+  let what;
+  if (e.error) what = SAY.problem(e.error);
+  else if (e.collecting) what = SAY.waiting(e.collecting.have, e.collecting.want);
+  else if (e.response && isProgramReply(e, s)) what = SAY.wrote(lineCount(e.response.text));
+  else what = SAY.said(e.response && String(e.response.text || "").trim() ? e.response.text : summaryText(e, s));
+  return SAY.round(e.round) + " " + SAY.told(from, to) + what;
+}
+function bubbleHTML(b) { return '<div class="bubble kind-' + esc(b.kind) + (b.err ? " err" : "") + '" data-say="' + esc(b.say || "") + '"><div class="who">R' + b.round + " · " + esc(b.who) + '</div>' + (b.md ? clipMdHTML(b.text, 420, b.who) : shortHTML(b.text, 420, b.who)) + '</div>'; }
 function rcardHTML(r, prev, run, view) {
   const here = view && view.replay && view.renderRound === r.round;
   const many = (r.renders || []).length > 1;
@@ -6708,7 +6729,7 @@ function traceEntryHTML(e, s, run, trace, currentI) {
   if (e.call && e.call.pretend) sum += ' <span class="badge warn" title="Played by a small built-in program, not an AI">pretend</span>';
   if (e.byYou) sum += ' <span class="badge ok" title="You played this agent">you</span>';
   if (e.parseError) sum += ' <span class="badge bad" title="' + esc(e.parseError) + '">data missing</span>';
-  let h = '<div class="tentry kind-' + esc(e.agentKind) + (e.error ? " err" : "") + (quiet ? " quiet" : "") + (e.i === currentI ? " here" : "") + '"><button class="th" data-act="trace-toggle" data-i="' + e.i + '" aria-expanded="' + open + '"><span class="rb">R' + esc(e.round) + '</span><span class="sum">' + sum + '</span><span class="faint">' + (open ? "▾" : "▸") + '</span></button>';
+  let h = '<div class="tentry kind-' + esc(e.agentKind) + (e.error ? " err" : "") + (quiet ? " quiet" : "") + (e.i === currentI ? " here" : "") + '"><button class="th" data-act="trace-toggle" data-i="' + e.i + '" data-say="' + esc(sayEntry(e, s)) + '" aria-expanded="' + open + '"><span class="rb">R' + esc(e.round) + '</span><span class="sum">' + sum + '</span><span class="faint">' + (open ? "▾" : "▸") + '</span></button>';
   if (open) h += '<div class="tbody">' + entryBodyHTML(e, s, run, trace) + '</div>';
   return h + '</div>';
 }
@@ -7187,7 +7208,7 @@ function renderSettings() {
     const voices = SpeechUI.voices(), rate = +st.speechRate || 1;
     h += '<div class="section"><h3>Speech</h3>' + (SpeechUI.canSpeak() ?
       '<label class="row small nowrap-check"><input type="checkbox" data-bind="read-aloud"' + (st.readAloud ? " checked" : "") + '><span>Read aloud: click any words to hear them, and point at a button to hear what it is (also the 🔊 button at the top)</span></label>' +
-      '<div class="form-grid"><label for="voiceSel">Voice</label><select class="field" id="voiceSel" data-bind="speech-voice"><option value="">The browser’s usual voice</option>' + voices.map(v => '<option value="' + esc(v.name) + '"' + (v.name === st.voice ? " selected" : "") + '>' + esc(v.name + " (" + v.lang + ")") + '</option>').join("") + '</select>' +
+      '' + (SpeechUI.voiceState() === "none" ? '<p class="hint">This browser has no voice for {lang}, so Read aloud can\'t work here. <button class="btn tiny ghost" data-act="no-voice">How to add one</button></p>'.split("{lang}").join(esc(SpeechUI.langName())) : "") + '<div class="form-grid"><label for="voiceSel">Voice</label><select class="field" id="voiceSel" data-bind="speech-voice"><option value="">The browser’s usual voice</option>' + voices.map(v => '<option value="' + esc(v.name) + '"' + (v.name === st.voice ? " selected" : "") + '>' + esc(v.name + " (" + v.lang + ")") + '</option>').join("") + '</select>' +
       '<label for="rateIn">Speed</label><div class="row"><input type="range" id="rateIn" min="0.6" max="1.4" step="0.1" value="' + rate + '" data-bind="speech-rate" aria-label="Speaking speed"><button class="btn tiny" data-act="speech-test">🔊 Try it</button></div></div>' :
       '<p class="hint">This browser can\'t read aloud.</p>') +
       '<label class="row small nowrap-check"><input type="checkbox" data-bind="speech-mic"' + (st.micButtons !== false ? " checked" : "") + '><span>Show a 🎤 by the box you are typing in, to talk instead of typing</span></label>' +
@@ -7195,6 +7216,7 @@ function renderSettings() {
   }
   h += '<div class="section"><h3>Guides</h3><div class="row"><button class="btn" data-act="guide" data-id="learner">📘 For learners</button><button class="btn" data-act="guide" data-id="teacher">📕 For teachers</button></div></div>';
   h += '<div class="section"><h3>The safety preamble</h3><p class="hint">This fixed text starts every model call, so every agent writes for young people.</p><pre class="box">' + esc(Prompts.PREAMBLE) + '</pre></div>';
+  h += '<div class="section"><h3>Other languages</h3><p>Agent Kit in: ' + LANGUAGES.map(l => l.code === PAGE_LANG ? '<b>' + esc(l.name) + '</b>' : '<a href="' + esc((PAGE_LANG === "en" ? "./" : "../") + l.path) + '" lang="' + esc(l.code) + '">' + esc(l.name) + '</a>').join(" · ") + '</p><p class="hint">Anyone with a coding agent, such as Claude Code or Codex, can make Agent Kit in another language.</p><button class="btn tiny" data-act="lang-guide">🌍 How to make a version in another language</button></div>';
   const off = savingOff();
   h += '<div class="section"><h3>Your work</h3>' + (!storage ? '<p class="hint">This page can\'t save in this browser, so your work is gone when you close or refresh the tab. Export your society to keep it.</p>' :
     '<p class="hint">' + (off ? "<b>Saving is off.</b> Nothing is kept in this browser: when you close or refresh this tab, your work is gone. ⬇ Export makes a copy as a file." :
@@ -7664,6 +7686,7 @@ const ACTIONS = {
   helper() { app.ui.helperOpen = !app.ui.helperOpen; renderHelper(); if (app.ui.helperOpen) setTimeout(() => { const i = $("#helperInput"); if (i && window.innerWidth > 820) i.focus(); }, 30); },
   "helper-ask"(t) { askHelper(t.dataset.text); },
   "read-aloud"() {
+    if (!app.settings.readAloud && SpeechUI.voiceState() === "none") { SpeechUI.noVoice(); return; }
     app.settings.readAloud = !app.settings.readAloud;
     SpeechUI.apply(); save();
     const msg = app.settings.readAloud ? "Read aloud is on. Click any words to hear them, and point at a button to hear what it is. Esc stops." : "Read aloud is off.";
@@ -7674,6 +7697,13 @@ const ACTIONS = {
     i.focus();
     SpeechUI.listen(i, { once: true, onDone: text => { if (text && !app.ui.helperBusy) { i.value = ""; app.ui.helperVoice = true; askHelper(text); } } });
   },
+  "no-voice"() { SpeechUI.noVoice(); },
+  "lang-guide"() { openModal({ title: "🌍 Agent Kit in another language", wide: true, body: '<div class="guide"><p>Agent Kit is one web page, so a <b>coding agent</b> (such as Claude Code, Codex or Cursor) can make a copy of it in another language. So far there is: ' + LANGUAGES.map(l => esc(l.name)).join(", ") + '.</p>' +
+    '<h4>1. Get the files</h4><p>They are on GitHub: <a href="https://github.com/ToonTalk/agent-construction-kit" target="_blank" rel="noopener">github.com/ToonTalk/agent-construction-kit</a>. Press <b>Code → Download ZIP</b> (or clone it), unzip it, and open the folder in your coding agent. It needs <code>index.html</code> (the kit), <code>TRANSLATING.md</code> (its instructions), <code>sv/GLOSSARY.md</code> (an example glossary, from the Swedish copy) and the <code>tests</code> folder (to check its work, with Node.js).</p>' +
+    '<h4>2. Tell your coding agent</h4><p class="box">Make a <b>German</b> copy of Agent Kit in a folder called <b>de/</b>. Follow TRANSLATING.md in this project.</p><p>(Use your own language and its two-letter code.) It first writes a glossary, so names and words that programs and rules depend on stay the same everywhere, then translates, then runs the checks.</p>' +
+    '<h4>3. Try it</h4><p>Open <code>de/index.html</code> in a browser. If a word or a sentence reads badly, tell your coding agent which one, and what it should be.</p>' +
+    '<h4>4. Please share it</h4><p>Please <a href="https://github.com/ToonTalk/agent-construction-kit/issues/new" target="_blank" rel="noopener">raise an issue on GitHub</a> saying which language you made, with your folder (its <code>index.html</code> and <code>GLOSSARY.md</code>) attached or linked, so it can be added to the main release and listed here.</p>' +
+    '<p class="hint">A copy is a snapshot: when Agent Kit changes, it can be made again from the same glossary.</p></div>' }); },
   "speech-help"() { SpeechUI.help(SpeechUI.canListen() ? "error" : "none"); },
   "speech-test"() { SpeechUI.speak("Hello! This is how I sound."); },
   "helper-send"() { const i = $("#helperInput"); if (i) { const q = i.value; i.value = ""; askHelper(q); } },
@@ -8003,16 +8033,25 @@ const SpeechUI = (() => {
   const Recognizer = () => window.SpeechRecognition || window.webkitSpeechRecognition || null;
   const TEXT_BLOCKS = "p, li, h1, h2, h3, h4, blockquote, pre, td, th, .hmsg, .hint, .confirm-text, .yt-head, .ln, .q";
   const INTERACTIVE = "button, a, input, textarea, select, summary, label, [data-act], [contenteditable], .zoomable";
-  let speakingEl = null, rec = null, hoverEl = null, hoverTimer = null, lastPointer = 0, micField = null, micState = "unknown";
+  let warned = false, speakingEl = null, rec = null, hoverEl = null, hoverTimer = null, lastPointer = 0, micField = null, micState = "unknown";
   const canSpeak = () => !!synth();
   const canListen = () => !!Recognizer();
   // What is read: the words, without emoji or Markdown marks.
   function plain(text) {
-    return String(text == null ? "" : text).replace(/\p{Extended_Pictographic}|\u200D|\uFE0F/gu, " ").replace(/[*_`#|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 4000);
+    return String(text == null ? "" : text).replace(/(\d+)\s*\/\s*(\d+)/g, "$1 " + SAY.outOf + " $2").replace(/\bR(\d+)\s*·/g, (m, n) => SAY.round(n)).replace(/\s*[←→]\s*/g, ", ").replace(/[·▸▾…]/g, " ").replace(/\p{Extended_Pictographic}|\u200D|\uFE0F/gu, " ").replace(/[*_`#|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 4000);
+  }
+  // The voices that speak this page's language. None (when the browser has listed its voices) means it can't read aloud here.
+  const langVoices = () => { const sy = synth(), all = sy && sy.getVoices ? sy.getVoices() : [], l = PAGE_LANG.slice(0, 2).toLowerCase(); return all.filter(v => (v.lang || "").toLowerCase().replace("_", "-").indexOf(l) === 0); };
+  const voiceState = () => { const sy = synth(); if (!sy) return "none"; const all = sy.getVoices ? sy.getVoices() : []; return !all.length ? "unknown" : langVoices().length ? "ok" : "none"; };
+  const langName = () => { try { return new Intl.DisplayNames([PAGE_LANG], { type: "language" }).of(PAGE_LANG); } catch (e) { return PAGE_LANG; } };
+  function noVoice() {
+    const L = esc(langName());
+    openModal({ title: "🔊 No voice for {lang}".split("{lang}").join(langName()), body: '<p>' + "This browser has no voice that speaks {lang}, so it can't read aloud in {lang}.".split("{lang}").join(L) + '</p><p>To add one, then restart the browser:</p><ul class="speech-ways"><li><b>Windows:</b> Settings → Time &amp; language → Speech → <b>Add voices</b>.</li><li><b>Mac:</b> System Settings → Accessibility → Spoken Content → System voice → <b>Manage Voices</b>.</li><li><b>Chromebook:</b> Settings → Accessibility → Text-to-Speech → <b>Speech engine</b>.</li><li><b>iPad, iPhone or Android:</b> the system\'s <b>text-to-speech</b> settings.</li></ul><p class="hint">Talking instead of typing (🎤) may still work.</p><div class="row end"><button class="btn primary" data-close>OK</button></div>' });
   }
   function pickVoice() {
     const sy = synth(), voices = sy && sy.getVoices ? sy.getVoices() : [];
     const lang = PAGE_LANG.slice(0, 2).toLowerCase();
+    if (synth() && voiceState() !== "unknown") { const mine = langVoices(); return mine.find(v => v.name === app.settings.voice) || mine.find(v => v.default) || mine[0] || null; }
     return voices.find(v => v.name === app.settings.voice) || voices.find(v => v.default && (v.lang || "").toLowerCase().indexOf(lang) === 0) || voices.find(v => (v.lang || "").toLowerCase().indexOf(lang) === 0) || null;
   }
   function stop() {
@@ -8026,6 +8065,8 @@ const SpeechUI = (() => {
     stop();
     if (!sy || !t) return false;
     const u = new window.SpeechSynthesisUtterance(t);
+    if (voiceState() === "none") { if (!warned) { warned = true; noVoice(); } return false; }
+    u.lang = PAGE_LANG;
     u.rate = +app.settings.speechRate || 1;
     const v = pickVoice(); if (v) u.voice = v;
     if (el) { speakingEl = el; el.classList.add("speaking"); }
@@ -8033,7 +8074,7 @@ const SpeechUI = (() => {
     sy.speak(u);
     return true;
   }
-  const labelOf = el => { const t = plain(el.textContent); return t.length > 1 ? t : plain(el.getAttribute("aria-label") || el.title || el.value || ""); };
+  const labelOf = el => { const said = el.closest && el.closest("[data-say]"); if (said && said.getAttribute("data-say")) return plain(said.getAttribute("data-say")); const t = plain(el.textContent); return t.length > 1 ? t : plain(el.getAttribute("aria-label") || el.title || el.value || ""); };
   // The top bar's 🔊 button and the page's look follow the setting.
   function apply() {
     document.body.classList.toggle("read-aloud", !!app.settings.readAloud);
@@ -8153,6 +8194,8 @@ const SpeechUI = (() => {
     document.addEventListener("pointerdown", () => { lastPointer = Date.now(); }, true);
     // Read aloud: a click on words reads them (a second click stops); pointing at a button, or Tab to it, says what it is.
     document.addEventListener("click", e => {
+      const sayEl = app.settings.readAloud && e.target.closest && e.target.closest("[data-say]");
+      if (sayEl && sayEl.getAttribute("data-say")) { if (speakingEl === sayEl) stop(); else speak(sayEl.getAttribute("data-say"), sayEl); return; }   // a message: who told whom, and all of what they said
       if (!app.settings.readAloud || !e.target.closest || e.target.closest(INTERACTIVE) || e.target.closest(".mic-float")) return;
       let el = e.target.closest(TEXT_BLOCKS);
       if (!el && e.target.nodeType === 1 && plain(e.target.textContent).length < 600) el = e.target;
@@ -8182,7 +8225,7 @@ const SpeechUI = (() => {
     if (sy && "onvoiceschanged" in sy) sy.onvoiceschanged = () => { if (document.getElementById("voiceSel")) renderSettings(); };
     apply();
   }
-  return { canSpeak, canListen, plain, speak, stop, apply, listen, help, wire, voices: () => { const sy = synth(); return sy && sy.getVoices ? sy.getVoices() : []; }, listening: () => !!rec };
+  return { canSpeak, canListen, plain, speak, stop, apply, listen, help, wire, voices: () => langVoices(), voiceState: () => voiceState(), noVoice, langName, listening: () => !!rec };
 })();
 
 /* ===== SECTION: BOOT ===== */

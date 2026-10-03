@@ -435,6 +435,12 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - The “getting long” nudge ignored the shipped Keeper only until its secret changed; it now compares pseudocode without slot values.
   - `TRANSLATING.md`: what to tell a coding agent, and the procedure it should follow. A button for it comes after Ken has tried the Swedish copy.
   - Suite: 515 PASS, fingerprint `e907cd18f0ea`.
+- 2026-10-03 — **Revision 1.11.0: Read aloud that makes sense, a voice for the language, and Other languages in Settings** (Ken, after trying the Swedish copy).
+  - A message in the trace or on the stage was read as its symbols (“R3 Critic LEFTWARD ARROW … TEN SLASH TEN”) and only as far as it was cut short. Now each carries a sentence for the ear (`sayEntry`, phrased by `SAY`): “Round 4. Renderer informed Critic, who said: 10 out of 10. …”, with all of what was said (a Logo reply is “wrote a Logo program of 12 lines”); pointing at, Tabbing to or clicking it reads that. Elsewhere “7/10” is read “7 out of 10”, “R4 ·” as “Round 4.”, and arrows and dots aren't read.
+  - Read aloud speaks only with a voice for the page's language (`u.lang = PAGE_LANG`, voices filtered by it). Where the browser has none (once it has listed its voices), Read aloud explains that, and how to add one (Windows, Mac, Chromebook, phones), instead of reading Swedish in an English voice. Settings shows only that language's voices, or the same note.
+  - Settings → **Other languages**: links to the languages there are (`LANGUAGES`: English, Svenska) and a guide to making another with a coding agent: where the files are on GitHub and which it needs, what to tell it, how to try it, and a request to raise an issue so it can join the main release. TRANSLATING.md says the same, plus `LANGUAGES` and `SAY` for translators.
+  - The Swedish copy has all of this, in Swedish (patched with the same script, its own phrases).
+  - Suite: 518 PASS, fingerprint `7452728daaf9`.
 
 ---
 

@@ -14,6 +14,10 @@ copy of it, for example `de/index.html` for German. The Swedish copy in `sv/` wa
 3. When it has finished, open `de/index.html` in a browser and try it. If a word or a sentence reads badly, tell
    the coding agent which one, and what it should be.
 
+4. **Please share it:** [raise an issue on GitHub](https://github.com/ToonTalk/agent-construction-kit/issues/new)
+   saying which language you made, with your folder (its `index.html` and `GLOSSARY.md`) attached or linked, so it
+   can be added to the main release and listed in Settings → Other languages.
+
 It takes a coding agent an hour or so of work, and the copy is a snapshot: when Agent Kit changes, ask for the
 copy to be made again (the glossary it wrote, `de/GLOSSARY.md`, keeps the new copy's words the same as before).
 
@@ -57,6 +61,11 @@ Things that need more than translation:
 - The safety PREAMBLE: add “Always write in <language>.”; the Helper's and the Translator's system prompts:
   answer the learner in the language (the Translator must still reply in its JSON format, and keep param names
   ASCII).
+- `LANGUAGES` (next to `PAGE_LANG`): add the new language, e.g. `{ code: "de", name: "Deutsch", path: "de/" }`,
+  so Settings → Other languages links to it (the main release adds it too).
+- `SAY`, just before `bubbleHTML`: the sentences Read aloud speaks for a message (“Round 4. Renderer informed Critic,
+  who said: 10 out of 10 …”), including the word for “out of”.
+- Read aloud only speaks with a voice for the page's language; the “no voice” dialog says how to add one.
 - Plurals: `plural(n, "agent")` adds an English “s”. Make `util.plural` accept `"singular|plural"`
   (`plural(2, "agent|Agenten")`) and use that form everywhere; replace hand-made English plurals.
 - Programs that read words (the Ledger's yes/no, its ingredient matching, `parseSlotText`'s “half”, “yes”/“no”)

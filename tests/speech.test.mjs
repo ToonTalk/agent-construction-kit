@@ -74,4 +74,36 @@ export default function (T, { pageWindow }) {
     const m = last(w, ".modal-body");
     return /isn't allowed to use the microphone/.test(m.textContent) && /allow the Microphone/.test(m.textContent) && /Windows key \+ H/.test(m.textContent);
   });
+  T.test("speech: a message in the trace is read as who told whom and all of what they said, with no arrows or slashes", ["Speech"], async () => {
+    const said = [];
+    const w = await boot(voices(said));
+    const s = w.AK.Seeds.makeArtCritic(); s.roundLimit = 2;
+    w.__ak.app.societies[s.id] = s; w.__ak.app.order.push(s.id); w.__ak.app.activeId = s.id; w.__ak.renderAll();
+    await w.__ak.runNow(); w.__ak.renderAll();
+    w.document.getElementById("readAloudBtn").click();
+    const head = Array.from(w.document.querySelectorAll("#colRight .th[data-say]")).find(b => /informed Critic, who said: \d+\/10/.test(b.getAttribute("data-say")));
+    focus(w, head);
+    const heard = said[said.length - 1];
+    const bubble = w.document.querySelector("#colCenter .bubble[data-say]");
+    bubble.click();
+    return /^Round \d+\. Renderer informed Critic, who said: \d+ out of 10\. /.test(heard) && !/[←\/]/.test(heard) && said[said.length - 1] === w.__ak.SpeechUI.plain(bubble.getAttribute("data-say"));
+  });
+  T.test("speech: with no voice for the page's language, Read aloud says so (and how to add one) instead of reading in another language", ["Speech"], async () => {
+    const said = [];
+    const w = await boot(w0 => { voices(said)(w0); w0.speechSynthesis.getVoices = () => [{ name: "Alva", lang: "sv-SE", default: true }]; });
+    w.document.getElementById("readAloudBtn").click();
+    const m = last(w, ".modal-body");
+    return w.__ak.app.settings.readAloud === false && said.length === 0 && /no voice that speaks English/.test(m.textContent) && /Add voices/.test(m.textContent);
+  });
+  T.test("Settings lists the languages Agent Kit is in, and explains how to make another, asking for an issue", ["Speech"], async () => {
+    const w = await boot();
+    w.__ak.openSettings();
+    const m = last(w, ".modal-body");
+    const sv = Array.from(m.querySelectorAll("a")).find(a => a.textContent === "Svenska");
+    m.querySelector('[data-act="lang-guide"]').click();
+    const g = last(w, ".modal-body");
+    return !!sv && sv.getAttribute("href") === "./sv/" && /Other languages/.test(m.textContent) && /Download ZIP/.test(g.textContent) && /TRANSLATING\.md/.test(g.textContent) &&
+      !!g.querySelector('a[href="https://github.com/ToonTalk/agent-construction-kit/issues/new"]') && /English, Svenska/.test(g.textContent);
+  });
 }
+
