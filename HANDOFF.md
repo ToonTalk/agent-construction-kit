@@ -4,7 +4,7 @@
 
 ## State (2026-10-01)
 
-Agent Kit **1.10.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.10.0 follow reviews
+Agent Kit **1.10.1**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.10.1 follow reviews
 and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -12,7 +12,7 @@ folder is a copy without the §14 log.)
 - **No pretend mode** for learners (1.0.3): a real model is needed. Gemini Nano, built into desktop
   Chrome, is a free choice. The scripted stand-ins (`connection: "pretend"`) remain only for tests.
   Planned, not built: replays of recorded real runs.
-- The app is the single file `index.html` (660 KB): the `ak-model` script is DOM-free, and
+- The app is the single file `index.html` (662 KB): the `ak-model` script is DOM-free, and
   the `ak-ui` script is the interface. There is no build step.
 - **Drawings are Logo.** The Artist, the Designer and the drawing pad write Logo
   (`REPEAT 4 [FORWARD 50 RIGHT 90]`), and a small interpreter in the model layer runs it.
@@ -34,6 +34,8 @@ folder is a copy without the §14 log.)
   rules with word lists send it to four shelves; the Mystery Box keeps what no shelf took.
   The other five designs in `agent-kit-microworlds.md` wait for their features (collecting
   messages, per-agent models and a call counter, You as an agent).
+- **Translated copies** (1.10.1): `sv/index.html` is a Swedish snapshot made by coding agents from `sv/GLOSSARY.md`
+  (see TRANSLATING.md). It does not follow later changes: remake it. Check copies with `AK_HTML=sv/index.html node tests/run.mjs "any language"`.
 - **Speech** (1.9.0, `SpeechUI`): 🔊 Read aloud, a 🎤 by the focused text box, the Helper by voice; when listening
   can't work, the 🎤 explains the OS's own dictation (Windows + H …). Number words aren't moves yet.
 - **Yours** (1.8.0): the top row is the microworlds, then your four most recent societies (`app.used`), then
@@ -75,7 +77,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**510 PASS, 0 FAIL · fingerprint `7e7d3458d908`** · model modules covered 19/19.
+**515 PASS, 0 FAIL · fingerprint `e907cd18f0ea`** · model modules covered 19/19.
 
 ## Acceptance criteria (§11)
 
@@ -91,7 +93,7 @@ folder is a copy without the §14 log.)
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 660 KB, under 1 MB (tested). |
+| 11 | 662 KB, under 1 MB (tested). |
 
 ## Open issues
 

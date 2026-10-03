@@ -51,6 +51,9 @@ program keeps track of who has what. **Artist and Critic**, Ken Kahn's society: 
 Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper
 keeps the scores. All five are also in `examples/`, to import.
 
+**Other languages:** there is a Swedish copy at [sv/](https://toontalk.github.io/agent-construction-kit/sv/)
+(*på svenska*). Anyone with a coding agent can make a copy in another language: see [TRANSLATING.md](TRANSLATING.md).
+
 **Speech:** 🔊 Read aloud reads any words you click, and says what a button is when you point at it. A 🎤
 by the box you are typing in lets you talk instead, and the Helper can be asked aloud and answers aloud. Where
 the browser can't listen, the 🎤 explains the computer's own dictation (on Windows, the Windows key + H).

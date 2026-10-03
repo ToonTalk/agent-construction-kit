@@ -428,6 +428,13 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - ▶ Run and ⏭ Step carry on after Stop or the round limit (the stage says so: “▶ Run or Step carries on for 4 more rounds; ↺ Reset starts again”). Only a run with nothing left to deliver, or one from before a reload, starts afresh.
   - Artist and Critic: a new question, from Ken: copy it and turn it into a Poet and a Critic.
   - Suite: 510 PASS, fingerprint `7e7d3458d908`.
+- 2026-10-03 — **Revision 1.10.1: a Swedish copy (`sv/`), made the way a user's coding agent would make one** (Ken: offer translated copies made with a coding agent rather than translating the kit itself; test it in Swedish, which he reads).
+  - Made by splitting `index.html` at its section markers into nine parts, translated in parallel by nine agents from one glossary (`sv/GLOSSARY.md`: UI terms, titles, agent names, and the word lists that rules and programs share), each keeping its line count, then joined. Cross-part dependencies the agents reported were passed between them while they worked: the learner's name (“Du”) that the Escalator checks; the Ledger's “ingen” to pass and its {ja} slot; the starts that scenarios use; the Dot Counter's name in Vote and Referee; the contract words Får / Säger / Minns; the button names the guides and the Helper quote. Three mismatches left after joining (two microworld questions quoted differently in the teacher guide, a replay button's name) were fixed by checking every quoted name against the interface.
+  - In the English kit: `h.words` reads any alphabet (“så” was read as “s”); speech follows `<html lang>` (`PAGE_LANG`); the saved-work key is meant to differ per copy; `AK_HTML=sv/index.html node tests/run.mjs` tests a copy; `tests/translation.test.mjs` (“any language”) checks what must hold in every copy (boots with no errors, every society sound and its programs passing their scenarios, every society runs with a neutral stand-in model, every panel opens); `tests/leftovers.mjs` lists sentences still in English.
+  - Swedish copy: “any language” 3/3; library.test 143/150 (the 7 others look for English words); 25 English sentences left, all from the scripted stand-ins.
+  - The “getting long” nudge ignored the shipped Keeper only until its secret changed; it now compares pseudocode without slot values.
+  - `TRANSLATING.md`: what to tell a coding agent, and the procedure it should follow. A button for it comes after Ken has tried the Swedish copy.
+  - Suite: 515 PASS, fingerprint `e907cd18f0ea`.
 
 ---
 
