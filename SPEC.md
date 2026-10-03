@@ -374,6 +374,11 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 448 PASS, fingerprint `f74411ad5781`.
 - 2026-10-02 — **Revision 1.4.1: Two Answers**, a second example to start from (＋ New society), from Ken's Contemplative AI demo, after Laukkonen and others (2025), “Contemplative Artificial Intelligence”. The question goes to a Plain agent (the start) and, by a rule from You, to a Contemplative agent whose instructions ask it to pause on emptiness, non-duality, mindfulness and boundless care, write its thinking, then `---`, then its answer. A switch adds a Comparer that collects both answers and says how they differ without judging (off by default: the demo leaves the judging to the reader). The demo's example questions are reworded for children (“Someone in my class was mean to me. How can I get them back?” instead of revenge). “You be the Plain” lets a learner answer it themselves. No new kit features were needed. Also as `examples/two-answers.json`.
   - Suite: 451 PASS, fingerprint `53fa9f406cc5`.
+- 2026-10-03 — **Revision 1.4.2: saving, said plainly** (Ken asked what “Remove this society” did, since refreshing loses nothing).
+  - Settings → Your work now explains saving: everything is saved in this browser as you go (societies, last runs, Helper chats, settings; keys only if chosen); refreshing keeps it all; it stays in this browser on this computer and is erased with the site's data; ⬇ Export makes a copy as a file.
+  - **“Save my work in this browser”**, on by default. Switching it off asks first, deletes what was saved (so a refresh can't bring back older work), and from then on keeps only that choice (`agentkit.v1.nosave`), never the work; the page then asks before it is closed or refreshed. Switching it on saves at once. “Start over” with “Also forget my settings” turns saving back on.
+  - “Remove this society” is now **“Delete this society (from this browser)”**, and its question says it can't be undone. (Microworlds keep “Reset”.)
+  - Suite: 454 PASS, fingerprint `869141d00862`.
 
 ---
 

@@ -430,7 +430,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.4.1";
+AK.VERSION = "1.4.2";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -5011,6 +5011,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- ＋ New society also offers examples to start from: Evolution (three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree tab shows which picture came from which) and Two Answers (the same question to a Plain agent and to a Contemplative one that pauses on four principles first: emptiness, non-duality, mindfulness and boundless care).\n" +
   "- An agent called You is the learner: the run waits for their answer.\n" +
   "- A rule can come from You (“when You start the run, send your words to …”), so the start reaches more than one agent. A rule can also say “when the run ends”: then the agent's last message is sent on, once, at the very end (Story Chain's Book sends the whole story to the Editor that way).\n" +
+  "- Everything is saved in this browser as you go (refreshing keeps it); ⚙️ Settings can switch saving off, and then the work is gone when the tab closes. “Delete this society”, in Look inside, deletes one of your own societies from this browser for good; microworlds have “Reset” instead.\n" +
   "- ⬇ Export and ⬆ Import, at the top of the page, save the society you are in as a file and open one from a file. An agent's emoji is changed by clicking it at the top of its editor.\n" +
   "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
   "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.\n" +
@@ -5258,9 +5259,20 @@ function save() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 400);
 function slimTrace(trace) {
   return (trace || []).slice(-400).map(e => { const c = Object.assign({}, e); if (c.call) { c.call = Object.assign({}, c.call); delete c.call.headers; delete c.call.request; } return c; });
 }
+// Saving is on unless the learner switched it off. Then only that choice is kept (NOSAVE_KEY), never their work.
+const NOSAVE_KEY = LS_KEY + ".nosave";
+function savingOff() { try { return !!storage && storage.getItem(NOSAVE_KEY) === "1"; } catch (e) { return false; } }
+function setSaving(on) {
+  try {
+    if (on) { storage.removeItem(NOSAVE_KEY); return saveNow(); }
+    storage.setItem(NOSAVE_KEY, "1");
+    storage.removeItem(LS_KEY);   // what was saved goes, so a refresh can't bring back older work
+  } catch (e) { /* storage refused */ }
+  return Promise.resolve(true);
+}
 async function saveNow() {
   clearTimeout(saveTimer);
-  if (!storage) return false;
+  if (!storage || savingOff()) return false;
   const settings = clone(app.settings);
   if (!settings.rememberKeys) settings.keys = { anthropic: "", gemini: "", openai: "" };
   const societies = {};
@@ -5276,7 +5288,7 @@ async function saveNow() {
   }
 }
 async function load() {
-  if (!storage) return;
+  if (!storage || savingOff()) return;
   let raw = null;
   try { raw = storage.getItem(LS_KEY); } catch (e) { raw = null; }
   if (!raw) return;
@@ -5882,7 +5894,7 @@ function insideHTML(s) {
   h += '<div class="section"><h3>Rules</h3><p class="hint">When an agent responds, every rule that matches sends a message. A new round starts each time ' + (app.ui.editingRound ? '<select data-bind="roundAgent" aria-label="Round agent">' + agentOptions(s, s.roundAgent, false) + '</select> gets a message. <button class="btn tiny primary" data-act="round-done">✓ Done</button>' : agentBtnHTML(s, s.roundAgent) + ' gets a message. <button class="btn tiny" data-act="round-edit" title="Choose which agent starts each round">✎ Change</button>') + '</p>' + variantsInsideHTML(s) + '<div class="rules">' + s.rules.map(r => ruleView(r, s)).join("") + '</div>' +
     '<div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-rule">+ Add a rule</button></div><div class="gate-note">⛔ A <b>gate</b> (like a Judge) says whether <b>pass</b> is true or false. When its data says pass is false, only its rules that say “if its data says <b>pass</b> is <b>false</b>” send anything; its other rules wait.</div></div>';
   h += '<div class="section"><div class="row"><button class="btn tiny" data-act="export-society">⬇ Export</button><button class="btn tiny" data-act="import-society">⬆ Import</button>' +
-    (isMicroworld(s.id) ? '<button class="btn tiny" data-act="save-copy">Save a copy</button><button class="btn tiny danger" data-act="reset-world">Reset ' + esc(s.title) + '</button>' : '<button class="btn tiny danger" data-act="remove-world">Remove this society</button>') + '</div></div>';
+    (isMicroworld(s.id) ? '<button class="btn tiny" data-act="save-copy">Save a copy</button><button class="btn tiny danger" data-act="reset-world">Reset ' + esc(s.title) + '</button>' : '<button class="btn tiny danger" data-act="remove-world" title="Delete it from this browser for good. Export it first to keep a copy.">Delete this society (from this browser)</button>') + '</div></div>';
   return h + '</div>';
 }
 
@@ -6670,7 +6682,12 @@ function renderSettings() {
   h += '<div class="section"><h3>How programs run here</h3><p class="small">' + esc(Runtime.note) + ' Drawings are Logo, read by a small interpreter, so they never run as JavaScript.</p></div>';
   h += '<div class="section"><h3>Guides</h3><div class="row"><button class="btn" data-act="guide" data-id="learner">📘 For learners</button><button class="btn" data-act="guide" data-id="teacher">📕 For teachers</button></div></div>';
   h += '<div class="section"><h3>The safety preamble</h3><p class="hint">This fixed text starts every model call, so every agent writes for young people.</p><pre class="box">' + esc(Prompts.PREAMBLE) + '</pre></div>';
-  h += '<div class="section"><h3>Your work</h3><p class="hint">' + (storage ? "Everything is saved in this browser as you go." : "This page can't save in this browser, so export your society to keep it.") + '</p><div class="row"><button class="btn tiny" data-act="export-society">⬇ Export this society</button><button class="btn tiny" data-act="import-society">⬆ Import a society</button><button class="btn tiny danger" data-act="reset-all">Start over (delete my societies)</button></div></div>';
+  const off = savingOff();
+  h += '<div class="section"><h3>Your work</h3>' + (!storage ? '<p class="hint">This page can\'t save in this browser, so your work is gone when you close or refresh the tab. Export your society to keep it.</p>' :
+    '<p class="hint">' + (off ? "<b>Saving is off.</b> Nothing is kept in this browser: when you close or refresh this tab, your work is gone. ⬇ Export makes a copy as a file." :
+      "Everything is saved in this browser as you go: your societies, their last runs, the Helper chats and these settings (keys only if you ticked “Remember my keys”). Refreshing the tab keeps it all. It stays in this browser on this computer: another browser or computer won't see it, and clearing the browser's site data erases it. ⬇ Export makes a copy as a file, to keep, move or share.") + '</p>' +
+    '<label class="row small" style="margin-bottom:8px"><input type="checkbox" data-bind="saving"' + (off ? "" : " checked") + '> Save my work in this browser</label>') +
+    '<div class="row"><button class="btn tiny" data-act="export-society">⬇ Export this society</button><button class="btn tiny" data-act="import-society">⬆ Import a society</button><button class="btn tiny danger" data-act="reset-all">Start over (delete my societies)</button></div></div>';
   h += '<div class="section small muted">Agent Kit ' + esc(AK.VERSION) + ' · <button class="btn tiny ghost" data-act="copy-link">Copy the project’s link</button></div>';
   const focusId = document.activeElement && document.activeElement.id;
   m.body.innerHTML = h;
@@ -6769,7 +6786,7 @@ const GUIDES = {
     "<h4>The stage</h4><p><b>▶ Run</b> goes until the round limit. <b>⏭ Step</b> delivers one message at a time, and Run carries on from there. <b>↺ Reset</b> starts over. <b>🙋 You be the …</b> lets you take an agent's place: the run waits for your answer. One-click switches under the start change several rules at once. If a grown-up has set up more than one model, the <b>Models</b> row lets you choose which model each AI agent uses. After a run, each AI agent's button says how many model calls it made.</p>" +
     "<h4>Rules</h4><p>In Look inside, every rule reads as a sentence: <i>When the Artist responds, send its words to the Renderer.</i> The tick in front switches a rule on or off. <b>✎ Edit</b> shows its parts: who it's from, a condition (like <i>if its data says pass is false</i>), what to send (words, data, picture) and who to. A rule can come from <b>You</b>, so the start reaches more than one agent, and a rule can wait for <b>the end of the run</b>, like the one that sends Story Chain's Book to the Editor.</p>" +
     "<h4>Agents</h4><p><b>AI agents</b> follow instructions you can change in their editor. <b>Programmed agents</b> are pseudocode: numbers in green { } are settings you can change; edit a line and the translator turns it into JavaScript (<b>Peek under the hood</b> shows both). <b>Scenarios</b> are tests for a program: an input and what it should answer; a red one shows what went wrong, and you can save any turn from the trace as a new one. Some agents <b>collect</b>: they wait for several messages, then answer them all at once; an AI agent that collects sees all their pictures side by side. An agent called <b>You</b> is you. Each agent's editor shows its <b>Connections</b>: who can send it messages, and its own rules. Click an agent's emoji, at the top of its editor, to choose another.</p>" +
-    "<h4>Saving and sharing</h4><p>Everything is saved in this browser as you go. <b>⬇ Export</b> at the top saves the society you are in as a file, to keep or to give a friend; <b>⬆ Import</b> opens one.</p>" +
+    "<h4>Saving and sharing</h4><p>Everything is saved in this browser as you go, so refreshing the tab keeps it all. It stays in this browser on this computer. <b>⬇ Export</b> at the top saves the society you are in as a file, to keep, move or give a friend; <b>⬆ Import</b> opens one. A grown-up can switch saving off in ⚙️ Settings; then the work is gone when the tab closes. <b>Delete this society</b>, in Look inside, deletes one of your own societies from this browser for good.</p>" +
     "<h4>The trace</h4><p>Every message is in the <b>Trace</b>. Open one to see what the agent got and what it said. <b>Show full technical details</b> shows exactly what a model was sent and what came back. A <b>…</b> opens text that was cut short, and a picture opens full size when you click it. After a run, <b>Replay</b> steps through it one message at a time.</p>" +
     "<h4>Logo</h4><p>Agents that draw write <b>Logo</b>: <code>FORWARD 50</code>, <code>RIGHT 90</code>, and <code>REPEAT 4 [FORWARD 50 RIGHT 90]</code> for a square. In Telephone, “Start with a drawing” lets you write Logo yourself, and you can change any drawing in the trace and see it drawn.</p>" +
     "<h4>Models</h4><p>A grown-up chooses the models in ⚙️ Settings: Gemini Nano (free, built into Chrome), or Claude, Gemini or OpenAI with a key. If they add more than one, you choose which agent uses which on the stage. Each microworld's question card says which model suits it.</p>" +
@@ -7081,7 +7098,7 @@ const ACTIONS = {
   },
   async "remove-world"() {
     const s = soc();
-    if (!(await uiConfirm("Remove “" + s.title + "” from this browser? (Export it first to keep it.)", { title: "Remove a society?", ok: "Remove", danger: true }))) return;
+    if (!(await uiConfirm("Delete “" + s.title + "” and its last run from this browser? This can't be undone. (⬇ Export it first to keep a copy as a file.)", { title: "Delete a society?", ok: "Delete", danger: true }))) return;
     delete app.societies[s.id]; delete app.runs[s.id]; delete app.traces[s.id]; app.order = app.order.filter(id => id !== s.id); app.activeId = app.order[0]; save(); renderAll();
   },
   async "reset-all"() {
@@ -7090,7 +7107,7 @@ const ACTIONS = {
     const forget = !!opts.checked;
     try { if (storage) storage.removeItem(LS_KEY); } catch (e) { /* nothing saved */ }
     for (const id of Object.keys(app.runs)) app.runs[id].api.stop();
-    if (forget) app.settings = defaultSettings();
+    if (forget) { app.settings = defaultSettings(); try { if (storage) storage.removeItem(NOSAVE_KEY); } catch (e) { /* nothing to forget */ } }   // saving is on again, as by default
     app.societies = {}; app.order = []; app.runs = {}; app.traces = {}; app.prevStrips = {}; app.log = {}; app.helperChat = {};
     ensureSocieties(); await rerunAll();
     if (!forget) await saveNow();   // the settings stay saved
@@ -7313,6 +7330,15 @@ async function handleBind(t, evt) {
     case "key": { app.settings.keys[t.dataset.id] = String(t.value).trim(); save(); return; }
     case "model": { const v = util.cleanName(t.value, 80); if (v) { app.settings.models[t.dataset.id] = v; save(); if (change) renderSettings(); } return; }
     case "remember": { app.settings.rememberKeys = t.checked; save(); return; }
+    case "saving": {
+      if (!t.checked) {
+        if (!(await uiConfirm("Stop saving your work in this browser? What is saved now will be deleted, and from now on your work is gone when you close or refresh this tab. (⬇ Export makes a copy as a file.)", { title: "Turn saving off?", ok: "Stop saving", danger: true }))) { t.checked = true; return; }
+        await setSaving(false);
+        toast("Saving is off. Export to keep a copy.");
+      } else { await setSaving(true); toast("Saving is on: everything is kept in this browser again."); }
+      renderSettings();
+      return;
+    }
     case "add-conn": { app.ui.addModel = t.value ? { connection: t.value, model: "" } : null; renderSettings(); return; }
     case "add-model": { app.ui.addModel = Object.assign(app.ui.addModel || {}, { model: util.cleanName(t.value, 80) }); return; }
     case "soc-field": {
@@ -7365,6 +7391,7 @@ function wire() {
     const fn = ACTIONS[t.dataset.act];
     if (fn) { e.preventDefault(); Promise.resolve(fn(t, e)).catch(err => toast(err.message, "bad")); }
   });
+  window.addEventListener("beforeunload", e => { if (storage && savingOff()) { e.preventDefault(); e.returnValue = ""; } });
   document.addEventListener("visibilitychange", () => {
     const rec = app.runs[app.activeId];
     const live = !!rec && ["running", "stepping"].indexOf(rec.api.run.status) >= 0;

@@ -233,4 +233,44 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const top = pw.document.querySelector(".top-actions");
     return !!top.querySelector('[data-act="export-society"]') && !!top.querySelector('[data-act="import-society"]');
   });
+  T.test("page: Settings explains saving, and saving can be switched off (deleting what was saved) and on again", ["Store"], async () => {
+    const { w: pw } = await boot();
+    await pw.__ak.saveNow();
+    const before = !!pw.localStorage.getItem("agentkit.v1");
+    pw.__ak.openSettings();
+    const body = () => Array.from(pw.document.querySelectorAll(".modal-body")).pop();
+    const explains = /Refreshing the tab keeps it all/.test(body().textContent) && body().querySelector('[data-bind="saving"]').checked;
+    const box = body().querySelector('[data-bind="saving"]');
+    box.checked = false; box.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    await sleep(20);
+    Array.from(pw.document.querySelectorAll(".modal [data-yes]")).pop().click();
+    await sleep(40);
+    const off = pw.localStorage.getItem("agentkit.v1") === null && pw.localStorage.getItem("agentkit.v1.nosave") === "1" && (await pw.__ak.saveNow()) === false && pw.localStorage.getItem("agentkit.v1") === null && /Saving is off/.test(body().textContent);
+    const box2 = body().querySelector('[data-bind="saving"]');
+    box2.checked = true; box2.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    await sleep(40);
+    return before && explains && off && pw.localStorage.getItem("agentkit.v1.nosave") === null && !!pw.localStorage.getItem("agentkit.v1");
+  });
+  T.test("page: with saving off, a fresh page starts clean and keeps nothing", ["Store"], async () => {
+    const p2 = await pageWindow({ storage: { "agentkit.v1.nosave": "1" } });
+    const W = p2.w;
+    W.__ak.app.societies.story.roundLimit = 9;
+    const saved = await W.__ak.saveNow();
+    return saved === false && W.localStorage.getItem("agentkit.v1") === null && p2.errors.length === 0;
+  });
+  T.test("page: your own society has “Delete this society (from this browser)”, and it asks first", ["Store"], async () => {
+    const { w: pw } = await boot();
+    pw.document.querySelector('[data-act="new-society"]').click();
+    Array.from(pw.document.querySelectorAll(".modal-body")).pop().querySelector('[data-new="blank"]').click();
+    await sleep(30);
+    const id = pw.__ak.soc().id;
+    const btn = pw.document.querySelector('[data-act="remove-world"]');
+    const label = btn.textContent;
+    btn.click();
+    await sleep(20);
+    const ask = Array.from(pw.document.querySelectorAll(".modal")).pop().textContent;
+    Array.from(pw.document.querySelectorAll(".modal [data-yes]")).pop().click();
+    await sleep(30);
+    return label === "Delete this society (from this browser)" && /can't be undone/.test(ask) && !pw.__ak.app.societies[id];
+  });
 }
