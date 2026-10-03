@@ -415,6 +415,14 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Suite: 499 PASS, fingerprint `45d78b879eac`.
 - 2026-10-03 — **Revision 1.8.1: the board is drawn before it's your turn.** Ken's Tic-Tac-Toe seemed to stop after the Rival's move: the Referee's message to You came before its message to the Renderer, so the run waited for his move with the board (and the O) not yet drawn. Now the messages an agent sends to a person (You, or an agent the learner plays) go after its other messages.
   - Suite: 500 PASS, fingerprint `b4b10881d26b`.
+- 2026-10-03 — **Revision 1.9.0: speech, and examples chosen again** (Ken).
+  - **An example chosen again:** “You already have … Open mine” confused Ken (an example you clicked doesn't feel like yours) and didn't give him a fresh game. Now a copy still just as the example made it (`sameAsExample`: the export without id, title or scenario results) simply starts afresh, its last run cleared, with no question. Only a copy you changed asks: “Start a fresh one” (named “… (2)”; your changed one stays under Yours) or “Go back to my changed one”.
+  - **Opening a society scrolls to the top** (`showSociety`), from the row, All yours, ＋ New society or Import.
+  - **🔊 Read aloud** (top bar, and Settings → Speech): click any words to hear them (a second click or Esc stops; the words being read are highlighted); point at a button, or Tab to it, to hear what it is. Emoji and Markdown marks aren't read. Voice and speed in Settings. Hidden where the browser can't speak.
+  - **🎤 Talking instead of typing:** a 🎤 appears by the text box you are in (it follows the box and goes when the box loses focus); what you say goes in at the cursor, and is saved like typing. The Helper has its own 🎤: the question is asked when you stop talking, and the answer is read aloud (as it is whenever Read aloud is on). Settings can hide the 🎤 buttons.
+  - **When the browser can't listen** (no SpeechRecognition, the microphone not allowed, no network), the 🎤 explains the computer's own dictation, this computer's first: Windows key + H; Mac Globe/Fn twice or Edit → Start Dictation; Chromebook Search + D; the keyboard's 🎤 on phones and tablets; and, when blocked, how to allow the microphone. Settings and the dialog say that Chrome and Edge send speech to Google or Microsoft.
+  - Tests use stand-in voices and microphones (jsdom has neither). Open: Referees and Keepers read digits only, so “five” said aloud isn't a move; spoken number words could be added.
+  - Suite: 505 PASS, fingerprint `d14ae00d7ce9`.
 
 ---
 

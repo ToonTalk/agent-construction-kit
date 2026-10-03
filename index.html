@@ -152,7 +152,7 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .rule-editing{border:1.5px dashed var(--accent);border-radius:12px;padding:6px}.rule-editing .rule{border:0;margin:0}
 .achip .calls{font-size:10.5px;font-weight:600;color:var(--ink-faint);margin-left:3px}
 .yt-ask{margin:8px 0 4px;font-weight:700}
-.world.add{border-style:dashed;color:var(--ink-soft)}.world.mine:not(.on){background:var(--accent-bg)}.world.more{border-style:dashed;color:var(--ink-soft);font-weight:700}.worlds-break{flex-basis:100%;height:0}.worlds-label{align-self:center;font-family:var(--display);font-weight:800;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin:0 4px 0 2px}.yours-list{display:grid;gap:6px;max-height:55vh;overflow:auto;padding:2px}.yours-item{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:12px;padding:7px 10px}.yours-item.on{border-color:var(--accent)}.yours-item label{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;cursor:pointer}.worlds-list{display:contents}
+.world.add{border-style:dashed;color:var(--ink-soft)}.speaking{outline:3px solid #f59e0b;outline-offset:2px;border-radius:6px;background:#fff7d6}body.read-aloud :is(p,li,h1,h2,h3,h4,.hmsg,.hint,blockquote,pre,.ln):hover{background:#fffbea;cursor:pointer}.btn.read-on{background:var(--accent-bg);border-color:var(--accent);color:var(--ink)}.mic-float{position:fixed;z-index:55;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line-strong);background:#fff;font-size:16px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.15);padding:0}.mic-float.on,.btn.mic.on{background:#fee2e2;border-color:#ef4444;animation:micpulse 1s ease-in-out infinite}@keyframes micpulse{50%{box-shadow:0 0 0 6px rgba(239,68,68,.25)}}.speech-ways li{margin:4px 0}.nowrap-check{flex-wrap:nowrap;align-items:flex-start;margin:4px 0}.nowrap-check input{margin-top:3px}.speech-ways .this-one{background:var(--accent-bg);border-radius:8px;padding:3px 6px}.world.mine:not(.on){background:var(--accent-bg)}.world.more{border-style:dashed;color:var(--ink-soft);font-weight:700}.worlds-break{flex-basis:100%;height:0}.worlds-label{align-self:center;font-family:var(--display);font-weight:800;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin:0 4px 0 2px}.yours-list{display:grid;gap:6px;max-height:55vh;overflow:auto;padding:2px}.yours-item{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:12px;padding:7px 10px}.yours-item.on{border-color:var(--accent)}.yours-item label{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;cursor:pointer}.worlds-list{display:contents}
 .new-choices{display:grid;gap:4px;margin-top:12px}.new-choices .hint{margin:0 0 8px}
 .about-edit{margin:6px 0 10px;padding:8px 10px;border:1.5px solid var(--line);border-radius:12px;background:#fff}.about-edit summary{cursor:pointer}.about-edit .form-grid{grid-template-columns:1fr;gap:4px}.about-edit .form-grid label{margin-top:6px}.about-edit .row{flex-wrap:wrap}
 .more{display:inline-block;margin-left:2px;padding:0 6px;border-radius:8px;background:var(--accent-bg);color:var(--accent);font-weight:800;cursor:pointer;line-height:1.35}.more:hover,.more:focus{outline:2px solid var(--accent);outline-offset:1px}
@@ -432,7 +432,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.8.1";
+AK.VERSION = "1.9.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -5394,7 +5394,8 @@ const HELPER_SYSTEM = PREAMBLE +
   "- An agent called You is the learner: the run waits for their answer.\n" +
   "- A rule can come from You (“when You start the run, send your words to …”), so the start reaches more than one agent. A rule can also say “when the run ends”: then the agent's last message is sent on, once, at the very end (Story Chain's Book sends the whole story to the Editor that way).\n" +
   "- Everything is saved in this browser as you go (refreshing keeps it); ⚙️ Settings can switch saving off, and then the work is gone when the tab closes. “Delete this society”, in Look inside, deletes one of your own societies from this browser for good; microworlds have “Reset” instead.\n" +
-  "- The top row has the nine microworlds, then YOURS: the four of your own societies used most recently (made from scratch, an example, a copy or an import). ☰ All yours lists every one, to open, or to tick several and delete them. Importing a file with the same name as one of yours asks whether to replace it or keep both (the new one gets “(2)”); choosing an example you have already made asks whether to open yours or make another.\n" +
+  "- The top row has the nine microworlds, then YOURS: the four of your own societies used most recently (made from scratch, an example, a copy or an import). ☰ All yours lists every one, to open, or to tick several and delete them. Importing a file with the same name as one of yours asks whether to replace it or keep both (the new one gets “(2)”); choosing an example you have already made starts it afresh, or, if you changed yours, asks whether to start a fresh one or go back to the changed one.\n" +
+  "- Speech: 🔊 Read aloud (top bar) reads any words you click and says what a button is when you point at it; a 🎤 appears by the box you are typing in, to talk instead of typing; the Helper's 🎤 asks by talking and reads the answer aloud. If the browser can't listen, the 🎤 explains the computer's own dictation (Windows key + H, the Mac's Globe key twice).\n" +
   "- ⬇ Export and ⬆ Import, at the top of the page, save the society you are in as a file and open one from a file. An agent's emoji is changed by clicking it at the top of its editor.\n" +
   "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
   "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.\n" +
@@ -5589,7 +5590,7 @@ const PROJECT_URL = "https://github.com/ToonTalk/agent-construction-kit";
 let storage = null;
 try { const k = LS_KEY + ".probe"; localStorage.setItem(k, "1"); localStorage.removeItem(k); storage = localStorage; } catch (e) { storage = null; }
 function defaultSettings() {
-  return { connection: ENV.chatArtifact ? "keyless" : "none", keys: { anthropic: "", gemini: "", openai: "" }, rememberKeys: false, models: clone(Adapters.DEFAULT_MODELS), extra: [], speed: "normal" };
+  return { connection: ENV.chatArtifact ? "keyless" : "none", keys: { anthropic: "", gemini: "", openai: "" }, rememberKeys: false, models: clone(Adapters.DEFAULT_MODELS), extra: [], speed: "normal", readAloud: false, micButtons: true, voice: "", speechRate: 1 };
 }
 // More models: each is a connection and a model ({connection: "gemini", model: "gemini-3.8-flash"}). The main one is
 // settings.connection; an agent that names another (agent.model = "gemini:gemini-3.8-flash") uses that one.
@@ -5705,6 +5706,13 @@ const isMicroworld = id => MW_IDS.indexOf(id) >= 0;
 // recently, in the order they were made (so a button doesn't jump when chosen), and the rest in “All yours”.
 const YOURS_SHOWN = 4;
 const touch = id => { if (id) app.used[id] = Date.now(); };
+// Open a society: it becomes the one shown, from the top of the page.
+function showSociety(id) {
+  app.activeId = id; touch(id);
+  app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set();
+  save(); renderAll();
+  try { window.scrollTo(0, 0); } catch (e) { /* no scrolling here */ }
+}
 const yoursOf = () => app.order.filter(id => !isMicroworld(id));
 const byRecent = list => list.slice().sort((a, b) => (app.used[b] || 0) - (app.used[a] || 0) || app.order.indexOf(b) - app.order.indexOf(a));
 function yoursShown() {
@@ -5719,6 +5727,11 @@ function uniqueTitle(base) {
   let n = 2;
   while (taken(base + " (" + n + ")")) n++;
   return util.cleanName(base + " (" + n + ")", 60);
+}
+// Is this society still just as the example made it (its name and its runs aside)?
+function sameAsExample(soc, fresh) {
+  const key = x => { const d = JSON.parse(Society.exportSociety(x, null)).society; delete d.id; delete d.title; for (const ag of d.agents || []) { delete ag.results; delete ag.lastGood; } return JSON.stringify(d); };
+  try { return key(soc) === key(fresh); } catch (e) { return false; }
 }
 function forgetSociety(id) {
   const r = app.runs[id]; if (r) r.api.stop();
@@ -6179,7 +6192,7 @@ function onRunEvent(rec, e, run) {
 const LOGO = '<svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#1D2A44"/><path d="M11 12 L21 12 M9.8 14.6 L14.6 20 M22.2 14.6 L17.4 20" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><circle cx="9.5" cy="11.5" r="4" fill="#8B7DFF"/><circle cx="22.5" cy="11.5" r="4" fill="#3CC79B"/><circle cx="16" cy="22.5" r="4" fill="#F2B544"/></svg>';
 function shellHTML() {
   return '<header class="topbar"><div class="brand">' + LOGO + '<span>Agent Kit</span></div><nav class="worlds" id="worlds" aria-label="Societies"></nav>' +
-    '<div class="top-actions"><button class="mode-chip" id="modeChip" data-act="settings" title="How the model agents think"></button><button class="btn ghost" data-act="export-society" title="Save the society you are in as a file">⬇ Export</button><button class="btn ghost" data-act="import-society" title="Open a society from a file">⬆ Import</button><button class="btn ghost" data-act="guide" data-id="learner">📘 Guides</button><button class="btn ghost" data-act="settings">⚙️ Settings</button></div></header>' +
+    '<div class="top-actions"><button class="mode-chip" id="modeChip" data-act="settings" title="How the model agents think"></button><button class="btn ghost" data-act="export-society" title="Save the society you are in as a file">⬇ Export</button><button class="btn ghost" data-act="import-society" title="Open a society from a file">⬆ Import</button><button class="btn ghost" id="readAloudBtn" data-act="read-aloud" aria-pressed="false" title="Read aloud: click any words to hear them, and point at a button to hear what it is">🔊 Read aloud</button><button class="btn ghost" data-act="guide" data-id="learner">📘 Guides</button><button class="btn ghost" data-act="settings">⚙️ Settings</button></div></header>' +
     '<div class="mobile-tabs" id="mobileTabs"></div><div class="banners" id="banners"></div>' +
     '<main class="layout"><section class="col left" id="colLeft" aria-label="Question and inside"></section><section class="col center" id="colCenter" aria-label="Stage"></section><section class="col right" id="colRight" aria-label="Trace"></section></main>' +
     '<button class="fab" id="helperFab" data-act="helper">🤔 Helper</button><div id="drawerHost"></div>';
@@ -7148,6 +7161,16 @@ function renderSettings() {
   }
   if (p !== "none") h += moreModelsHTML(st);
   h += '<div class="section"><h3>How programs run here</h3><p class="small">' + esc(Runtime.note) + ' Drawings are Logo, read by a small interpreter, so they never run as JavaScript.</p></div>';
+  {
+    const voices = SpeechUI.voices(), rate = +st.speechRate || 1;
+    h += '<div class="section"><h3>Speech</h3>' + (SpeechUI.canSpeak() ?
+      '<label class="row small nowrap-check"><input type="checkbox" data-bind="read-aloud"' + (st.readAloud ? " checked" : "") + '><span>Read aloud: click any words to hear them, and point at a button to hear what it is (also the 🔊 button at the top)</span></label>' +
+      '<div class="form-grid"><label for="voiceSel">Voice</label><select class="field" id="voiceSel" data-bind="speech-voice"><option value="">The browser’s usual voice</option>' + voices.map(v => '<option value="' + esc(v.name) + '"' + (v.name === st.voice ? " selected" : "") + '>' + esc(v.name + " (" + v.lang + ")") + '</option>').join("") + '</select>' +
+      '<label for="rateIn">Speed</label><div class="row"><input type="range" id="rateIn" min="0.6" max="1.4" step="0.1" value="' + rate + '" data-bind="speech-rate" aria-label="Speaking speed"><button class="btn tiny" data-act="speech-test">🔊 Try it</button></div></div>' :
+      '<p class="hint">This browser can\'t read aloud.</p>') +
+      '<label class="row small nowrap-check"><input type="checkbox" data-bind="speech-mic"' + (st.micButtons !== false ? " checked" : "") + '><span>Show a 🎤 by the box you are typing in, to talk instead of typing</span></label>' +
+      (SpeechUI.canListen() ? '<p class="hint">The Helper\'s 🎤 asks by talking, and its answer is read aloud. In Chrome and Edge, what you say is sent to Google or Microsoft to be turned into words.</p>' : '<p class="hint">This browser can\'t listen. <button class="btn tiny ghost" data-act="speech-help">How to talk instead of typing anyway</button></p>') + '</div>';
+  }
   h += '<div class="section"><h3>Guides</h3><div class="row"><button class="btn" data-act="guide" data-id="learner">📘 For learners</button><button class="btn" data-act="guide" data-id="teacher">📕 For teachers</button></div></div>';
   h += '<div class="section"><h3>The safety preamble</h3><p class="hint">This fixed text starts every model call, so every agent writes for young people.</p><pre class="box">' + esc(Prompts.PREAMBLE) + '</pre></div>';
   const off = savingOff();
@@ -7206,7 +7229,7 @@ function renderHelper() {
   host.innerHTML = '<div class="drawer" role="dialog" aria-label="Helper"><div class="dh"><h3>🤔 Helper</h3><button class="btn tiny ghost" data-act="helper-clear">Clear</button><button class="icon-btn" data-act="helper" aria-label="Close">✕</button></div><div class="log" id="helperLog">' +
     '<div class="hmsg ai">I can read your society, the last run and your scenarios, but I can\'t change anything. I\'ll mostly ask questions. Here are some to start with:</div><div class="chips">' + (s.openers || []).map(q => '<button data-act="helper-ask" data-text="' + esc(q) + '">' + esc(q) + '</button>').join("") + '</div>' +
     chat.map(m => m.who === "you" ? '<div class="hmsg you">' + esc(m.text) + '</div>' : '<div class="hmsg ai">' + md(m.text) + '</div>').join("") + (app.ui.helperBusy ? '<div class="hmsg ai">…</div>' : "") +
-    '</div><div class="ask"><textarea class="field" id="helperInput" placeholder="Ask the helper…" rows="2" aria-label="Your question"></textarea><button class="btn primary" data-act="helper-send"' + (app.ui.helperBusy ? " disabled" : "") + '>Ask</button></div></div>';
+    '</div><div class="ask"><textarea class="field" id="helperInput" placeholder="Ask the helper…" rows="2" aria-label="Your question"></textarea><button class="btn mic" data-act="helper-mic" title="Ask by talking: the answer is read to you" aria-label="Ask by talking">🎤</button><button class="btn primary" data-act="helper-send"' + (app.ui.helperBusy ? " disabled" : "") + '>Ask</button></div></div>';
   const log = $("#helperLog");
   if (log) log.scrollTop = log.scrollHeight;
 }
@@ -7237,6 +7260,8 @@ async function askHelper(q) {
   app.ui.helperBusy = false;
   save();
   renderHelper();
+  if (app.ui.helperVoice || app.settings.readAloud) { const last = $("#helperLog .hmsg.ai:last-child"); SpeechUI.speak(text, last); }   // asked by talking: hear the answer
+  app.ui.helperVoice = false;
 }
 function runOrLastTrace(id) { const rec = app.runs[id]; return rec ? rec.api.run.trace : (app.traces[id] || []); }
 
@@ -7257,6 +7282,7 @@ const GUIDES = {
     "<h4>Rules</h4><p>In Look inside, every rule reads as a sentence: <i>When the Artist responds, send its words to the Renderer.</i> The tick in front switches a rule on or off. <b>✎ Edit</b> shows its parts: who it's from, a condition (like <i>if its data says pass is false</i>), what to send (words, data, picture) and who to. A rule can come from <b>You</b>, so the start reaches more than one agent, and a rule can wait for <b>the end of the run</b>, like the one that sends Story Chain's Book to the Editor.</p>" +
     "<h4>Agents</h4><p><b>AI agents</b> follow instructions you can change in their editor. <b>Programmed agents</b> are pseudocode: numbers in green { } are settings you can change; edit a line and the translator turns it into JavaScript (<b>Peek under the hood</b> shows both). <b>Scenarios</b> are tests for a program: an input and what it should answer; a red one shows what went wrong, and you can save any turn from the trace as a new one. Some agents <b>collect</b>: they wait for several messages, then answer them all at once; an AI agent that collects sees all their pictures side by side. An agent called <b>You</b> is you. Each agent's editor shows its <b>Connections</b>: who can send it messages, and its own rules. Click an agent's emoji, at the top of its editor, to choose another.</p>" +
     "<h4>Saving and sharing</h4><p>Everything is saved in this browser as you go, so refreshing the tab keeps it all. It stays in this browser on this computer. <b>⬇ Export</b> at the top saves the society you are in as a file, to keep, move or give a friend; <b>⬆ Import</b> opens one. A grown-up can switch saving off in ⚙️ Settings; then the work is gone when the tab closes. <b>Delete this society</b>, in Look inside, deletes one of your own societies from this browser for good. Your own societies come after the microworlds, under <b>Yours</b>: the four you used last, and <b>☰ All yours</b> for the rest, where you can also tick several and delete them at once.</p>" +
+    "<h4>Listening and talking</h4><p>Press <b>🔊 Read aloud</b> at the top, then click any words to hear them; point at a button to hear what it is. Press it again, or Esc, to stop. To talk instead of typing, click in a box and press the <b>🎤</b> beside it; in the Helper, the 🎤 asks your question and reads the answer to you. If your browser can't listen, the 🎤 shows how your computer can do it (on Windows, press the Windows key + H).</p>" +
     "<h4>The trace</h4><p>Every message is in the <b>Trace</b>. Open one to see what the agent got and what it said. <b>Show full technical details</b> shows exactly what a model was sent and what came back. A <b>…</b> opens text that was cut short, and a picture opens full size when you click it. After a run, <b>Replay</b> steps through it one message at a time.</p>" +
     "<h4>Logo</h4><p>Agents that draw write <b>Logo</b>: <code>FORWARD 50</code>, <code>RIGHT 90</code>, and <code>REPEAT 4 [FORWARD 50 RIGHT 90]</code> for a square. In Telephone, “Start with a drawing” lets you write Logo yourself, and you can change any drawing in the trace and see it drawn.</p>" +
     "<h4>Models</h4><p>A grown-up chooses the models in ⚙️ Settings: Gemini Nano (free, built into Chrome), or Claude, Gemini or OpenAI with a key. If they add more than one, you choose which agent uses which on the stage. Each microworld's question card says which model suits it.</p>" +
@@ -7341,6 +7367,7 @@ async function importSocietyText(text) {
   save();
   renderAll();
   const left = society.agents.filter(a => a.kind === "program" && a.status !== "ok").length;
+  try { window.scrollTo(0, 0); } catch (e) { /* no scrolling here */ }
   toast((replace ? "Replaced “" : "Imported “") + society.title + "”: " + society.agents.length + " agents, " + society.rules.length + " rules." + (left ? " " + left + " program" + (left === 1 ? " needs" : "s need") + " translating." : ""));
   return society;
 }
@@ -7379,7 +7406,7 @@ async function traceDocument(s, trace, run) {
 
 /* ===== SECTION: ACTIONS (clicks) ===== */
 const ACTIONS = {
-  world(t) { app.activeId = t.dataset.id; touch(app.activeId); app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); save(); renderAll(); },
+  world(t) { showSociety(t.dataset.id); },
   look() { app.ui.lookInside = !app.ui.lookInside; if (window.innerWidth <= 820) app.ui.mobileTab = app.ui.lookInside ? "inside" : "stage"; renderWorlds(); renderLeft(); },
   mtab(t) { app.ui.mobileTab = t.dataset.id; renderAll(); window.scrollTo && window.scrollTo(0, 0); },
   run() {
@@ -7613,6 +7640,19 @@ const ACTIONS = {
   guide(t) { openGuide(t.dataset.id); },
   helper() { app.ui.helperOpen = !app.ui.helperOpen; renderHelper(); if (app.ui.helperOpen) setTimeout(() => { const i = $("#helperInput"); if (i && window.innerWidth > 820) i.focus(); }, 30); },
   "helper-ask"(t) { askHelper(t.dataset.text); },
+  "read-aloud"() {
+    app.settings.readAloud = !app.settings.readAloud;
+    SpeechUI.apply(); save();
+    const msg = app.settings.readAloud ? "Read aloud is on. Click any words to hear them, and point at a button to hear what it is. Esc stops." : "Read aloud is off.";
+    toast(msg); if (app.settings.readAloud) SpeechUI.speak(msg);
+  },
+  "helper-mic"() {
+    const i = $("#helperInput"); if (!i) return;
+    i.focus();
+    SpeechUI.listen(i, { once: true, onDone: text => { if (text && !app.ui.helperBusy) { i.value = ""; app.ui.helperVoice = true; askHelper(text); } } });
+  },
+  "speech-help"() { SpeechUI.help(SpeechUI.canListen() ? "error" : "none"); },
+  "speech-test"() { SpeechUI.speak("Hello! This is how I sound."); },
   "helper-send"() { const i = $("#helperInput"); if (i) { const q = i.value; i.value = ""; askHelper(q); } },
   "helper-clear"() { app.helperChat[app.activeId] = []; save(); renderHelper(); },
   "banner-close"(t) { clearBanner(t.dataset.id); if (t.dataset.id === "save") { app.saveError = ""; renderBanners(); } },
@@ -7670,12 +7710,18 @@ function openNewSociety() {
     const name = util.cleanName($("#newSocName", m.body).value, 60) || "My society";
     const ex = b.dataset.new === "example" && Seeds.EXAMPLES.find(x => x.id === b.dataset.id);
     const c = b.dataset.new === "blank" ? Seeds.makeBlank(name) : ex ? Object.assign(ex.make(), name !== "My society" ? { title: name } : {}) : Object.assign(clone(s), { title: name });
-    if (ex && name === "My society") {   // an example you have already made: open yours, or make another
-      const have = byRecent(yoursOf().filter(id => id === ex.id || id.indexOf(ex.id + "-") === 0 || app.societies[id].title === c.title));
+    if (ex && name === "My society") {   // an example chosen again: an unchanged copy just starts afresh; a changed one asks
+      const have = byRecent(yoursOf().filter(id => id === ex.id || id.indexOf(ex.id + "-") === 0 || app.societies[id].title.indexOf(c.title) === 0));
+      const asMade = have.find(id => sameAsExample(app.societies[id], c));
+      if (asMade) {
+        const r = app.runs[asMade]; if (r) r.api.stop();
+        delete app.runs[asMade]; delete app.traces[asMade]; delete app.prevStrips[asMade];
+        m.close(); showSociety(asMade); toast(c.title + ": a fresh start."); return;
+      }
       if (have.length) {
-        const pick = await uiChoose("You already have " + (have.length === 1 ? "“" + app.societies[have[0]].title + "”" : have.length + " societies made from " + c.title) + ". Open yours, or make another one?", { title: c.title, choices: [["new", "Make another"], ["open", have.length === 1 ? "Open mine" : "Open the latest", "primary"]] });
+        const pick = await uiChoose("You changed the " + c.title + " you made from this example. Start a fresh one from the example (your changed one stays under Yours), or go back to your changed one?", { title: c.title, choices: [["changed", "Go back to my changed one"], ["new", "Start a fresh one", "primary"]] });
         if (!pick) return;
-        if (pick === "open") { app.activeId = have[0]; touch(have[0]); m.close(); save(); renderAll(); return; }
+        if (pick === "changed") { m.close(); showSociety(have[0]); return; }
       }
     }
     c.title = uniqueTitle(c.title);
@@ -7686,6 +7732,7 @@ function openNewSociety() {
     m.close();
     rerunAll().then(renderAll);
     save(); renderAll();
+    try { window.scrollTo(0, 0); } catch (e) { /* no scrolling here */ }
     toast(b.dataset.new === "blank" ? "Your society. Look inside to give it a question, agents and rules." : ex ? c.title + ": yours to run and change." : "A copy of " + s.title + ", to change as you like.");
   });
 }
@@ -7703,7 +7750,7 @@ function openYours() {
   m.body.addEventListener("change", update);
   m.body.addEventListener("click", async ev => {
     const open = ev.target.closest("[data-open]");
-    if (open) { app.activeId = open.dataset.open; touch(app.activeId); app.ui.replay = null; m.close(); save(); renderAll(); return; }
+    if (open) { m.close(); showSociety(open.dataset.open); return; }
     if (ev.target.closest("[data-tick-all]")) { const all = Array.from(m.body.querySelectorAll("[data-tick]")); const on = all.some(x => !x.checked); all.forEach(x => { x.checked = on; }); update(); return; }
     if (ev.target.closest("[data-del-ticked]")) {
       const ids = ticked();
@@ -7869,6 +7916,10 @@ async function handleBind(t, evt) {
     case "key": { app.settings.keys[t.dataset.id] = String(t.value).trim(); save(); return; }
     case "model": { const v = util.cleanName(t.value, 80); if (v) { app.settings.models[t.dataset.id] = v; save(); if (change) renderSettings(); } return; }
     case "remember": { app.settings.rememberKeys = t.checked; save(); return; }
+    case "read-aloud": app.settings.readAloud = t.checked; SpeechUI.apply(); save(); return;
+    case "speech-voice": app.settings.voice = t.value; save(); return;
+    case "speech-rate": app.settings.speechRate = Math.max(0.5, Math.min(2, +t.value || 1)); save(); return;
+    case "speech-mic": app.settings.micButtons = t.checked; SpeechUI.apply(); save(); return;
     case "saving": {
       if (!t.checked) {
         if (!(await uiConfirm("Stop saving your work in this browser? What is saved now will be deleted, and from now on your work is gone when you close or refresh this tab. (⬇ Export makes a copy as a file.)", { title: "Turn saving off?", ok: "Stop saving", danger: true }))) { t.checked = true; return; }
@@ -7922,6 +7973,195 @@ async function handleBind(t, evt) {
   }
 }
 
+
+/* ===== SECTION: SPEECH (hearing any words, and talking instead of typing) ===== */
+const SpeechUI = (() => {
+  const synth = () => (window.speechSynthesis && window.SpeechSynthesisUtterance ? window.speechSynthesis : null);
+  const Recognizer = () => window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  const TEXT_BLOCKS = "p, li, h1, h2, h3, h4, blockquote, pre, td, th, .hmsg, .hint, .confirm-text, .yt-head, .ln, .q";
+  const INTERACTIVE = "button, a, input, textarea, select, summary, label, [data-act], [contenteditable], .zoomable";
+  let speakingEl = null, rec = null, hoverEl = null, hoverTimer = null, lastPointer = 0, micField = null, micState = "unknown";
+  const canSpeak = () => !!synth();
+  const canListen = () => !!Recognizer();
+  // What is read: the words, without emoji or Markdown marks.
+  function plain(text) {
+    return String(text == null ? "" : text).replace(/\p{Extended_Pictographic}|\u200D|\uFE0F/gu, " ").replace(/[*_`#|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 4000);
+  }
+  function pickVoice() {
+    const sy = synth(), voices = sy && sy.getVoices ? sy.getVoices() : [];
+    const lang = (navigator.language || "en").slice(0, 2).toLowerCase();
+    return voices.find(v => v.name === app.settings.voice) || voices.find(v => v.default && (v.lang || "").toLowerCase().indexOf(lang) === 0) || voices.find(v => (v.lang || "").toLowerCase().indexOf(lang) === 0) || null;
+  }
+  function stop() {
+    const sy = synth();
+    if (sy) sy.cancel();
+    if (speakingEl) speakingEl.classList.remove("speaking");
+    speakingEl = null;
+  }
+  function speak(text, el) {
+    const sy = synth(), t = plain(text);
+    stop();
+    if (!sy || !t) return false;
+    const u = new window.SpeechSynthesisUtterance(t);
+    u.rate = +app.settings.speechRate || 1;
+    const v = pickVoice(); if (v) u.voice = v;
+    if (el) { speakingEl = el; el.classList.add("speaking"); }
+    u.onend = u.onerror = () => { if (el && speakingEl === el) { el.classList.remove("speaking"); speakingEl = null; } };
+    sy.speak(u);
+    return true;
+  }
+  const labelOf = el => { const t = plain(el.textContent); return t.length > 1 ? t : plain(el.getAttribute("aria-label") || el.title || el.value || ""); };
+  // The top bar's 🔊 button and the page's look follow the setting.
+  function apply() {
+    document.body.classList.toggle("read-aloud", !!app.settings.readAloud);
+    const b = document.getElementById("readAloudBtn");
+    if (b) { b.style.display = canSpeak() ? "" : "none"; b.classList.toggle("read-on", !!app.settings.readAloud); b.setAttribute("aria-pressed", app.settings.readAloud ? "true" : "false"); }
+    if (!app.settings.readAloud) stop();
+    if (app.settings.micButtons === false) hideMic();
+  }
+  // ---- talking instead of typing ----
+  const dictatable = t => !!t && t.id !== "helperInput" && !t.readOnly && !t.disabled && (t.tagName === "TEXTAREA" || (t.tagName === "INPUT" && (t.type === "text" || t.type === "search" || t.type === "")));
+  function micButton() {
+    let b = document.getElementById("micFloat");
+    if (!b) {
+      b = document.createElement("button");
+      b.id = "micFloat"; b.className = "mic-float"; b.type = "button"; b.textContent = "🎤";
+      b.title = "Talk instead of typing"; b.setAttribute("aria-label", "Talk instead of typing");
+      b.addEventListener("mousedown", e => e.preventDefault());   // the box keeps its cursor
+      b.addEventListener("click", () => { if (micField) listen(micField); });
+      document.body.appendChild(b);
+    }
+    return b;
+  }
+  let follow = null;
+  function placeMic() {
+    const b = document.getElementById("micFloat"), f = micField;
+    if (!b || !f) return;
+    if (!f.isConnected || (document.activeElement !== f && !rec)) { hideMic(); return; }
+    const r = f.getBoundingClientRect(), inside = r.height >= 44;
+    b.style.left = Math.round(inside ? r.right - 40 : r.right + 4) + "px";
+    b.style.top = Math.round(inside ? r.bottom - 40 : r.top + (r.height - 34) / 2) + "px";
+    b.style.zIndex = f.closest(".modal-back") ? "70" : "55";   // under a dialog, unless its box is in one
+  }
+  function showMic(field) {
+    if (app.settings.micButtons === false) return;
+    micField = field;
+    micButton().style.display = "";
+    placeMic();
+    if (!follow) follow = setInterval(placeMic, 250);
+  }
+  function hideMic() {
+    const b = document.getElementById("micFloat");
+    if (b && !rec) { b.style.display = "none"; clearInterval(follow); follow = null; }
+  }
+  function setListening(on) {
+    const f = document.getElementById("micFloat"); if (f) f.classList.toggle("on", on);
+    document.querySelectorAll("[data-act=helper-mic]").forEach(x => x.classList.toggle("on", on));
+  }
+  function listen(field, opts) {
+    opts = opts || {};
+    if (rec) { rec.stop(); return; }
+    const R = Recognizer();
+    if (!R) { help("none"); return; }
+    if (micState === "denied") { help("denied"); return; }
+    stop();   // don't listen to ourselves
+    const r = new R();
+    rec = r;
+    r.lang = navigator.language || "en-US"; r.interimResults = true; r.continuous = !opts.once; r.maxAlternatives = 1;
+    const a = field.selectionStart != null ? field.selectionStart : field.value.length, z = field.selectionEnd != null ? field.selectionEnd : a;
+    const before = field.value.slice(0, a), after = field.value.slice(z), gap = before && !/\s$/.test(before) ? " " : "";
+    let finals = "";
+    r.onresult = e => {
+      let interim = "";
+      for (let i = e.resultIndex || 0; i < e.results.length; i++) {
+        const res = e.results[i], t = res[0] ? res[0].transcript : "";
+        if (res.isFinal) finals += (finals && !/^\s/.test(t) ? " " : "") + t; else interim += t;
+      }
+      const said = (finals + (interim ? " " + interim : "")).replace(/\s+/g, " ").trim();
+      field.value = before + (said ? gap + said : "") + after;
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    r.onerror = e => {
+      const err = (e && e.error) || "";
+      if (err === "not-allowed" || err === "service-not-allowed") { micState = "denied"; help("denied"); }
+      else if (err === "no-speech") toast("I didn't hear anything. Press 🎤 and try again.");
+      else if (err === "network") help("network");
+      else if (err !== "aborted") help("error", err);
+    };
+    r.onend = () => {
+      if (rec === r) rec = null;
+      setListening(false);
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      if (opts.onDone) opts.onDone(finals.replace(/\s+/g, " ").trim());
+    };
+    try { r.start(); setListening(true); }
+    catch (e) { rec = null; help("error", e.message); }
+  }
+  // When listening can't work here: how to use the computer's own dictation instead.
+  function osGuess() {
+    const ua = navigator.userAgent || "", p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+    if (/Android|iPhone|iPad|iPod/i.test(ua) || (/Mac/.test(p) && navigator.maxTouchPoints > 1)) return "mobile";
+    if (/CrOS/.test(ua)) return "chromeos";
+    if (/Win/i.test(p) || /Windows/.test(ua)) return "windows";
+    if (/Mac/i.test(p)) return "mac";
+    return "";
+  }
+  function help(reason, detail) {
+    const why = reason === "none" ? "This browser can't listen and type what you say." :
+      reason === "denied" ? "This page isn't allowed to use the microphone." :
+      reason === "network" ? "Listening needs the internet, and it couldn't connect." :
+      "Listening didn't work here" + (detail ? " (" + detail + ")" : "") + ".";
+    const ways = [
+      ["windows", "Windows", "click in the box, then press the <b>Windows key + H</b>, and speak. The words appear in the box."],
+      ["mac", "Mac", "click in the box, then press the <b>🌐 Globe key (or Fn) twice</b>, or choose <b>Edit → Start Dictation</b>."],
+      ["chromeos", "Chromebook", "turn on <b>Dictation</b> in Settings → Accessibility, then click in the box and press <b>Search + D</b>."],
+      ["mobile", "iPad, iPhone or Android", "tap the <b>🎤 microphone on the keyboard</b>."]
+    ];
+    const os = osGuess();
+    ways.sort((x, y) => (y[0] === os) - (x[0] === os));
+    openModal({ title: "🎤 Talking instead of typing", body: '<p>' + esc(why) + '</p>' +
+      (reason === "denied" ? '<p>To let this page listen: click the icon just left of the web address, allow the <b>Microphone</b>, then reload the page.</p>' : "") +
+      '<p><b>You can still talk instead of typing.</b> Your computer can type what you say into any box, here or anywhere else:</p><ul class="speech-ways">' +
+      ways.map(w => '<li' + (w[0] === os ? ' class="this-one"' : "") + '><b>' + esc(w[1]) + (w[0] === os ? " (this computer)" : "") + ':</b> ' + w[2] + '</li>').join("") + '</ul>' +
+      '<p class="hint">In Chrome and Edge, what you say is sent to Google or Microsoft to be turned into words. A grown-up can turn the 🎤 buttons off in ⚙️ Settings, under Speech.</p>' +
+      '<div class="row end"><button class="btn primary" data-close>OK</button></div>' });
+  }
+  function wire() {
+    document.addEventListener("pointerdown", () => { lastPointer = Date.now(); }, true);
+    // Read aloud: a click on words reads them (a second click stops); pointing at a button, or Tab to it, says what it is.
+    document.addEventListener("click", e => {
+      if (!app.settings.readAloud || !e.target.closest || e.target.closest(INTERACTIVE) || e.target.closest(".mic-float")) return;
+      let el = e.target.closest(TEXT_BLOCKS);
+      if (!el && e.target.nodeType === 1 && plain(e.target.textContent).length < 600) el = e.target;
+      if (!el || el === document.body || el.id === "root") return;
+      if (speakingEl === el) { stop(); return; }
+      speak(el.innerText || el.textContent, el);
+    }, true);
+    document.addEventListener("mouseover", e => {
+      if (!app.settings.readAloud || !e.target.closest) return;
+      const el = e.target.closest(INTERACTIVE);
+      if (el === hoverEl) return;
+      hoverEl = el; clearTimeout(hoverTimer);
+      if (el && el.tagName !== "TEXTAREA" && el.tagName !== "INPUT") hoverTimer = setTimeout(() => speak(labelOf(el)), 700);
+    });
+    document.addEventListener("focusin", e => {
+      const t = e.target;
+      if (app.settings.readAloud && t.matches && t.matches("button, a, select, summary, [data-act]") && Date.now() - lastPointer > 500) speak(labelOf(t));
+      if (dictatable(t)) showMic(t);
+    });
+    document.addEventListener("focusout", () => { setTimeout(() => { if (!dictatable(document.activeElement)) hideMic(); }, 200); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") { stop(); if (rec) rec.abort(); } });
+    window.addEventListener("scroll", placeMic, { passive: true });
+    try {
+      if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({ name: "microphone" }).then(st => { micState = st.state; st.onchange = () => { micState = st.state; }; }).catch(() => {});
+    } catch (e) { /* the browser can't say */ }
+    const sy = synth();
+    if (sy && "onvoiceschanged" in sy) sy.onvoiceschanged = () => { if (document.getElementById("voiceSel")) renderSettings(); };
+    apply();
+  }
+  return { canSpeak, canListen, plain, speak, stop, apply, listen, help, wire, voices: () => { const sy = synth(); return sy && sy.getVoices ? sy.getVoices() : []; }, listening: () => !!rec };
+})();
+
 /* ===== SECTION: BOOT ===== */
 function wire() {
   document.addEventListener("click", e => {
@@ -7948,6 +8188,7 @@ function wire() {
   });
   let rt = null;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderLeft, 200); });
+  SpeechUI.wire();
 }
 function setFavicon() {
   try {
@@ -7979,7 +8220,7 @@ async function boot() {
   if (app.settings.connection === "keyless" && ENV.chatArtifact) Adapters.probeAdapter(getAdapter()).then(r => { if (!r.ok) handleCallError({ errorKind: r.kind || "signedout" }); });
   window.__akReady = true;
 }
-window.__ak = { app, ENV, AK, soc, openYours, uiChoose, yoursShown, connState, setConnState, testConnection, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, adapterFor, modelRefs, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
+window.__ak = { app, ENV, AK, soc, SpeechUI, sameAsExample, openYours, uiChoose, yoursShown, connState, setConnState, testConnection, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, adapterFor, modelRefs, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
 window.__akBoot = boot();
 })();
 </script>

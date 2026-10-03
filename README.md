@@ -51,6 +51,10 @@ program keeps track of who has what. **Artist and Critic**, Ken Kahn's society: 
 Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper
 keeps the scores. All five are also in `examples/`, to import.
 
+**Speech:** 🔊 Read aloud reads any words you click, and says what a button is when you point at it. A 🎤
+by the box you are typing in lets you talk instead, and the Helper can be asked aloud and answers aloud. Where
+the browser can't listen, the 🎤 explains the computer's own dictation (on Windows, the Windows key + H).
+
 Settings can hold more than one model. Then each AI agent can use the one that suits its job:
 Gemini Nano (free, in Chrome) where a small model is enough, and a stronger one for drawing and
 seeing pictures.

@@ -69,25 +69,28 @@ export default function (T, { modelWindow, pageWindow }) {
     await pw.__ak.importSocietyText(Society.exportSociety(Seeds.makeTelephone(), null));
     return pw.__ak.soc().id === "telephone-imported" && pw.__ak.soc().title === "Telephone (2)" && pw.__ak.app.societies.telephone.title === "Telephone";
   });
-  T.test("＋ New society: an example you've made already asks: open yours, or make another, named “… (2)”", ["Seeds"], async () => {
+  T.test("＋ New society: an example you haven't changed starts afresh; a changed one asks, in plain words", ["Seeds"], async () => {
     const pw = await boot();
-    const pick = async choice => {
+    const choose = async () => {
       pw.document.querySelector('[data-act="new-society"]').click();
       last(pw, ".modal-body").querySelector('[data-new="example"][data-id="tictactoe"]').click();
-      await sleep(20);
-      const m = last(pw, ".modal-body");
-      if (!choice) return;
-      const q = m.querySelector(".confirm-text") && m.querySelector(".confirm-text").textContent;
-      Array.from(m.querySelectorAll("[data-choice]")).find(b => b.textContent === choice).click();
-      await sleep(20);
-      return q;
+      await sleep(30);
     };
-    await pick(null);
-    const first = pw.__ak.soc().id === "tictactoe";
+    const answer = async choice => { const m = last(pw, ".modal-body"); const q = m.querySelector(".confirm-text").textContent; Array.from(m.querySelectorAll("[data-choice]")).find(b => b.textContent === choice).click(); await sleep(30); return q; };
+    const copies = () => pw.__ak.app.order.filter(id => /^tictactoe/.test(id)).length;
+    await choose();
+    const first = pw.__ak.soc().id === "tictactoe" && pw.__ak.sameAsExample(pw.__ak.soc(), Seeds.makeTicTacToe());
+    pw.__ak.app.traces.tictactoe = [{ kind: "run-start", round: 1 }];
     pw.document.querySelector('.world[data-id="story"]').click();
-    const q = await pick("Open mine");
-    const opened = pw.__ak.soc().id === "tictactoe" && pw.__ak.app.order.filter(id => /^tictactoe/.test(id)).length === 1;
-    await pick("Make another");
-    return first && /You already have “Tic-Tac-Toe”/.test(q) && opened && pw.__ak.soc().title === "Tic-Tac-Toe (2)" && pw.__ak.app.order.filter(id => /^tictactoe/.test(id)).length === 2;
+    await choose();
+    const fresh = pw.__ak.soc().id === "tictactoe" && copies() === 1 && !pw.__ak.app.traces.tictactoe && !last(pw, ".modal-body .confirm-text");
+    pw.__ak.soc().agents.find(a => a.id === "rival").instructions += " Be very cheeky.";
+    pw.document.querySelector('.world[data-id="story"]').click();
+    await choose();
+    const q = await answer("Go back to my changed one");
+    const back = pw.__ak.soc().id === "tictactoe" && copies() === 1;
+    await choose();
+    await answer("Start a fresh one");
+    return first && fresh && /You changed the Tic-Tac-Toe you made from this example/.test(q) && back && pw.__ak.soc().title === "Tic-Tac-Toe (2)" && copies() === 2;
   });
 }
