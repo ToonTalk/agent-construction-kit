@@ -432,7 +432,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.6.0";
+AK.VERSION = "1.7.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -1862,7 +1862,7 @@ const PREAMBLE =
 const LOGO_HELP =
   "Write the drawing in Logo, the turtle language. Commands:\n" +
   "FORWARD 50 (or FD 50), BACK 50 (BK), RIGHT 90 (RT), LEFT 90 (LT), PENUP (PU), PENDOWN (PD), HOME,\n" +
-  "SETXY 100 -50 (go straight to a point), SETHEADING 90 (SETH: 0 is up, 90 is right),\n" +
+  "SETXY 100 -50 (go straight to a point; with the pen down it draws a line on the way, so PENUP first to jump), SETHEADING 90 (SETH: 0 is up, 90 is right),\n" +
   "SETPENCOLOR \"red (put a quote mark before a color name), SETPENSIZE 4,\n" +
   "DOT 20 (a filled dot 20 across, in the pen color, where the turtle is), CIRCLE 30 (a circle of radius 30 around the turtle), LABEL [some words] (writes the words where the turtle is).\n" +
   "REPEAT 4 [FORWARD 100 RIGHT 90] runs the commands in the brackets 4 times. Inside a REPEAT, REPCOUNT says which time it is: 1, 2, 3 …\n" +
@@ -2406,6 +2406,14 @@ const Pretend = (() => {
         if (!best) return "My trail mix is fine.\n" + JSON.stringify(none);
         const give = items.reduce((a, b) => (mine[b] > mine[a] ? b : a));
         return "I'd like some " + best.it + ".\n" + JSON.stringify({ partner: best.who, give: 30, giveWhat: give, get: 30, getWhat: best.it });
+      } },
+    coach: { id: "coach", title: "Pretend art coach", about: "Used by the tests. It scores a picture 1 point plus 1 for every 20 lines, up to 10 (a program it reads, 1 plus 1 for every 40 letters), and always suggests one more color. Told only what will be drawn, it says “Ready.”",
+      reply: ctx => {
+        const pic = (ctx.renders || [])[0];
+        const said = String((ctx.message && ctx.message.text) || "");
+        if (!pic && /asked to draw/.test(said)) return "Ready.";
+        const score = Math.min(10, pic ? 1 + Math.floor((pic.segments || 0) / 20) : 1 + Math.floor(said.length / 40));
+        return score + "/10. The shapes are clear. Try adding one more color.";
       } },
     generic: { id: "generic", title: "Pretend agent", about: "This agent has no pretend program of its own, so in pretend mode it just repeats the start of what it was told.",
       reply: genericReply }
@@ -3334,7 +3342,7 @@ libAgent({
     { id: "s1", name: "a rating with a reason", input: { text: "4, the ending was funny" }, expect: { rating: 4, say: "Version 1: ★★★★ (4)" } },
     { id: "s2", name: "it remembers earlier ratings", input: { text: "5!", memory: [3] }, expect: { ratings: [3, 5] } },
     { id: "s3", name: "no number", input: { text: "great!" }, expect: { sayContains: "Please give a number" } },
-    { id: "s4", name: "a number that's too big", input: { text: "10 out of 10" }, expect: { sayContains: "Please give a number" } }
+    { id: "s4", name: "a number that's too big: {=highest+1}", input: { text: "{=highest+1}!" }, expect: { sayContains: "Please give a number" } }
   ]
 });
 libAgent({
@@ -4331,11 +4339,52 @@ function makeBarter() {
     ]
   };
 }
+// Ken Kahn's own Artist and Critic society (one of the first built with the kit), with what its trace showed:
+// the Critic now knows what was asked for, the Artist hears from the Renderer only when its program fails, and a
+// Scorekeeper keeps the Critic's scores, so “Does it get better?” has something to look at.
+const PAINTER_INSTRUCTIONS = "You are an avant-garde artist who draws in Logo. You get something to draw, and then, after each picture, a Critic's suggestion. If you agree with the suggestion, follow it. If you don't, make your own new version of your last drawing. Reply with only the Logo program.\n" + LOGO_HELP;
+const COACH_INSTRUCTIONS = "You are an art critic who loves giving constructive criticism. First you are told what the Artist was asked to draw: then reply just “Ready.” After that you see each new picture. Start your reply with a score from 1 to 10 for how well the picture shows what was asked for and how artistic it is, like “7/10”. Then, in one sentence, say what works. Then suggest one specific change, only one, so you can see whether the Artist follows it. Talk about the picture, not about Logo.";
+function makeArtCritic() {
+  const r = (id, from, to, extra) => Object.assign({ id, from, when: "always", send: "text", to, prefix: "", enabled: true }, extra || {});
+  const scores = programAgent("scorekeeper", "scorekeeper", { role: "remembers every score and shows them as stars" });
+  setParams(scores, { lowest: 1, highest: 10 });   // scores out of 10: the pseudocode's slots say so too
+  return {
+    kind: "agent-kit-society", schema: 1, id: "artcritic", title: "Artist and Critic", question: "Does it get better?",
+    intro: "The Artist draws in Logo and the Renderer makes the picture. The Critic, who knows what was asked for, scores it, says what works and suggests one change; the Artist follows it if it agrees. The Scorekeeper keeps the Critic's scores. Does the drawing get better? (Ken Kahn made the first version of this society.)",
+    questions: [
+      "Does it get better? Look at the pictures round by round, then at the Scorekeeper's stars. Do you agree with the Critic?",
+      "Is the Critic a fair judge of pictures drawn from its own advice?",
+      "Did the Artist follow every suggestion? Compare what it was sent with what it drew next.",
+      "Switch on: the Critic reads the program instead of seeing the picture. Is its advice better or worse?",
+      "Change the Critic's taste in its instructions, say to “you love simple shapes”. Where does the drawing go?"
+    ],
+    openers: ["What does the Critic know about what the Artist was asked to draw?", "Who decides what “better” means?", "What would the Artist do with no Critic?"],
+    roundAgent: "artist", roundLimit: 4,
+    starts: [{ id: "start", label: "What to draw", kind: "text", to: "artist", value: "lots of colorful flowers", examples: ["lots of colorful flowers", "a house by the sea", "a robot dancing", "a night sky full of stars"] }],
+    variants: [{ id: "reads", label: "The Critic reads the Logo program instead of seeing the picture", enable: ["a7"], disable: ["a3"], on: false }],
+    agents: [
+      { id: "artist", kind: "model", name: "Artist", emoji: "🧑‍🎨", role: "draws in Logo, and follows advice it agrees with", instructions: PAINTER_INSTRUCTIONS, outputFields: [], canSeeImages: false, history: "full", replyKind: "program", pretend: "artist" },
+      { id: "renderer", kind: "renderer", name: "Renderer", emoji: "🖼️", role: "runs the Logo program and makes the picture" },
+      { id: "critic", kind: "model", name: "Critic", emoji: "🧐", role: "scores each picture and suggests one change", instructions: COACH_INSTRUCTIONS, outputFields: [], canSeeImages: true, history: "full", replyKind: "prose", pretend: "coach" },
+      scores
+    ],
+    rules: [
+      r("a1", "you", "critic", { prefix: "The Artist was asked to draw:" }),
+      r("a2", "artist", "renderer"),
+      r("a3", "renderer", "critic", { send: "image" }),
+      r("a4", "renderer", "artist", { when: "data", field: "pass", op: "=", value: "false" }),
+      r("a5", "critic", "artist", { when: "text", word: "/10" }),
+      r("a6", "critic", "scorekeeper", { when: "text", word: "/10" }),
+      r("a7", "artist", "critic", { enabled: false, prefix: "The Artist's Logo program:" })
+    ]
+  };
+}
 const EXAMPLES = [
   { id: "evolution", make: makeEvolution, emoji: "🧬", about: "Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner. Needs a model that sees pictures well." },
   { id: "contemplative", make: makeContemplative, emoji: "🧘", about: "The same question to two AI agents: one just answers, the other pauses first on four contemplative principles. Which answer would you rather get? Any model will do." },
   { id: "tictactoe", make: makeTicTacToe, emoji: "⭕", about: "You play X against an AI. It only suggests moves; a Referee program keeps the board, refuses illegal moves and decides who won. Any model will do: weaker ones break the rules more often, which is the point." },
-  { id: "barter", make: makeBarter, emoji: "🥜", about: "Three AI traders, each with one trail mix ingredient, take turns to barter. A Ledger program keeps track of who has what and refuses offers that don't add up. Any model that can fill in a few fields; a different model for each trader is more interesting." }
+  { id: "barter", make: makeBarter, emoji: "🥜", about: "Three AI traders, each with one trail mix ingredient, take turns to barter. A Ledger program keeps track of who has what and refuses offers that don't add up. Any model that can fill in a few fields; a different model for each trader is more interesting." },
+  { id: "artcritic", make: makeArtCritic, emoji: "🧑‍🎨", about: "Ken Kahn's society: an Artist draws in Logo, a Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper keeps the scores. Does it get better? Needs a model that sees pictures well." }
 ];
 // Free play: one AI agent and you. Everything else is added in Look inside.
 function makeBlank(title) {
@@ -4358,6 +4407,7 @@ const REPORTER_FIELDS = { "row-judge": [F_ROWS, F_COLS], "grid-judge": [F_ROWS, 
 const reporterFieldsFor = typeId => clone(REPORTER_FIELDS[typeId] || [F_ROWS, F_COLS, F_ROWLIST]);
 // Agent Kit 1.0 drew in JavaScript. Saved and imported societies that still have its words get the Logo versions.
 const V1_TEXTS = [
+  ["SETXY 100 -50 (go straight to a point), ", "SETXY 100 -50 (go straight to a point; with the pen down it draws a line on the way, so PENUP first to jump), "],   // 1.7.0: the Logo help says SETXY draws
   ["Commands you can use: forward(n), back(n), left(degrees), right(degrees), penUp(), penDown(), penColor('red'), penWidth(n), goTo(x, y), home(), setHeading(degrees), dot(size, 'color'), label('text').\nThe canvas is 512 by 512. The turtle starts in the middle (256, 256), facing up. goTo(x, y) counts x from the left and y from the top.\nYou may use plain JavaScript loops, variables and Math. Put { } around every loop body. Do not use anything else.", LOGO_HELP],
   ["and you write a turtle program that draws it.", "and you write a Logo program that draws it."],
   ["Reply with only the program, with no explanation.", "Reply with only the Logo program, with no explanation."],
@@ -4365,7 +4415,7 @@ const V1_TEXTS = [
   ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
   ["a turtle program", "a Logo program"]
 ];
-AK.Seeds = { makeEvolution, makeContemplative, makeTicTacToe, makeBarter, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+AK.Seeds = { makeEvolution, makeContemplative, makeTicTacToe, makeBarter, makeArtCritic, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
 const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "collect", "wait", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "contract", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
@@ -4539,7 +4589,9 @@ function revertAgent(agent) {
   agent.statusDetail = null;
   return true;
 }
-function cleanEmoji(e) { return String(e == null ? "" : e).replace(/[\x00-\x7F]/g, "").replace(CONTROL_RE, "").slice(0, 8) || "🤖"; }
+// The zero-width joiner (U+200D) stays: it is what makes 🧑 and 🎨 one emoji, 🧑‍🎨.
+const EMOJI_CONTROL_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​‌‎‏‪-‮⁠-⁤⁦-⁩﻿]/g;
+function cleanEmoji(e) { return String(e == null ? "" : e).replace(/[\x00-\x7F]/g, "").replace(EMOJI_CONTROL_RE, "").slice(0, 8) || "🤖"; }
 function sanitizeField(f) {
   if (!f || typeof f !== "object" || !/^[A-Za-z_][A-Za-z0-9_]{0,30}$/.test(String(f.name))) return null;
   return { name: String(f.name), type: FIELD_TYPES.indexOf(f.type) >= 0 ? f.type : "text", about: cleanText(f.about, 300) };
@@ -5333,7 +5385,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- A programmed agent's editor shows what it Gets, Says and Remembers (worked out from its scenarios, or written by the learner as the first lines of its pseudocode); the translator keeps to it. “↩ Go back to the running version” undoes an edit that hasn't been translated.\n" +
   "- Scenarios are tests for a programmed agent, in its editor. A model agent that counts pictures has a test bench in its editor.\n" +
   "- A collecting program (like Vote or Referee) waits until it has heard several messages (its {wait} number), then runs once on all of them. If an answer never comes, it runs on what it has at the end. An AI agent can collect too (in its editor: “It answers … once it has N messages”); then it sees all their pictures together, numbered in order, like the Critic in the Evolution example.\n" +
-  "- ＋ New society also offers examples to start from: Evolution (three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree tab shows which picture came from which) and Two Answers (the same question to a Plain agent and to a Contemplative one that pauses on four principles first: emptiness, non-duality, mindfulness and boundless care) and Tic-Tac-Toe (you play X against an AI Rival; the Referee, a program, keeps the board, refuses a square that is already taken and decides who won; a variant lets two AIs play) and Trail Mix Barter (three AI traders barter raisins, cashews and pretzels; the Ledger, a program, keeps track of who has what and refuses offers that don't add up).\n" +
+  "- ＋ New society also offers examples to start from: Evolution (three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree tab shows which picture came from which) and Two Answers (the same question to a Plain agent and to a Contemplative one that pauses on four principles first: emptiness, non-duality, mindfulness and boundless care) and Tic-Tac-Toe (you play X against an AI Rival; the Referee, a program, keeps the board, refuses a square that is already taken and decides who won; a variant lets two AIs play) and Trail Mix Barter (three AI traders barter raisins, cashews and pretzels; the Ledger, a program, keeps track of who has what and refuses offers that don't add up) and Artist and Critic (Ken Kahn's society: an Artist draws in Logo, a Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper keeps the scores).\n" +
   "- An agent called You is the learner: the run waits for their answer.\n" +
   "- A rule can come from You (“when You start the run, send your words to …”), so the start reaches more than one agent. A rule can also say “when the run ends”: then the agent's last message is sent on, once, at the very end (Story Chain's Book sends the whole story to the Editor that way).\n" +
   "- Everything is saved in this browser as you go (refreshing keeps it); ⚙️ Settings can switch saving off, and then the work is gone when the tab closes. “Delete this society”, in Look inside, deletes one of your own societies from this browser for good; microworlds have “Reset” instead.\n" +
@@ -7151,7 +7203,7 @@ const GUIDES = {
     "<ol class='steps'>" +
     "<li><b>Try one.</b> Pick <b>Story Chain</b>, the first microworld at the top, and read its question. Before you press <b>▶ Run</b>, say what you think will happen. Then watch the writers, round by round.</li>" +
     "<li><b>Change one thing.</b> Tick a switch under the start (like “Writer A remembers everything”), or press <b>🔍 Look inside</b> and change one agent's instructions or one rule. Run it again. What changed, and why?</li>" +
-    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, start from scratch, or start from an example like <b>Evolution</b>, <b>Two Answers</b>, <b>Tic-Tac-Toe</b> or <b>Trail Mix Barter</b>. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
+    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, start from scratch, or start from an example like <b>Evolution</b>, <b>Two Answers</b>, <b>Tic-Tac-Toe</b>, <b>Trail Mix Barter</b> or <b>Artist and Critic</b>. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
     "</ol>" +
     "<p>Stuck? Ask the <b>🤔 Helper</b> (bottom right). It knows where everything is, and it will ask you questions back. Working with a friend? One of you drives and the other predicts; swap every run.</p>" +
     "<details class='ref'><summary><b>Everything else, when you need it</b></summary>" +
@@ -7179,7 +7231,7 @@ const GUIDES = {
     "<li><b>Fool the Eyes: “Can a drawing trick a looker?”</b> A Trickster draws pebbles to fool Eyes; a Referee keeps score. <i>Powerful idea:</i> an adversary finds weaknesses a friendly test never would.</li>" +
     "<li><b>Joke Workshop: “Do critics make jokes funnier?”</b> A Joker writes, two Critics send notes, and the learner rates every version. <i>Powerful idea:</i> whose judgment counts, and whether critics improve work or only make it more careful.</li>" +
     "<li><b>Small Helper, Big Helper: “When do you need the big one?”</b> A cheap model tries first; an Escalator hands the job to a strong one when it fails. It needs two models. <i>Powerful idea:</i> cost against capability.</li></ol>" +
-    "<p><b>Examples to start from</b> (“＋ New society”): <b>Evolution</b>, where three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree shows which picture came from which. <i>Powerful idea:</i> a simple critic and chooser, arranged in a loop, steer a model somewhere it wouldn't go alone. It needs a model that sees pictures well, and makes about 4 model calls per round. <b>Two Answers</b>, after the paper <i>Contemplative Artificial Intelligence</i> (Laukkonen and others, 2025): the same question goes to a Plain agent and to a Contemplative one asked to pause on four principles first. <i>Powerful idea:</i> the instructions are the only difference, so learners can change one principle and see what it does; and wise is not the same as careful. Any model; 2 or 3 calls a run. <b>Tic-Tac-Toe</b>: a learner plays X against an AI Rival, and a Referee program keeps the board. <i>Powerful idea:</i> the model suggests and the program decides; a rule written as a program holds however confident the model sounds. Any model (weaker ones make more illegal moves, which is the point); about 5 calls a game, or 9 with Two AIs. <b>Trail Mix Barter</b>, from Ken Kahn's experiments: three AI traders, each starting with one ingredient, take turns to barter, and a Ledger program keeps the accounts. <i>Powerful idea:</i> agents can talk their way into a deal, but a program has to keep the books; when one chatbot played all three traders, the grams stopped adding up. Try a different model for each trader. About 2 calls a trade, 20 rounds at most.</p>" +
+    "<p><b>Examples to start from</b> (“＋ New society”): <b>Evolution</b>, where three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree shows which picture came from which. <i>Powerful idea:</i> a simple critic and chooser, arranged in a loop, steer a model somewhere it wouldn't go alone. It needs a model that sees pictures well, and makes about 4 model calls per round. <b>Two Answers</b>, after the paper <i>Contemplative Artificial Intelligence</i> (Laukkonen and others, 2025): the same question goes to a Plain agent and to a Contemplative one asked to pause on four principles first. <i>Powerful idea:</i> the instructions are the only difference, so learners can change one principle and see what it does; and wise is not the same as careful. Any model; 2 or 3 calls a run. <b>Tic-Tac-Toe</b>: a learner plays X against an AI Rival, and a Referee program keeps the board. <i>Powerful idea:</i> the model suggests and the program decides; a rule written as a program holds however confident the model sounds. Any model (weaker ones make more illegal moves, which is the point); about 5 calls a game, or 9 with Two AIs. <b>Trail Mix Barter</b>, from Ken Kahn's experiments: three AI traders, each starting with one ingredient, take turns to barter, and a Ledger program keeps the accounts. <i>Powerful idea:</i> agents can talk their way into a deal, but a program has to keep the books; when one chatbot played all three traders, the grams stopped adding up. Try a different model for each trader. About 2 calls a trade, 20 rounds at most. <b>Artist and Critic</b>, Ken Kahn's society: an Artist draws, a Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper keeps the scores. <i>Powerful idea:</i> whether feedback helps depends on who gives it and what they know; and a critic scoring work done on its own advice may not be a fair judge. Needs a model that sees pictures well; 2 calls a round.</p>" +
     "<h3>Which model, and how many calls</h3><p>Model choice is where sessions get stuck, so here is what we have seen. Calls are model calls in one run with the default rounds; each AI agent's button counts them after a run.</p>" +
     "<table class='guide-table'><tr><th>Microworld</th><th>Model</th><th>Why</th><th>Calls per run</th></tr>" +
     row("Story Chain", "any, even Gemini Nano", "only text; the lesson is in what each writer sees", "13") +

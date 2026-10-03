@@ -1,0 +1,299 @@
+{
+  "kind": "agent-kit-export",
+  "schema": 1,
+  "app": "Agent Kit 1.7.0",
+  "exportedAt": "2026-10-03T10:02:16.153Z",
+  "society": {
+    "kind": "agent-kit-society",
+    "schema": 1,
+    "id": "artcritic",
+    "title": "Artist and Critic",
+    "question": "Does it get better?",
+    "intro": "The Artist draws in Logo and the Renderer makes the picture. The Critic, who knows what was asked for, scores it, says what works and suggests one change; the Artist follows it if it agrees. The Scorekeeper keeps the Critic's scores. Does the drawing get better? (Ken Kahn made the first version of this society.)",
+    "questions": [
+      "Does it get better? Look at the pictures round by round, then at the Scorekeeper's stars. Do you agree with the Critic?",
+      "Is the Critic a fair judge of pictures drawn from its own advice?",
+      "Did the Artist follow every suggestion? Compare what it was sent with what it drew next.",
+      "Switch on: the Critic reads the program instead of seeing the picture. Is its advice better or worse?",
+      "Change the Critic's taste in its instructions, say to “you love simple shapes”. Where does the drawing go?"
+    ],
+    "openers": [
+      "What does the Critic know about what the Artist was asked to draw?",
+      "Who decides what “better” means?",
+      "What would the Artist do with no Critic?"
+    ],
+    "roundAgent": "artist",
+    "roundLimit": 4,
+    "starts": [
+      {
+        "id": "start",
+        "label": "What to draw",
+        "kind": "text",
+        "to": "artist",
+        "value": "lots of colorful flowers",
+        "examples": [
+          "lots of colorful flowers",
+          "a house by the sea",
+          "a robot dancing",
+          "a night sky full of stars"
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "id": "reads",
+        "label": "The Critic reads the Logo program instead of seeing the picture",
+        "enable": [
+          "a7"
+        ],
+        "disable": [
+          "a3"
+        ],
+        "on": false
+      }
+    ],
+    "agents": [
+      {
+        "id": "artist",
+        "kind": "model",
+        "name": "Artist",
+        "emoji": "🧑‍🎨",
+        "role": "draws in Logo, and follows advice it agrees with",
+        "instructions": "You are an avant-garde artist who draws in Logo. You get something to draw, and then, after each picture, a Critic's suggestion. If you agree with the suggestion, follow it. If you don't, make your own new version of your last drawing. Reply with only the Logo program.\nWrite the drawing in Logo, the turtle language. Commands:\nFORWARD 50 (or FD 50), BACK 50 (BK), RIGHT 90 (RT), LEFT 90 (LT), PENUP (PU), PENDOWN (PD), HOME,\nSETXY 100 -50 (go straight to a point; with the pen down it draws a line on the way, so PENUP first to jump), SETHEADING 90 (SETH: 0 is up, 90 is right),\nSETPENCOLOR \"red (put a quote mark before a color name), SETPENSIZE 4,\nDOT 20 (a filled dot 20 across, in the pen color, where the turtle is), CIRCLE 30 (a circle of radius 30 around the turtle), LABEL [some words] (writes the words where the turtle is).\nREPEAT 4 [FORWARD 100 RIGHT 90] runs the commands in the brackets 4 times. Inside a REPEAT, REPCOUNT says which time it is: 1, 2, 3 …\nTO SQUARE :SIZE REPEAT 4 [FORWARD :SIZE RIGHT 90] END makes a new command, used like SQUARE 50.\nMAKE \"N 5 stores a number, used as :N. Arithmetic works, like FORWARD :N * 10. IF :N > 3 [ … ] and IFELSE :N > 3 [ … ] [ … ] work too.\nThe picture is 512 by 512. The turtle starts in the middle at 0 0, facing up, with its pen down. x runs from -256 (left edge) to 256 (right edge), and y from -256 (bottom) to 256 (top).\nUse REPEAT whenever something happens more than once, instead of writing the same commands again and again.\nUse only the commands above. There is no LINE, TRIANGLE, SQUARE, RECTANGLE, STAR, POLYGON, FILL or SETBG command: draw shapes with FORWARD and RIGHT, for example a triangle is REPEAT 3 [FORWARD 100 RIGHT 120], or make your own command with TO … END.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "full",
+        "replyKind": "program",
+        "pretend": "artist"
+      },
+      {
+        "id": "renderer",
+        "kind": "renderer",
+        "name": "Renderer",
+        "emoji": "🖼️",
+        "role": "runs the Logo program and makes the picture"
+      },
+      {
+        "id": "critic",
+        "kind": "model",
+        "name": "Critic",
+        "emoji": "🧐",
+        "role": "scores each picture and suggests one change",
+        "instructions": "You are an art critic who loves giving constructive criticism. First you are told what the Artist was asked to draw: then reply just “Ready.” After that you see each new picture. Start your reply with a score from 1 to 10 for how well the picture shows what was asked for and how artistic it is, like “7/10”. Then, in one sentence, say what works. Then suggest one specific change, only one, so you can see whether the Artist follows it. Talk about the picture, not about Logo.",
+        "outputFields": [],
+        "canSeeImages": true,
+        "history": "full",
+        "replyKind": "prose",
+        "pretend": "coach"
+      },
+      {
+        "id": "scorekeeper",
+        "kind": "program",
+        "typeId": "scorekeeper",
+        "name": "Scorekeeper",
+        "emoji": "📊",
+        "role": "remembers every score and shows them as stars",
+        "note": "remembers every rating and shows them as stars",
+        "gate": false,
+        "collect": false,
+        "pseudocode": "the rating is the first number from {1} to {10} in what was said\nif there is no rating, say \"Please give a number from {1} to {10}.\"\notherwise add it to the list of ratings\nsay every rating so far, as stars",
+        "params": {
+          "lowest": 1,
+          "highest": 10
+        },
+        "slots": [
+          {
+            "line": 1,
+            "text": "1",
+            "param": "lowest"
+          },
+          {
+            "line": 1,
+            "text": "10",
+            "param": "highest"
+          },
+          {
+            "line": 2,
+            "text": "1",
+            "param": "lowest"
+          },
+          {
+            "line": 2,
+            "text": "10",
+            "param": "highest"
+          }
+        ],
+        "scenarios": [
+          {
+            "id": "s1",
+            "name": "a rating with a reason",
+            "input": {
+              "text": "4, the ending was funny"
+            },
+            "expect": {
+              "rating": 4,
+              "say": "Version 1: ★★★★ (4)"
+            }
+          },
+          {
+            "id": "s2",
+            "name": "it remembers earlier ratings",
+            "input": {
+              "text": "5!",
+              "memory": [
+                3
+              ]
+            },
+            "expect": {
+              "ratings": [
+                3,
+                5
+              ]
+            }
+          },
+          {
+            "id": "s3",
+            "name": "no number",
+            "input": {
+              "text": "great!"
+            },
+            "expect": {
+              "sayContains": "Please give a number"
+            }
+          },
+          {
+            "id": "s4",
+            "name": "a number that's too big: {=highest+1}",
+            "input": {
+              "text": "{=highest+1}!"
+            },
+            "expect": {
+              "sayContains": "Please give a number"
+            }
+          }
+        ],
+        "code": {
+          "pseudocode": "the rating is the first number from {1} to {10} in what was said\nif there is no rating, say \"Please give a number from {1} to {10}.\"\notherwise add it to the list of ratings\nsay every rating so far, as stars",
+          "js": "function run(input, params, h) {\n  const ratings = input.memory || [];\n  let rating = null;\n  for (const word of h.words(input.text)) {\n    h.tick();\n    const n = Number(word);\n    if (rating === null && Number.isFinite(n) && n >= params.lowest && n <= params.highest) {\n      rating = Math.round(n);\n    }\n  }\n  if (rating === null) {\n    return { say: \"Please give a number from \" + params.lowest + \" to \" + params.highest + \".\", memory: ratings };\n  }\n  const now = ratings.concat([rating]);\n  const lines = now.map((r, i) => \"Version \" + (i + 1) + \": \" + \"★\".repeat(r) + \" (\" + r + \")\");\n  return { rating: rating, ratings: now, say: lines.join(\"\\n\"), memory: now };\n}",
+          "lineMap": [
+            {
+              "pseudo": [
+                1,
+                1
+              ],
+              "js": [
+                2,
+                10
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                11,
+                13
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                14,
+                14
+              ]
+            },
+            {
+              "pseudo": [
+                4,
+                4
+              ],
+              "js": [
+                15,
+                16
+              ]
+            }
+          ],
+          "hash": "8757a531ae128bfa"
+        },
+        "lastGood": null,
+        "status": "ok",
+        "statusDetail": null,
+        "shipped": true
+      }
+    ],
+    "rules": [
+      {
+        "id": "a1",
+        "from": "you",
+        "when": "always",
+        "send": "text",
+        "to": "critic",
+        "prefix": "The Artist was asked to draw:",
+        "enabled": true
+      },
+      {
+        "id": "a2",
+        "from": "artist",
+        "when": "always",
+        "send": "text",
+        "to": "renderer",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "a3",
+        "from": "renderer",
+        "when": "always",
+        "send": "image",
+        "to": "critic",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "a4",
+        "from": "renderer",
+        "when": "data",
+        "send": "text",
+        "to": "artist",
+        "prefix": "",
+        "enabled": true,
+        "field": "pass",
+        "op": "=",
+        "value": "false"
+      },
+      {
+        "id": "a5",
+        "from": "critic",
+        "when": "text",
+        "send": "text",
+        "to": "artist",
+        "prefix": "",
+        "enabled": true,
+        "word": "/10"
+      },
+      {
+        "id": "a6",
+        "from": "critic",
+        "when": "text",
+        "send": "text",
+        "to": "scorekeeper",
+        "prefix": "",
+        "enabled": true,
+        "word": "/10"
+      },
+      {
+        "id": "a7",
+        "from": "artist",
+        "when": "always",
+        "send": "text",
+        "to": "critic",
+        "prefix": "The Artist's Logo program:",
+        "enabled": false
+      }
+    ]
+  }
+}

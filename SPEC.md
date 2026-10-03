@@ -398,6 +398,14 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - The “This agent is getting long” nudge is now only for a learner's own pseudocode, not the kit's shipped programs.
   - `examples/tic-tac-toe.json` and `examples/trail-mix-barter.json`. Library: 24 programs.
   - Suite: 487 PASS, fingerprint `37d88d3d6560`.
+- 2026-10-03 — **Revision 1.7.0: Artist and Critic**, Ken's own society (exported from 1.3.2 as “Artist and critic”) as a fifth example, with what its trace showed.
+  - The Renderer's words went to the Artist every round, so the Artist drew twice a round (once from “I drew 105 shapes”, once from the Critic) and the Critic's advice arrived a drawing late. Now the Renderer writes to the Artist only when a program fails (IF data.pass = false).
+  - The Critic never knew what was asked for. A rule from the start tells it (“The Artist was asked to draw: …”); it answers “Ready.”, and its rules pass on only replies with a score (IF its words contain “/10”). It remembers everything, so it can see whether its advice was taken.
+  - The Critic starts with a score out of 10, says what works, and suggests one change only; a Scorekeeper (set to 1 to 10 through its slots) shows the scores as stars, so “Does it get better?” has something to look at, with a question about whether a critic is a fair judge of work done on its own advice. A variant has the Critic read the Logo program instead of seeing the picture.
+  - **The Logo help** now says SETXY draws a line when the pen is down (PENUP first to jump): Ken's Artist joined its flowers with stray lines, the Critic noticed, and the Artist drew a zigzag on purpose. Older instructions are reworded on load (V1_TEXTS).
+  - **Bug:** saving, export and import removed the zero-width joiner from emoji (CONTROL_RE), so 🧑‍🎨 became 🧑🎨. `cleanEmoji` keeps it now.
+  - The Scorekeeper's “too big” scenario follows its range ({=highest+1}). Pretend stand-in for tests: `coach`. `examples/artist-and-critic.json`.
+  - Suite: 493 PASS, fingerprint `749f5e446e60`.
 
 ---
 

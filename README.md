@@ -47,7 +47,9 @@ Intelligence* (Laukkonen and others, 2025): the same question to a Plain agent a
 Contemplative one that pauses on four principles first. **Tic-Tac-Toe**: you play X against an AI,
 which only suggests moves; a Referee program keeps the board, refuses a taken square and decides
 who won. **Trail Mix Barter**: three AI traders barter raisins, cashews and pretzels, and a Ledger
-program keeps track of who has what. All four are also in `examples/`, to import.
+program keeps track of who has what. **Artist and Critic**, Ken Kahn's society: an Artist draws, a
+Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper
+keeps the scores. All five are also in `examples/`, to import.
 
 Settings can hold more than one model. Then each AI agent can use the one that suits its job:
 Gemini Nano (free, in Chrome) where a small model is enough, and a stronger one for drawing and
