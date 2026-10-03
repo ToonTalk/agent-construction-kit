@@ -166,6 +166,8 @@ img.zoomable{cursor:zoom-in}img.zoomable:hover,img.zoomable:focus{outline:2px so
 .pics{display:flex;flex-wrap:wrap;gap:6px}
 .rcard.multi{flex-basis:236px}.rgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}.rthumb{position:relative;border-radius:8px;border:2px solid transparent}.rthumb img{width:100%;aspect-ratio:1/1;display:block;border-radius:6px;border:1px solid var(--line);background:#fff}.rthumb.chosen{border-color:var(--ok)}.rthumb.again{opacity:.7}.rthumb .mk{position:absolute;top:2px;right:4px;font-size:12px;font-weight:800;color:var(--ok);text-shadow:0 0 3px #fff}.rthumb.again .mk{color:var(--ink-soft)}
 .ftree,.ftree ul{list-style:none;margin:0;padding-left:16px}.ftree{padding-left:0}.ftree ul{border-left:2px solid var(--line);margin-left:22px}.ftree li{margin:6px 0}.tnode{display:flex;align-items:center;gap:8px}.tnode img{width:56px;height:56px;border:1px solid var(--line);border-radius:8px;background:#fff}.tnode.chosen img{border:2px solid var(--ok)}
+.contract{margin:6px 0 8px;padding:6px 10px;border-radius:10px;background:#F3F6FA;border:1px dashed var(--line);font-size:12.5px;line-height:1.6}
+.mode-chip.untested .dot{background:var(--warn)}.mode-chip.failed .dot{background:var(--bad)}.mode-chip.failed{border-color:#F2BDB8}
 .achip .round-mark{font-size:10.5px;color:var(--ink-faint)}
 .achip .v-ok{color:var(--ok)}
 .achip .v-bad{color:var(--bad)}
@@ -430,7 +432,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.4.2";
+AK.VERSION = "1.5.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -3633,7 +3635,7 @@ const CRITIC_INSTRUCTIONS = "You are the Critic. The Designer drew pebbles (dots
 const MYSTERY_TASK = "The Mystery Judge has a secret: how many pebbles each of 3 rows should have. Each row has between 1 and 8 pebbles. Draw 3 rows of pebbles, one under another. After each try, the Critic will tell you which rows need more pebbles and which need fewer.";
 // Bump this when a microworld changes: saved copies of the older version are then replaced (and can be kept as copies).
 const SEED_VERSION = 5;   // the newest; each microworld has its own, so one that didn't change isn't replaced
-const SEED_VERSIONS = { telephone: 4, pebbles: 7, secret: 6, lost: 6, story: 3, eyes3: 1, fool: 1, helpers: 1, jokes: 2 };   // "you" is reserved for the start
+const SEED_VERSIONS = { telephone: 4, pebbles: 7, secret: 6, lost: 6, story: 3, eyes3: 1, fool: 2, helpers: 1, jokes: 2 };   // "you" is reserved for the start
 const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, which follow its settings; the Critic talks only about the pebbles; and Eyes ignores stray lines, as the Judge does.", secret: "The Keeper's own secret is 83 now, and you can type a secret on the stage.", lost: "The Finder can say “nothing”, and there's a question about a toy robot.", story: "A Book keeps the whole story, and when the run ends an Editor tells it again. Compare them: what did the Editor change?" };
 // What a microworld needs before it can run. Small Helper, Big Helper compares two models, so it needs two.
 const WORLD_NEEDS = { helpers: { models: 2, why: "It compares a small model with a big one, so it needs two models, and only one is set up." } };
@@ -3859,12 +3861,13 @@ function makeFoolTheEyes() {
   const r = (id, from, when, send, too, extra) => Object.assign({ id, from, when, send, to: too, prefix: "", enabled: true }, extra || {});
   return {
     kind: "agent-kit-society", schema: 1, seedVersion: SEED_VERSIONS.fool, id: "fool", title: "Fool the Eyes", question: "Can a drawing trick a looker?",
-    intro: "The Trickster tries to draw pebbles that Eyes will miscount. Dot Counter knows the true number, and the Referee decides who wins. Who's winning after 4 rounds?",
+    intro: "The Trickster tries to draw pebbles that Eyes will miscount. Dot Counter counts the DOT commands in the Trickster's program, which is its idea of a pebble, and the Referee decides who wins. Who's winning after 4 rounds?",
     questions: [
       "Which tricks work: tiny dots, overlapping dots, dots the color of the background?",
       "Does the Trickster get better each round? Does Eyes?",
       "Give Eyes a different model. Who wins now?",
-      "Is the Trickster cheating if it draws two dots on top of each other? Dot Counter says 12. Would you?"
+      "Is the Trickster cheating if it draws two dots on top of each other? Dot Counter says 12. Would you?",
+      "Dot Counter's idea of a pebble is one DOT command. Could you make a Referee with a different idea of a pebble?"
     ],
     openers: ["What does Dot Counter see that Eyes doesn't?", "How does the Trickster find out whether its trick worked?", "What would make Eyes harder to fool?"],
     roundAgent: "trickster", roundLimit: 4,
@@ -4011,10 +4014,10 @@ function makeContemplative() {
   const agent = (id, name, emoji, role, instructions) => ({ id, kind: "model", name, emoji, role, instructions, outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "generic" });
   return {
     kind: "agent-kit-society", schema: 1, id: "contemplative", title: "Two Answers", question: "Does a pause to think make an answer wiser?",
-    intro: "The same question goes to two AI agents. The Plain one just answers. The Contemplative one is asked to pause first and think about four principles: emptiness, non-duality, mindfulness and boundless care (from the paper “Contemplative Artificial Intelligence”, Laukkonen and others, 2025). Which answer would you rather get?",
+    intro: "The same question goes to two AI agents. The Plain one just answers. The Contemplative one is asked to pause first and think about four principles: emptiness, non-duality, mindfulness and boundless care (from the paper “Contemplative Artificial Intelligence”, Laukkonen and others, 2025). Which answer would you rather get? (Its reflections are text it writes, not a window into how the model works.)",
     questions: [
       "Which answer would you rather get? Why?",
-      "What did the Contemplative agent's thinking change in its answer? Is anything missing from the Plain one?",
+      "What did the reflections the Contemplative agent wrote change in its answer? Is anything missing from the Plain one?",
       "Is the contemplative answer wiser, or just more careful? Could it be too cautious?",
       "Change one of the four principles in its instructions, or take one out. Does the answer change?",
       "Both agents can use the same model. Then what made the difference?"
@@ -4066,7 +4069,7 @@ const V1_TEXTS = [
 AK.Seeds = { makeEvolution, makeContemplative, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
-const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "collect", "wait", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
+const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "collect", "wait", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "contract", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
 const agentById = (soc, id) => (soc && soc.agents || []).find(a => a.id === id) || null;
 const clampInt = (v, lo, hi, d) => { const n = Math.round(+v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 const arr = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
@@ -4316,6 +4319,7 @@ function sanitizeAgent(a, ids) {
   } else if (a.kind === "program") {
     out.typeId = cleanId(a.typeId) || "custom";
     if (a.collect) out.collect = true;
+    if (typeof a.contract === "string" && a.contract.trim()) out.contract = cleanText(a.contract, 600);   // the learner's own Gets / Says / Remembers
     out.gate = !!a.gate;
     out.note = cleanName(a.note, 160);
     out.pseudocode = cleanText(a.pseudocode, 3000);
@@ -4454,6 +4458,7 @@ const TRANSLATOR_RULES = [
   "6. Make h.tick(); the first statement inside every loop body, and put { } around every loop body.",
   "7. No comments. Use readable variable names that match the pseudocode's words.",
   "8. The object you return may have: say (the words the agent says), pass (true or false, if the agent is a gate that lets work through or blocks it), memory (anything to remember; it comes back next time as input.memory), and any other fields to pass on as data.",
+  "9. If you are given the program installed now, change only what the new pseudocode needs. Keep its contract (what it gets, what it says, and what it remembers, and what kind of thing each is: words, a number, a list) and its variable names, unless the new pseudocode says otherwise.",
   "What run receives: input.text (the words it was sent), input.data (the data it was sent), input.from (the name of who sent it), input.round (the round number), input.memory (what it remembered last time, or undefined).",
   "Helpers: " + H_DOC.map(d => d[0] + " — " + d[1]).join("; ") + "."
 ].join("\n");
@@ -4461,6 +4466,7 @@ function numbered(text) { return String(text).split("\n").map((l, i) => (i + 1) 
 const TRANSLATOR_SYSTEM = PREAMBLE + TRANSLATOR_RULES + "\n\nExample pseudocode:\n" + numbered(LIB["grid-judge"].pseudocode) + "\nExample answer:\n" +
   JSON.stringify({ js: LIB["grid-judge"].js, lineMap: LIB["grid-judge"].lineMap, params: LIB["grid-judge"].params, slots: LIB["grid-judge"].slots, refusals: [] });
 function translatorUserText(agent, pseudocode) {
+  const contract = agent.contract || (agent.results && agent.results.length ? contractOf(agent.results) : "");
   const sc = (agent.scenarios || [])[0];
   let example = "";
   if (sc && sc.program) example = "data from the Renderer: {\"dots\": [{\"x\": 216, \"y\": 256, \"color\": \"red\"}], \"segments\": 0, \"labels\": []}";
@@ -4468,6 +4474,8 @@ function translatorUserText(agent, pseudocode) {
   return "Agent: " + agent.name + (agent.gate ? " (a gate: it lets work through with pass: true, or blocks it with pass: false)" : "") + "\n" +
     (example ? "Example of what it receives: " + example + "\n" : "") +
     (agent.params && Object.keys(agent.params).length ? "Its params until now (keep these names where the slots mean the same thing): " + JSON.stringify(agent.params) + "\n" : "") +
+    (contract ? "Its contract (keep it unless the new pseudocode changes it):\n" + contract + "\n" : "") +
+    (agent.code && agent.code.js ? "The program installed now, translated from its earlier pseudocode (change only what the new pseudocode needs):\n" + agent.code.js + "\n" : "") +
     "Pseudocode:\n" + numbered(pseudocode);
 }
 const JUDGMENT_RE = /\b(looks?|looking|feels?|feeling|pretty|beautiful|ugly|happy|sad|nice|cute|scary|boring|interesting|creative|funny|likes?|loves?|hates?|thinks?|believes?|wants?|wishes?|understands?)\b/i;
@@ -4593,7 +4601,24 @@ async function runScenarios(agent, runtime) {
   for (const sc of agent.scenarios || []) out.push(await runScenario(agent, sc, runtime));
   return out;
 }
-AK.Scenarios = { runScenario, runScenarios, compareExpect, rowsFromSecret, withParams };
+// What a programmed agent gets, says and remembers, worked out from what its scenarios actually did.
+// Shown as a header above its pseudocode, and given to the translator so an edit doesn't change it by accident.
+function contractOf(results) {
+  const gets = [], says = new Map(), mem = [];
+  const add = (list, x) => { if (list.indexOf(x) < 0) list.push(x); };
+  const kind = v => (Array.isArray(v) ? "a list" : v === null ? "nothing" : typeof v === "number" ? "a number" : typeof v === "boolean" ? "yes or no" : typeof v === "object" ? "an object" : "words");
+  for (const r of results || []) {
+    const i = r.input || {}, o = r.output || {};
+    if (i.text) add(gets, "words");
+    for (const k of Object.keys(i.data || {})) add(gets, "data " + k);
+    if (i.messages) add(gets, "several messages, collected");
+    if (i.memory !== undefined) add(gets, "its memory");
+    for (const k of Object.keys(o)) if (k !== "memory" && !says.has(k)) says.set(k, kind(o[k]));
+    if (o.memory !== undefined) add(mem, kind(o.memory) + (o.memory && typeof o.memory === "object" && !Array.isArray(o.memory) ? " (" + Object.keys(o.memory).join(", ") + ")" : ""));
+  }
+  return "Gets: " + (gets.join(", ") || "nothing") + "\nSays: " + (Array.from(says).sort((x, y) => (x[0] === "say" ? -1 : y[0] === "say" ? 1 : 0)).map(([k, t]) => (k === "say" ? "words" : k + " (" + t + ")")).join(", ") || "nothing") + "\nRemembers: " + (mem.join(" or ") || "nothing");
+}
+AK.Scenarios = { runScenario, runScenarios, compareExpect, rowsFromSecret, withParams, contractOf };
 
 /* ===== SECTION: ENGINE (message bus + rule engine + round loop, with a full trace) ===== */
 function getPath(obj, path) {
@@ -5006,6 +5031,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- Models: a grown-up adds models (and any keys) in ⚙️ Settings. When more than one model is set up, the learner chooses which model each AI agent uses without Settings: in the Models row on the stage, under the agent buttons, or in the agent's editor under “Its model”. The MODELS section below says what is set up now.\n" +
   "- “You be the …” on the stage lets the learner take an agent's place in the run.\n" +
   "- ▶ Run, ⏭ Step (one message at a time), ↺ Reset and the Rounds box are on the stage. The Trace shows every message; “Show full technical details” shows exactly what a model was sent.\n" +
+  "- A programmed agent's editor shows what it Gets, Says and Remembers (worked out from its scenarios, or written by the learner as the first lines of its pseudocode); the translator keeps to it. “↩ Go back to the running version” undoes an edit that hasn't been translated.\n" +
   "- Scenarios are tests for a programmed agent, in its editor. A model agent that counts pictures has a test bench in its editor.\n" +
   "- A collecting program (like Vote or Referee) waits until it has heard several messages (its {wait} number), then runs once on all of them. If an answer never comes, it runs on what it has at the end. An AI agent can collect too (in its editor: “It answers … once it has N messages”); then it sees all their pictures together, numbered in order, like the Critic in the Evolution example.\n" +
   "- ＋ New society also offers examples to start from: Evolution (three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree tab shows which picture came from which) and Two Answers (the same question to a Plain agent and to a Contemplative one that pauses on four principles first: emptiness, non-duality, mindfulness and boundless care).\n" +
@@ -5331,6 +5357,10 @@ function getAdapter() {
 }
 // "pretend" is the tests' scripted stand-in; learners only get real models.
 const liveConnection = () => ["none", "pretend"].indexOf(app.settings.connection) < 0;
+// Whether the main connection is known to work: untested, testing, ok or failed, for these settings only.
+const connKey = () => { const st = app.settings; return JSON.stringify([st.connection, st.models[st.connection], !!(st.keys || {})[st.connection]]); };
+function connState() { return app.conn && app.conn.key === connKey() ? app.conn.state : "untested"; }
+function setConnState(state, error) { const was = connState(); app.conn = { key: connKey(), state, error: error || "" }; if (was !== state) { renderWorlds(); if (typeof renderStage === "function") renderStage(); } }
 
 /* ===== SECTION: PICTURES ===== */
 function paintOps(ctx, ops, scale) {
@@ -5678,7 +5708,7 @@ function stripOf(trace, s) {
 }
 function beginRun(override) {
   const s = soc();
-  if (app.settings.connection === "none" && s.agents.some(a => a.kind === "model")) { noModelBanner(); openSettings(); toast("Choose a model first."); return null; }
+  if (app.settings.connection === "none" && s.agents.some(a => a.kind === "model" && !a.human)) { noModelBanner(); openSettings(); toast("Choose a model first."); return null; }   // programs and You need no model
   const why = unmetNeed(s);
   if (why) { toast(why); return null; }
   const spec = override || startSpec(s);
@@ -5740,7 +5770,12 @@ async function stepNow() {
 let paintQueued = false;
 function onRunEvent(rec, e, run) {
   if (e.kind === "working") rec.working = e.agentId;
-  else if (e.kind === "activation") { rec.working = null; if (e.error) handleCallError(e); }
+  else if (e.kind === "activation") {
+    rec.working = null;
+    if (e.error) handleCallError(e);
+    // a real call through the main connection says whether it works
+    if (e.call && !e.call.pretend && e.call.adapter === app.settings.connection) { if (!e.error) setConnState("ok"); else if (["auth", "network", "signedout", "nano", "timeout", "unreadable", "empty"].indexOf(e.errorKind) >= 0) setConnState("failed", e.error); }
+  }
   else if (e.kind === "run-end") { rec.working = null; app.traces[rec.socId] = run.trace; }
   if (rec.socId !== app.activeId || paintQueued) return;
   paintQueued = true;
@@ -5764,9 +5799,11 @@ function renderWorlds() {
   if (chip) {
     const c = app.settings.connection;
     const label = c === "none" ? "No model yet" : c === "pretend" ? "Scripted stand-ins" : c === "nano" ? "Gemini Nano · in Chrome" : c === "keyless" ? "Claude · no key" : c === "anthropic" ? "Claude · your key" : c === "gemini" ? "Gemini · your key" : "OpenAI · your key";
-    chip.className = "mode-chip " + (liveConnection() ? "live" : "pretend");
+    const cs = liveConnection() ? connState() : "";
+    chip.className = "mode-chip " + (!liveConnection() ? "pretend" : cs === "ok" ? "live" : cs === "failed" ? "failed" : "untested");
     const more = modelRefs().length - 1;
-    chip.innerHTML = '<span class="dot"></span>' + esc(label) + (more > 0 ? ' <span class="muted">+ ' + more + ' more</span>' : "");
+    chip.innerHTML = '<span class="dot"></span>' + esc(label) + (more > 0 ? ' <span class="muted">+ ' + more + ' more</span>' : "") + (cs === "testing" ? ' <span class="muted">· testing…</span>' : cs === "failed" ? ' <span class="muted">· not working</span>' : cs === "untested" ? ' <span class="muted">· not tested yet</span>' : "");
+    chip.title = cs === "failed" ? "The last test or call failed: " + (app.conn.error || "") + " Open Settings to test it again." : cs === "untested" ? "Chosen, but not tested yet. Open Settings and press “Test the connection”, or just run." : "How the model agents think";
   }
   const tabs = $("#mobileTabs");
   if (tabs) tabs.innerHTML = [["stage", "Stage"], ["inside", "Look inside"], ["trace", "Trace"]].map(t => '<button class="seg' + (app.ui.mobileTab === t[0] ? " on" : "") + '" data-act="mtab" data-id="' + t[0] + '">' + t[1] + '</button>').join("");
@@ -5948,7 +5985,7 @@ function rcardHTML(r, prev, run, view) {
     r.lines.slice(0, r.pics === false ? 4 : 3).map(l => '<div class="ln' + (l.pass === true ? " p-ok" : l.pass === false ? " p-bad" : "") + '">' + esc(l.emoji) + " " + shortHTML(l.text, 90) + '</div>').join("") + '</div>';
 }
 function statusLineHTML(s, rec, run) {
-  if (!run) { const t = app.traces[s.id]; return t && t.length ? "Showing the last run. Press ▶ Run for a new one." : (app.settings.connection === "none" ? "Choose a model in ⚙️ Settings, then press ▶ Run." : "Ready."); }
+  if (!run) { const t = app.traces[s.id]; const needsModel = s.agents.some(a => a.kind === "model" && !a.human); return t && t.length ? "Showing the last run. Press ▶ Run for a new one." : (app.settings.connection === "none" && needsModel ? "Choose a model in ⚙️ Settings, then press ▶ Run." : liveConnection() && needsModel && connState() === "failed" ? "⚠ The model connection isn't working. Test it in ⚙️ Settings." : "Ready."); }
   const round = "Round " + run.round + " of " + run.roundLimit;
   if (run.status === "running" || run.status === "stepping") { const w = rec.working ? Society.agentById(s, rec.working) : null; return '<span class="pulse"></span>' + round + (w ? " · " + esc(w.emoji + " " + w.name) + " is working…" : ""); }
   if (run.status === "waiting") { const w = run.waiting && run.waiting.agent; return "🙋 " + round + " · your turn" + (w && !w.human ? ": you are the " + esc(w.name) : "") + "."; }
@@ -6038,7 +6075,7 @@ function renderStage() {
   const rounds = stripOf(trace, s);
   if (rounds.length) h += '<div class="strip-title">Round by round' + (run ? "" : ' <span class="badge plain">last run</span>') + '</div><div class="strip">' + rounds.map(r => rcardHTML(r, false, run, view)).join("") + '</div>';
   const prev = app.prevStrips[s.id];
-  if (prev && prev.rounds.length) h += '<div class="strip-title">The run before <span class="small muted">— it started with “' + shortHTML(prev.start, 60, "How the run before started") + '”</span></div><div class="strip">' + prev.rounds.map(r => rcardHTML(r, true, null, null)).join("") + '</div>';
+  if (prev && prev.rounds.length) h += '<div class="strip-title">The run before' + (prev.label ? ', for “' + esc(prev.label) + '”' : "") + ' <span class="small muted">— it started with “' + shortHTML(prev.start, 60, "How the run before started") + '”</span></div><div class="strip">' + prev.rounds.map(r => rcardHTML(r, true, null, null)).join("") + '</div>';
   host.innerHTML = h + '</div>';
   hydrateImages(host);
   paintInto($("#stageCanvas"), view.render, run);
@@ -6052,7 +6089,9 @@ function playAsHTML(s) {
   if (!a || a.kind !== "model" || a.human) return "";
   return '<label class="row small play-as" title="Next run, you write what the ' + esc(a.name) + ' writes, and the other agents answer you"><input type="checkbox" data-bind="play-as"' + (app.ui.playAs[s.id] ? " checked" : "") + '> 🙋 You be the ' + esc(a.name) + '</label>';
 }
-function yourDraft(s) { return app.ui.yourDraft[s.id] != null ? app.ui.yourDraft[s.id] : (s.playTemplate || ""); }
+// A draft belongs to one society and one agent, so “You be the Joker” and You rating the joke don't share a box.
+function draftKey(s) { const rec = app.runs[s.id], w = rec && rec.api.run.waiting; return s.id + "/" + (w && w.agent ? w.agent.id : ""); }
+function yourDraft(s) { const k = draftKey(s); if (app.ui.yourDraft[k] != null) return app.ui.yourDraft[k]; const rec = app.runs[s.id], w = rec && rec.api.run.waiting; return w && w.agent && w.agent.human ? "" : (s.playTemplate || ""); }
 function yourTurnHTML(s, run) {
   const w = run.waiting;
   if (!w) return "";
@@ -6478,7 +6517,18 @@ function pseudoViewHTML(a) {
     return '<div class="pl"><span class="n">' + (li + 1) + '</span><span>' + html + esc(ln.slice(last)) + '</span></div>';
   }).join("") + '</div>';
 }
+const contractText = a => a.contract || (a.results && a.results.length ? Scenarios.contractOf(a.results) : "");
+function contractHTML(a) {
+  const c = contractText(a);
+  if (!c) return "";
+  return '<div class="contract" title="What it gets, says and remembers. The translator keeps to this when you change the pseudocode.">' + c.split("\n").map(l => { const m = /^(\w+):\s*(.*)$/.exec(l); return m ? '<div><b>' + esc(m[1]) + ':</b> ' + esc(m[2]) + '</div>' : '<div>' + esc(l) + '</div>'; }).join("") + (a.contract ? "" : '<div class="small muted">Worked out from its scenarios. Edit the pseudocode to change it.</div>') + '</div>';
+}
 function statusBoxHTML(a) {
+  const back = a.code && a.code.pseudocode !== a.pseudocode && a.status !== "translating" ? '<div class="row" style="margin-top:6px"><button class="btn tiny" data-act="back-to-running" title="Put back the pseudocode of the program that is running now. No translation is needed.">↩ Go back to the running version</button></div>' : "";
+  const changed = a.contractNote ? '<div class="warnline">The new program changed what it gets, says or remembers.<br><b>Before:</b> ' + esc(a.contractNote.before).replace(/\n/g, " · ") + '<br><b>Now:</b> ' + esc(a.contractNote.after).replace(/\n/g, " · ") + '<br>If you didn\'t mean that, use “↩ Go back to the version before”.</div>' : "";
+  return statusCoreHTML(a) + back + changed;
+}
+function statusCoreHTML(a) {
   const d = a.statusDetail || {};
   const differs = a.code && a.code.pseudocode !== a.pseudocode;
   const again = liveConnection() ? ' <button class="btn tiny" data-act="translate-again">Translate now</button>' : "";
@@ -6539,7 +6589,7 @@ function scenarioFormHTML(d) {
     '<label for="scnFrom">From and round</label><div class="row"><input class="field" id="scnFrom" value="' + esc(d.from) + '" style="max-width:170px" aria-label="From"><input class="field" id="scnRound" type="number" value="' + esc(d.round) + '" style="max-width:90px" aria-label="Round"></div>' +
     '<label for="scnProgram">Or a picture program</label><textarea class="field code" id="scnProgram" rows="4" spellcheck="false" placeholder="A Logo program: its dots become input.data">' + esc(d.program) + '</textarea>' +
     '<label for="scnExpect">Expected (JSON)</label><textarea class="field code" id="scnExpect" rows="3" spellcheck="false">' + esc(d.expect) + '</textarea></div>' +
-    '<p class="hint">List only the fields to check, like {"pass": false}. Use "sayContains" to check part of what it says.</p><div class="errline hidden" id="scnErr"></div><div class="row end" style="margin-top:6px"><button class="btn" data-act="scn-cancel">Cancel</button><button class="btn primary" data-act="scn-save">Save the scenario</button></div></div>';
+    '<p class="hint">List the fields to check, like {"pass": false}: at least one. Use "sayContains" to check part of what it says.</p><div class="errline hidden" id="scnErr"></div><div class="row end" style="margin-top:6px"><button class="btn" data-act="scn-cancel">Cancel</button><button class="btn primary" data-act="scn-save">Save the scenario</button></div></div>';
 }
 function scenariosHTML(a) {
   const ed = app.ui.editor;
@@ -6548,7 +6598,7 @@ function scenariosHTML(a) {
   const total = (a.scenarios || []).length;
   let h = '<div class="section"><div class="row"><h3 class="grow">Scenarios <span class="badge ' + (res.length && ok === res.length ? "ok" : res.length ? "bad" : "plain") + '">' + ok + " of " + total + ' pass</span></h3><button class="btn tiny" data-act="run-scenarios">▶ Run all</button><button class="btn tiny" data-act="scn-add">+ New</button><button class="btn tiny" data-act="scn-export">⬇ Export</button><button class="btn tiny" data-act="scn-import">⬆ Import</button></div>' +
     '<p class="hint">A scenario is a test: an input, and what this agent should answer. They all run again after every change. A red one shows what was expected and what really happened.</p>';
-  h += '<div class="scn-grid">' + (a.scenarios || []).map(sc => { const r = res.find(x => x.id === sc.id); const cls = !r ? "none" : r.ok ? "ok" : "bad"; return '<button class="scn ' + cls + (ed.scn === sc.id ? " open" : "") + '" data-act="scn-open" data-id="' + esc(sc.id) + '"><span class="mk">' + (!r ? "·" : r.ok ? "✓" : "✗") + '</span><span>' + esc(sc.name) + '</span></button>'; }).join("") + '</div>';
+  h += '<div class="scn-grid">' + (a.scenarios || []).map(sc => { const r = res.find(x => x.id === sc.id); const empty = !Object.keys(sc.expect || {}).length; const cls = !r || empty ? "none" : r.ok ? "ok" : "bad"; return '<button class="scn ' + cls + (ed.scn === sc.id ? " open" : "") + '" data-act="scn-open" data-id="' + esc(sc.id) + '"' + (empty ? ' title="It has nothing to check, so it can\'t fail: it only shows that the program runs. Edit it to say what it should answer."' : "") + '><span class="mk">' + (!r ? "·" : empty ? "○" : r.ok ? "✓" : "✗") + '</span><span>' + esc(sc.name) + (empty ? ' <span class="badge warn">checks nothing</span>' : "") + '</span></button>'; }).join("") + '</div>';
   if (ed.scnEdit) h += scenarioFormHTML(ed.scnEdit);
   else if (ed.scn) h += scenarioDetailHTML(a, ed.scn);
   return h + '</div>';
@@ -6557,9 +6607,9 @@ function programEditorHTML(a, s) {
   const ed = app.ui.editor;
   let h = editorHead(a, s, "programmed agent") + '<p class="hint" style="margin:6px 0 0">' + esc(a.note || "") + (a.typeId ? ' · type <code>' + esc(a.typeId) + '</code>' : "") + '</p>' + statusBoxHTML(a);
   h += '<div class="section"><div class="row"><h3 class="grow">Pseudocode</h3>' + (ed.mode === "edit" ? '<button class="btn" data-act="cancel-pseudo">Cancel</button><button class="btn primary" data-act="save-pseudo"' + (ed.busy ? " disabled" : "") + '>Save and translate</button>' : '<button class="btn" data-act="edit-pseudo">✎ Edit the pseudocode</button>') + '</div>';
-  if (ed.mode === "edit") h += '<textarea class="field code" id="pseudoDraft" rows="' + Math.max(6, String(ed.draft).split("\n").length + 2) + '" spellcheck="false" aria-label="Pseudocode">' + esc(ed.draft) + '</textarea><p class="hint">Numbers and words in { } are settings. If you change only those, no translation is needed.</p>';
+  if (ed.mode === "edit") h += '<textarea class="field code" id="pseudoDraft" rows="' + Math.max(6, String(ed.draft).split("\n").length + 2) + '" spellcheck="false" aria-label="Pseudocode">' + esc(ed.draft) + '</textarea><p class="hint">The first lines say what it <b>Gets</b>, <b>Says</b> and <b>Remembers</b>: the translator keeps to them, so change them only if you mean to. Numbers and words in { } are settings; if you change only those, no translation is needed.</p>';
   else {
-    h += pseudoViewHTML(a);
+    h += contractHTML(a) + pseudoViewHTML(a);
     const keys = Object.keys(a.params || {});
     if (keys.length) h += '<div class="params">' + keys.map(k => '<span class="param"><code>params.' + esc(k) + '</code><input data-bind="param" data-param="' + esc(k) + '" value="' + esc(Slots.formatSlotValue(a.params[k])) + '" aria-label="' + esc(k) + '"></span>').join("") + '</div>';
   }
@@ -6586,6 +6636,7 @@ async function applyParamChange(a, values) {
   renderStage();
 }
 async function translateAndInstall(a, s, text) {
+  const before = a.contract ? "" : contractText(a);   // to notice if the new program changes it
   a.pseudocode = util.cleanText(text, 3000);
   a.status = "translating";
   renderEditor();
@@ -6598,6 +6649,8 @@ async function translateAndInstall(a, s, text) {
   else { a.status = "error"; a.statusDetail = { message: res.error }; if (res.errorKind) handleCallError({ errorKind: res.errorKind }); }
   syncChallengeParams(s, a);
   await rerunScenarios(a);
+  delete a.contractNote;
+  if (res.status === "ok" && before) { const after = Scenarios.contractOf(a.results); if (after !== before) a.contractNote = { before, after }; }
   save();
   renderEditor();
   renderLeft();
@@ -6606,11 +6659,25 @@ async function savePseudo() {
   const ed = app.ui.editor, a = editorAgent();
   if (!ed || !a || ed.busy) return;
   const box = $("#pseudoDraft");
-  const text = box ? box.value : ed.draft;
+  let text = box ? box.value : ed.draft;
   const s = app.societies[ed.socId];
-  const c = Society.classifyPseudoEdit(a, text);
+  // A Gets / Says / Remembers header at the top is the contract, not pseudocode.
+  const lines = String(text).split("\n"), head = [];
+  let k = 0;
+  while (k < lines.length && /^\s*(Gets|Says|Remembers)\s*:/i.test(lines[k])) head.push(lines[k++].trim());
+  while (head.length && k < lines.length && !lines[k].trim()) k++;
+  let contractChanged = false;
+  if (head.length) { text = lines.slice(k).join("\n"); const cNew = head.join("\n"); if (cNew !== contractText(a)) { a.contract = util.cleanText(cNew, 600); contractChanged = true; } }
   ed.mode = "view";
-  if (c.kind === "same") { renderEditor(); return; }
+  // Putting back exactly the pseudocode that is running needs no translation.
+  if (a.code && text.trim() === String(a.code.pseudocode).trim() && a.pseudocode !== a.code.pseudocode) {
+    a.pseudocode = a.code.pseudocode; a.status = "ok"; a.statusDetail = null; delete a.contractNote;
+    await rerunScenarios(a); save(); renderEditor(); renderLeft();
+    toast("That is the running version again, so no translation was needed.");
+    return;
+  }
+  const c = Society.classifyPseudoEdit(a, text);
+  if (c.kind === "same") { if (contractChanged) { save(); toast("Saved its contract: the translator keeps to it next time."); } renderEditor(); return; }
   if (c.kind === "params") { await applyParamChange(a, c.values); toast("Only the numbers changed, so no translation was needed."); return; }
   ed.busy = true;
   try { await translateAndInstall(a, s, text); } finally { ed.busy = false; renderEditor(); }
@@ -6626,7 +6693,10 @@ async function saveScenarioForm() {
   const errBox = $("#scnErr");
   const parse = (id, label, optional) => { const t = ($("#" + id).value || "").trim(); if (!t) { if (optional) return undefined; return undefined; } try { return JSON.parse(t); } catch (e) { throw new Error(label + " isn't valid JSON: " + e.message); } };
   try {
-    const raw = { id: ed.scnEdit.id || ("s" + Date.now().toString(36)), name: $("#scnName").value, input: {}, expect: parse("scnExpect", "Expected") || {} };
+    const expect = parse("scnExpect", "Expected");
+    if (!expect || typeof expect !== "object" || Array.isArray(expect) || !Object.keys(expect).length)
+      throw new Error("Expected has to say what to check, inside { }, like {\"say\": \"done\"} or {\"pass\": false}. " + (Array.isArray(expect) ? "A list" : expect === undefined || (typeof expect === "object" && expect) ? "An empty { }" : "A " + typeof expect) + " has nothing to check, so the scenario would pass whatever the program did.");
+    const raw = { id: ed.scnEdit.id || ("s" + Date.now().toString(36)), name: $("#scnName").value, input: {}, expect };
     const text = $("#scnText").value, data = parse("scnData", "Input data", true), memory = parse("scnMemory", "Memory", true), from = $("#scnFrom").value, round = $("#scnRound").value, program = $("#scnProgram").value.trim();
     if (text) raw.input.text = text;
     if (data !== undefined) raw.input.data = data;
@@ -6713,13 +6783,15 @@ function moreModelsHTML(st) {
 async function testConnection() {
   const out = $("#connResult");
   if (out) out.textContent = "Testing…";
+  setConnState("testing");
   if (app.settings.connection === "nano") {
     // still inside the click, so Chrome may start the download
     try { await Adapters.nanoPrepare(f => { if (out) out.textContent = "Chrome is downloading Gemini Nano: " + Math.round(f * 100) + "%"; }); }
-    catch (e) { if (out) out.textContent = "✗ " + e.message; else toast("✗ " + e.message, "bad"); return { ok: false, error: e.message }; }
+    catch (e) { setConnState("failed", e.message); if (out) out.textContent = "✗ " + e.message; else toast("✗ " + e.message, "bad"); return { ok: false, error: e.message }; }
     if (out) out.textContent = "Testing…";
   }
   const r = await Adapters.probeAdapter(getAdapter());
+  setConnState(r.ok ? "ok" : "failed", r.ok ? "" : r.error);
   if (r.ok) { clearBanner("keyless"); clearBanner("auth"); clearBanner("net"); clearBanner("nano"); clearBanner("no-model"); if (out) out.textContent = "✓ Working (" + r.model + ")."; else toast("✓ The connection works."); }
   else { if (out) out.textContent = "✗ " + r.error; else toast("✗ " + r.error, "bad"); handleCallError({ errorKind: r.kind }); }
   return r;
@@ -6798,12 +6870,12 @@ const GUIDES = {
     return "<p class='big-idea'><b>The big idea:</b> what looks like intelligence often comes from how simple agents are arranged. A small model with a four-line notebook plays Secret Number far better than one without; Dot Counter, which can't see, counts better than Eyes; the Book remembers what the Editor smooths over.</p>" +
     "<h3>What learners do</h3><p>Learners (about 10 to 16) run, inspect, debug and change small societies of agents: AI agents, programmed agents written in editable pseudocode, and a Renderer that draws Logo. Everything is a glass box: every prompt, every reply, every program and every message is visible. Then they make their own with <b>＋ New society</b>.</p>" +
     "<h3>The microworlds, in teaching order</h3><ol class='worlds-list'>" +
-    "<li><b>Story Chain: “Who remembers the dragon?”</b> Three writers add a sentence each; a Name Keeper checks the hero is still there; a Book keeps every sentence; when the run ends an Editor tells the story again. <i>Powerful ideas:</i> each agent knows only what it is sent; a record (the Book) and a reconstruction (the Editor) are different kinds of memory.</li>" +
+    "<li><b>Story Chain: “Who remembers the dragon?”</b> Three writers add a sentence each; a Name Keeper checks the hero is still there; a Book keeps every sentence; when the run ends an Editor tells the story again. <i>Powerful ideas:</i> each agent gets only what rules send it (as well as whatever its model learned in training); a record (the Book) and a reconstruction (the Editor) are different kinds of memory.</li>" +
     "<li><b>Secret Number: “Can a notebook make it smarter?”</b> The Guesser has no memory; a four-line Notebook program keeps the clues. <i>Powerful ideas:</i> bookkeeping can look like intelligence; memory is not the same as strategy.</li>" +
     "<li><b>Lost and Found: “Where did it end up?”</b> A Finder names a drawing, and rules route it to shelves by its words. <i>Powerful ideas:</i> programs are literal and models are fuzzy; the wording decides where things go.</li>" +
     "<li><b>Telephone: “Where does it go?”</b> An Artist draws a sentence in Logo, a Describer describes the picture, round and round. <i>Powerful ideas:</i> iteration, fixed points and cycles, variance between runs.</li>" +
     "<li><b>Pebble Challenge: “Why did the Designer win?”</b> A Designer draws pebbles, Eyes counts them, a programmed Judge passes or blocks, and a Critic says what to fix. One click swaps Eyes for Dot Counter. <i>Powerful ideas:</i> critics can be gamed; perception versus judgment.</li>" +
-    "<li><b>Three Eyes: “Are three heads better than one?”</b> Three Eyes count the same picture and a Vote program takes the most popular answer. <i>Powerful idea:</i> voting helps only when the voters' mistakes are independent; copies of one model often fail together.</li>" +
+    "<li><b>Three Eyes: “Are three heads better than one?”</b> Three Eyes count the same picture and a Vote program takes the most popular answer. <i>Powerful idea:</i> voting helps when the voters are reasonably good and their mistakes differ; copies of one model often fail together.</li>" +
     "<li><b>Fool the Eyes: “Can a drawing trick a looker?”</b> A Trickster draws pebbles to fool Eyes; a Referee keeps score. <i>Powerful idea:</i> an adversary finds weaknesses a friendly test never would.</li>" +
     "<li><b>Joke Workshop: “Do critics make jokes funnier?”</b> A Joker writes, two Critics send notes, and the learner rates every version. <i>Powerful idea:</i> whose judgment counts, and whether critics improve work or only make it more careful.</li>" +
     "<li><b>Small Helper, Big Helper: “When do you need the big one?”</b> A cheap model tries first; an Escalator hands the job to a strong one when it fails. It needs two models. <i>Powerful idea:</i> cost against capability.</li></ol>" +
@@ -6822,7 +6894,7 @@ const GUIDES = {
     "</table><p>Settings starts each key-based provider on a cheap model (" + L("anthropic", D.anthropic) + ", " + L("gemini", D.gemini) + ", " + L("openai", D.openai) + ") and lists stronger ones. A grown-up sets up the models; with more than one, learners choose which agent uses which in the Models row on the stage, without opening Settings.</p>" +
     "<h3>Sessions to try</h3><p>No child has used the kit yet, so these are guesses to test, not results.</p><ol>" +
     "<li><b>Where did Pip go?</b> (Story Chain) Run it and count the rounds until Pip disappears. Tick “Writer A remembers” and run again. Then compare the Book with the Editor's story: what did the Editor leave out, or make up?</li>" +
-    "<li><b>Is the Guesser smarter?</b> (Secret Number) Run with no Notebook and count the guesses. Switch the Notebook on and run again with the same model. Then tick “You be the Guesser” and try to beat it.</li>" +
+    "<li><b>Is the Guesser smarter?</b> (Secret Number) To compare fairly, switch off the random secret and choose it yourself; try a few different secrets. Run with no Notebook and count the guesses, then switch the Notebook on and run again with the same model and the same secrets. Then tick “You be the Guesser” and try to beat it. (For casual play, leave the secret random.)</li>" +
     "<li><b>Predict, run, compare.</b> (Telephone) Run twice with the same start. How different are the runs? Which starts settle, which flip back and forth?</li>" +
     "<li><b>Game the judge.</b> (Pebble Challenge) Can the Designer win without meeting the challenge? Which tricks fooled Eyes, and which fooled Dot Counter?</li>" +
     "<li><b>Read and write programs.</b> Open a Judge or the Notebook, change a number in a slot, then change a line and watch the scenarios.</li>" +
@@ -6830,7 +6902,7 @@ const GUIDES = {
     "<li><b>Make your own.</b> ＋ New society, copy a microworld, and change its question to one the learners care about.</li></ol>" +
     "<h3>Seat two learners at one society</h3><p>One drives; the other predicts and writes down what happens; swap every run. Then use <b>scenario files</b> to challenge each other: each pair exports scenarios designed to break the other pair's agent, the other pair imports them, and the fixing begins.</p>" +
     "<h3>What to say when a learner is stuck</h3><p>Questions, not answers:</p><ul><li>“What did it actually get sent?” (Open its trace entry: “It got …”.)</li><li>“What would a program have to count to decide that?”</li><li>“Which agent decided that, and what did it look at?”</li><li>“What do you think will happen? Why?”</li><li>“If you ran it again, would it say the same?”</li></ul>" +
-    "<h3>Misconceptions to watch for</h3><ul><li><b>“The AI knows.”</b> An agent knows only its instructions and what rules send it. The trace shows exactly that.</li><li><b>“The AI is lying.”</b> It writes likely text; it has no plan to deceive. Ask what it was sent.</li><li><b>“The program is clever.”</b> It does exactly what its pseudocode says, which is why “dogs” isn't “dog”.</li><li><b>“Same start, same result.”</b> AI agents vary from run to run; programs don't.</li><li><b>“Bigger is always better.”</b> Small Helper, Big Helper shows when it isn't worth it.</li><li><b>“The Editor's story is what happened.”</b> The Book is the record.</li></ul>" +
+    "<h3>Misconceptions to watch for</h3><ul><li><b>“The AI knows.”</b> The trace shows everything this kit sent an agent and everything it sent back. A model also brings what it learned in training, which the trace can't show.</li><li><b>“The AI is lying.”</b> The trace shows no evidence of a plan to deceive; look at its instructions and the messages it got, and ask what a likely-sounding answer would have been.</li><li><b>“The program is clever.”</b> The program that runs is the JavaScript translated from its pseudocode, and it does exactly what that says, which is why “dogs” isn't “dog”. Scenarios are how you check that the two match.</li><li><b>“Same start, same result.”</b> AI agents vary from run to run; programs don't.</li><li><b>“Bigger is always better.”</b> Small Helper, Big Helper shows when it isn't worth it.</li><li><b>“The Editor's story is what happened.”</b> The Book is the record.</li></ul>" +
     "<h3>Safety and privacy</h3><ul><li><b>What learners type is sent to the model's provider</b> (Anthropic, Google or OpenAI), along with the agents' messages and pictures, except with Gemini Nano, which runs on the computer. Tell learners not to type names, addresses or anything personal.</li><li>Every model call starts with a fixed, visible safety preamble for a young audience.</li><li>Keys stay in this browser unless you choose to remember them; they are never put in exported files.</li><li>Imported files are checked: text is cleaned, and any JavaScript in them is thrown away and translated again here.</li><li>Programs run behind a checker, a step counter and (where the page allows) a Worker. Drawings are Logo, read by an interpreter that can only move the turtle.</li><li>The Helper asks questions back, and never states the fix for a failing scenario.</li></ul>";
   } }
 };
@@ -6921,6 +6993,14 @@ const ACTIONS = {
   example(t) { const st = startChoice(soc()); if (st) { st.value = t.dataset.text; save(); renderStage(); } },
   challenge(t) {
     const s = soc();
+    const r0 = app.runs[s.id], tr0 = r0 ? r0.api.run.trace : (app.traces[s.id] || []);
+    if (t.dataset.id !== s.challenge && tr0.length) {   // the picture and verdict on the stage belong to the old challenge
+      if (["running", "paused", "stepping", "ready", "waiting"].indexOf(r0 ? r0.api.run.status : "") >= 0) r0.api.stop();
+      const old = (s.challenges || []).find(c => c.id === s.challenge);
+      app.prevStrips[s.id] = { start: r0 ? r0.startText : traceStartText(tr0), rounds: stripOf(tr0, s), label: old ? old.title : "" };
+      delete app.runs[s.id]; delete app.traces[s.id];
+      app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); app.ui.logoEdit = null;
+    }
     const judgeType = () => { const c = (s.challenges || []).find(x => x.id === s.challenge); const j = c && Society.agentById(s, c.judge); return j ? j.typeId : ""; };
     const was = judgeType();
     Society.applyChallenge(s, t.dataset.id);
@@ -7017,6 +7097,7 @@ const ACTIONS = {
     if (!rec || rec.api.run.status !== "waiting") return;
     const text = yourDraft(s);
     if (!String(text).trim()) { toast("Write something first."); return; }
+    delete app.ui.yourDraft[draftKey(s)];   // sent: the next turn starts with an empty box
     rec.api.answer(text);
     await resumeRun();
   },
@@ -7124,7 +7205,15 @@ const ACTIONS = {
   "test-conn"() { testConnection(); },
   "copy-link"() { copyText(PROJECT_URL); },
   // agent editor
-  "edit-pseudo"() { const ed = app.ui.editor, a = editorAgent(); if (!ed || !a) return; ed.mode = "edit"; ed.draft = a.pseudocode; renderEditor(); const box = $("#pseudoDraft"); if (box) box.focus(); },
+  "edit-pseudo"() { const ed = app.ui.editor, a = editorAgent(); if (!ed || !a) return; ed.mode = "edit"; const c = contractText(a); ed.draft = (c ? c + "\n\n" : "") + a.pseudocode; renderEditor(); const box = $("#pseudoDraft"); if (box) box.focus(); },
+  async "back-to-running"() {
+    const a = editorAgent();
+    if (!a || !a.code) return;
+    a.pseudocode = a.code.pseudocode; a.status = "ok"; a.statusDetail = null; delete a.contractNote;
+    await rerunScenarios(a);
+    save(); renderEditor(); renderLeft();
+    toast("Back to the running version. No translation was needed.");
+  },
   "cancel-pseudo"() { const ed = app.ui.editor; if (!ed) return; ed.mode = "view"; renderEditor(); },
   "save-pseudo"() { savePseudo(); },
   async revert() { const a = editorAgent(); if (!a) return; Society.revertAgent(a); syncChallengeParams(app.societies[app.ui.editor.socId], a); await rerunScenarios(a); save(); renderEditor(); renderLeft(); toast("Went back to the version before."); },
@@ -7264,7 +7353,7 @@ async function handleBind(t, evt) {
       if (t.checked && a) toast("Press ▶ Run. You write what the " + a.name + " writes, and the other agents answer you.");
       return;
     }
-    case "your-answer": { app.ui.yourDraft[s.id] = String(t.value); paintYours(); return; }
+    case "your-answer": { app.ui.yourDraft[draftKey(s)] = String(t.value); paintYours(); return; }
     case "logo-edit": { if (app.ui.logoEdit) { app.ui.logoEdit.text = String(t.value); paintLogoEdit(); } return; }
     case "replay": { setReplay(+t.value); return; }
     case "rule-send": {
@@ -7440,7 +7529,7 @@ async function boot() {
   if (app.settings.connection === "keyless" && ENV.chatArtifact) Adapters.probeAdapter(getAdapter()).then(r => { if (!r.ok) handleCallError({ errorKind: r.kind || "signedout" }); });
   window.__akReady = true;
 }
-window.__ak = { app, ENV, AK, soc, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, adapterFor, modelRefs, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
+window.__ak = { app, ENV, AK, soc, connState, setConnState, testConnection, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, adapterFor, modelRefs, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
 window.__akBoot = boot();
 })();
 </script>

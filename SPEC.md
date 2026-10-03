@@ -379,6 +379,18 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **“Save my work in this browser”**, on by default. Switching it off asks first, deletes what was saved (so a refresh can't bring back older work), and from then on keeps only that choice (`agentkit.v1.nosave`), never the work; the page then asks before it is closed or refreshed. Switching it on saves at once. “Start over” with “Also forget my settings” turns saving back on.
   - “Remove this society” is now **“Delete this society (from this browser)”**, and its question says it can't be undone. (Microworlds keep “Reset”.)
   - Suite: 454 PASS, fingerprint `869141d00862`.
+- 2026-10-03 — **Revision 1.5.0: trustworthy evidence and honest wording** (Ken's “next changes” document, from Chrome testing, the panel and GPT 6.1 Sol's review; sections A to C, stopping before D as it says).
+  - **A1:** an Expected that isn't a { } with at least one thing to check (a number, a list, an empty { }) is refused, and the message says why; an old scenario that checks nothing is labelled “checks nothing” and never shown green.
+  - **A2:** a society with no AI agents (only programs and You) runs with no model chosen.
+  - **A3, A8, A10** were already fixed in 1.2.3 (the last round finishes delivering; the trace names the models used; no raw {placeholder}).
+  - **A4: contracts.** Every programmed agent's editor shows what it **Gets / Says / Remembers**, worked out from what its scenarios actually did (Book: “Gets: words, its memory · Says: words, sentences (a number) · Remembers: a list”). Editing the pseudocode starts with that header; changing it saves the learner's own contract (`agent.contract`). The translator is given the contract and the installed JavaScript, and a new rule tells it to change only what the edit needs and keep the contract. If a translation still changes the contract, the editor says so, before and after, and points to “Go back to the version before”.
+  - **A5:** “↩ Go back to the running version” whenever the pseudocode differs from the running program; and typing the installed pseudocode back in restores it, both without a model call.
+  - **A6:** answer drafts belong to a society and an agent, and are cleared when sent, so playing the Joker no longer fills You's rating box with the joke.
+  - **A7:** choosing another challenge moves the last run to “The run before, for “…””, so the old picture and verdict don't sit next to the new challenge.
+  - **A9:** the connection chip says “not tested yet”, “testing…”, working (green) or “not working” (red), from Test the connection and from real calls through the main connection; when it isn't working the stage says so instead of “Ready.”
+  - **B:** the trace shows everything this kit sent an agent and got back, but not what its model learned in training (teacher guide, Story Chain's powerful idea); “no plan to deceive” → “no evidence of a plan”; the running program is the translated JavaScript, checked by scenarios; voting helps when voters are reasonably good and their mistakes differ; Dot Counter counts DOT commands, its idea of a pebble (Fool the Eyes, with a new question inviting a Referee with another idea); Two Answers' reflections are text it writes, not a window into the model; Secret Number comparisons use a fixed secret, tried at several values.
+  - **C** was done in 1.3.0 (the guides); checked against the list. **D (accessible dialogs) is left for after the pilot**, as the document says.
+  - Suite: 466 PASS, fingerprint `ecae1376d2a3`.
 
 ---
 
