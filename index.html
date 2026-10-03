@@ -152,7 +152,7 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .rule-editing{border:1.5px dashed var(--accent);border-radius:12px;padding:6px}.rule-editing .rule{border:0;margin:0}
 .achip .calls{font-size:10.5px;font-weight:600;color:var(--ink-faint);margin-left:3px}
 .yt-ask{margin:8px 0 4px;font-weight:700}
-.world.add{border-style:dashed;color:var(--ink-soft)}.worlds-list{display:contents}
+.world.add{border-style:dashed;color:var(--ink-soft)}.world.mine:not(.on){background:var(--accent-bg)}.world.more{border-style:dashed;color:var(--ink-soft);font-weight:700}.worlds-break{flex-basis:100%;height:0}.worlds-label{align-self:center;font-family:var(--display);font-weight:800;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin:0 4px 0 2px}.yours-list{display:grid;gap:6px;max-height:55vh;overflow:auto;padding:2px}.yours-item{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:12px;padding:7px 10px}.yours-item.on{border-color:var(--accent)}.yours-item label{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;cursor:pointer}.worlds-list{display:contents}
 .new-choices{display:grid;gap:4px;margin-top:12px}.new-choices .hint{margin:0 0 8px}
 .about-edit{margin:6px 0 10px;padding:8px 10px;border:1.5px solid var(--line);border-radius:12px;background:#fff}.about-edit summary{cursor:pointer}.about-edit .form-grid{grid-template-columns:1fr;gap:4px}.about-edit .form-grid label{margin-top:6px}.about-edit .row{flex-wrap:wrap}
 .more{display:inline-block;margin-left:2px;padding:0 6px;border-radius:8px;background:var(--accent-bg);color:var(--accent);font-weight:800;cursor:pointer;line-height:1.35}.more:hover,.more:focus{outline:2px solid var(--accent);outline-offset:1px}
@@ -432,7 +432,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.7.0";
+AK.VERSION = "1.8.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -5389,6 +5389,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- An agent called You is the learner: the run waits for their answer.\n" +
   "- A rule can come from You (“when You start the run, send your words to …”), so the start reaches more than one agent. A rule can also say “when the run ends”: then the agent's last message is sent on, once, at the very end (Story Chain's Book sends the whole story to the Editor that way).\n" +
   "- Everything is saved in this browser as you go (refreshing keeps it); ⚙️ Settings can switch saving off, and then the work is gone when the tab closes. “Delete this society”, in Look inside, deletes one of your own societies from this browser for good; microworlds have “Reset” instead.\n" +
+  "- The top row has the nine microworlds, then YOURS: the four of your own societies used most recently (made from scratch, an example, a copy or an import). ☰ All yours lists every one, to open, or to tick several and delete them. Importing a file with the same name as one of yours asks whether to replace it or keep both (the new one gets “(2)”); choosing an example you have already made asks whether to open yours or make another.\n" +
   "- ⬇ Export and ⬆ Import, at the top of the page, save the society you are in as a file and open one from a file. An agent's emoji is changed by clicking it at the top of its editor.\n" +
   "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
   "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.\n" +
@@ -5624,7 +5625,7 @@ function unmetNeed(s) {
 const app = {
   settings: defaultSettings(),
   societies: {}, order: [], activeId: Seeds.MICROWORLDS[0].id,
-  runs: {}, traces: {}, prevStrips: {}, log: {}, helperChat: {},
+  runs: {}, traces: {}, prevStrips: {}, log: {}, helperChat: {}, used: {},
   banners: [], saveError: "", loadError: "", replaced: [],
   adapter: null, adapterKey: "",
   ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), tech: new Set(), expandedW: new Set(), editingRules: new Set(), editingRound: false, sendWarn: null, bench: {}, replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
@@ -5656,7 +5657,7 @@ async function saveNow() {
   for (const id of app.order) { const s = clone(app.societies[id]); for (const a of s.agents) delete a.results; societies[id] = s; }
   const traces = {};
   for (const id of Object.keys(app.traces)) if (app.societies[id]) traces[id] = slimTrace(app.traces[id]);
-  const data = { schema: 1, version: AK.VERSION, settings, order: app.order, activeId: app.activeId, societies, traces, helperChat: app.helperChat, translationCache: Array.from(Translator.TranslationCache.entries()).slice(-60) };
+  const data = { schema: 1, version: AK.VERSION, settings, order: app.order, activeId: app.activeId, societies, traces, helperChat: app.helperChat, used: app.used, translationCache: Array.from(Translator.TranslationCache.entries()).slice(-60) };
   try { storage.setItem(LS_KEY, await Store.pack(data)); if (app.saveError) { app.saveError = ""; renderBanners(); } return true; }
   catch (e) {
     app.saveError = "Your work couldn't be saved in this browser (" + (e && e.name === "QuotaExceededError" ? "its storage is full" : (e && e.message) || "unknown problem") + "). Export your society to keep it.";
@@ -5689,11 +5690,37 @@ async function load() {
     app.traces = d.traces || {};
     for (const old of app.replaced) delete app.traces[old.id];
     app.helperChat = d.helperChat || {};
+    app.used = d.used && typeof d.used === "object" ? d.used : {};
     for (const pair of d.translationCache || []) if (Array.isArray(pair) && pair.length === 2) Translator.TranslationCache.set(pair[0], pair[1]);
   } catch (e) { app.loadError = "The saved work couldn't be read (" + e.message + "), so the kit started fresh."; }
 }
 const MW_IDS = Seeds.MICROWORLDS.map(m => m.id);
 const isMicroworld = id => MW_IDS.indexOf(id) >= 0;
+// Your own societies (from scratch, examples, copies and imports) are shown after the microworlds: the few used most
+// recently, in the order they were made (so a button doesn't jump when chosen), and the rest in “All yours”.
+const YOURS_SHOWN = 4;
+const touch = id => { if (id) app.used[id] = Date.now(); };
+const yoursOf = () => app.order.filter(id => !isMicroworld(id));
+const byRecent = list => list.slice().sort((a, b) => (app.used[b] || 0) - (app.used[a] || 0) || app.order.indexOf(b) - app.order.indexOf(a));
+function yoursShown() {
+  const mine = yoursOf(), recent = byRecent(mine).slice(0, YOURS_SHOWN);
+  if (!isMicroworld(app.activeId) && app.societies[app.activeId] && recent.indexOf(app.activeId) < 0) recent[recent.length - 1] = app.activeId;
+  return mine.filter(id => recent.indexOf(id) >= 0);
+}
+// A title no other society has: “Evolution (2)”, “Evolution (3)” …
+function uniqueTitle(base) {
+  const taken = t => app.order.some(id => app.societies[id].title.trim().toLowerCase() === t.trim().toLowerCase());
+  if (!taken(base)) return base;
+  let n = 2;
+  while (taken(base + " (" + n + ")")) n++;
+  return util.cleanName(base + " (" + n + ")", 60);
+}
+function forgetSociety(id) {
+  const r = app.runs[id]; if (r) r.api.stop();
+  delete app.societies[id]; delete app.runs[id]; delete app.traces[id]; delete app.prevStrips[id]; delete app.used[id];
+  app.order = app.order.filter(x => x !== id);
+  if (app.activeId === id) app.activeId = app.order[0];
+}
 function ensureSocieties() {
   for (const mw of Seeds.MICROWORLDS) if (!app.societies[mw.id]) app.societies[mw.id] = mw.make();
   const order = MW_IDS.concat(app.order.filter(id => !isMicroworld(id)));
@@ -5903,6 +5930,16 @@ function uiConfirm(message, opts) {
     m.body.querySelector("[data-no]").onclick = () => { finish(false); m.close(); };
     m.body.querySelector("[data-yes]").onclick = () => { finish(true); m.close(); };
     setTimeout(() => { const b = m.body.querySelector("[data-yes]"); if (b && b.focus) b.focus(); }, 30);
+  });
+}
+function uiChoose(message, opts) {
+  return new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (done) return; done = true; resolve(v); };
+    const m = openModal({ title: opts.title || "Just checking", body: '<p class="confirm-text"></p><div class="row end"><button class="btn" data-choice-none>Cancel</button>' + opts.choices.map((c, i) => '<button class="btn ' + (c[2] || "") + '" data-choice="' + i + '"></button>').join("") + '</div>', onClose: () => finish(null) });
+    m.body.querySelector(".confirm-text").textContent = message;
+    m.body.querySelector("[data-choice-none]").onclick = () => { finish(null); m.close(); };
+    opts.choices.forEach((c, i) => { const b = m.body.querySelector('[data-choice="' + i + '"]'); b.textContent = c[1]; b.onclick = () => { finish(c[0]); m.close(); }; });
   });
 }
 document.addEventListener("keydown", e => { if (e.key === "Escape" && modals.length) modals[modals.length - 1].close(); });
@@ -6144,8 +6181,12 @@ function shellHTML() {
 }
 function renderWorlds() {
   const host = $("#worlds");
-  const compact = app.order.length > 5;   // with many, the question shows for the chosen one and on hover
-  if (host) host.innerHTML = '<span class="worlds-list">' + app.order.map(id => { const s = app.societies[id], on = id === app.activeId; const why = unmetNeed(s); return '<button class="world' + (on ? " on" : "") + (why ? " needs" : "") + '" data-act="world" data-id="' + esc(id) + '"' + (s.question || why ? ' title="' + esc(why ? why + " A grown-up can add another in ⚙️ Settings, under More models." : s.question) + '"' : "") + '>' + (why ? '<span class="lock" aria-hidden="true">🔒 </span>' : "") + esc(s.title) + (s.question && (!compact || on) ? '<span class="q">' + esc(s.question) + '</span>' : "") + '</button>'; }).join("") + '<button class="world add" data-act="new-society" title="Start a society of your own">＋ New society</button></span>';
+  const mine = yoursOf(), shown = yoursShown(), hidden = mine.length - shown.length;
+  const compact = MW_IDS.length + shown.length > 5;   // with many, the question shows for the chosen one and on hover
+  const worldBtn = id => { const s = app.societies[id], on = id === app.activeId; const why = unmetNeed(s); return '<button class="world' + (on ? " on" : "") + (isMicroworld(id) ? "" : " mine") + (why ? " needs" : "") + '" data-act="world" data-id="' + esc(id) + '"' + (s.question || why ? ' title="' + esc(why ? why + " A grown-up can add another in ⚙️ Settings, under More models." : s.question) + '"' : "") + '>' + (why ? '<span class="lock" aria-hidden="true">🔒 </span>' : "") + esc(s.title) + (s.question && (!compact || on) ? '<span class="q">' + esc(s.question) + '</span>' : "") + '</button>'; };
+  if (host) host.innerHTML = '<span class="worlds-list">' + MW_IDS.filter(id => app.societies[id]).map(worldBtn).join("") +
+    (mine.length ? '<span class="worlds-break" aria-hidden="true"></span><span class="worlds-label">Yours</span>' + shown.map(worldBtn).join("") + '<button class="world more" data-act="all-yours" title="All your societies: open one, or delete some">' + (hidden ? "☰ All " + mine.length + " of yours" : "☰ Manage yours") + '</button>' : "") +
+    '<button class="world add" data-act="new-society" title="Start a society of your own">＋ New society</button></span>';
   const chip = $("#modeChip");
   if (chip) {
     const c = app.settings.connection;
@@ -7210,7 +7251,7 @@ const GUIDES = {
     "<h4>The stage</h4><p><b>▶ Run</b> goes until the round limit. <b>⏭ Step</b> delivers one message at a time, and Run carries on from there. <b>↺ Reset</b> starts over. <b>🙋 You be the …</b> lets you take an agent's place: the run waits for your answer. One-click switches under the start change several rules at once. If a grown-up has set up more than one model, the <b>Models</b> row lets you choose which model each AI agent uses. After a run, each AI agent's button says how many model calls it made.</p>" +
     "<h4>Rules</h4><p>In Look inside, every rule reads as a sentence: <i>When the Artist responds, send its words to the Renderer.</i> The tick in front switches a rule on or off. <b>✎ Edit</b> shows its parts: who it's from, a condition (like <i>if its data says pass is false</i>), what to send (words, data, picture) and who to. A rule can come from <b>You</b>, so the start reaches more than one agent, and a rule can wait for <b>the end of the run</b>, like the one that sends Story Chain's Book to the Editor.</p>" +
     "<h4>Agents</h4><p><b>AI agents</b> follow instructions you can change in their editor. <b>Programmed agents</b> are pseudocode: numbers in green { } are settings you can change; edit a line and the translator turns it into JavaScript (<b>Peek under the hood</b> shows both). <b>Scenarios</b> are tests for a program: an input and what it should answer; a red one shows what went wrong, and you can save any turn from the trace as a new one. Some agents <b>collect</b>: they wait for several messages, then answer them all at once; an AI agent that collects sees all their pictures side by side. An agent called <b>You</b> is you. Each agent's editor shows its <b>Connections</b>: who can send it messages, and its own rules. Click an agent's emoji, at the top of its editor, to choose another.</p>" +
-    "<h4>Saving and sharing</h4><p>Everything is saved in this browser as you go, so refreshing the tab keeps it all. It stays in this browser on this computer. <b>⬇ Export</b> at the top saves the society you are in as a file, to keep, move or give a friend; <b>⬆ Import</b> opens one. A grown-up can switch saving off in ⚙️ Settings; then the work is gone when the tab closes. <b>Delete this society</b>, in Look inside, deletes one of your own societies from this browser for good.</p>" +
+    "<h4>Saving and sharing</h4><p>Everything is saved in this browser as you go, so refreshing the tab keeps it all. It stays in this browser on this computer. <b>⬇ Export</b> at the top saves the society you are in as a file, to keep, move or give a friend; <b>⬆ Import</b> opens one. A grown-up can switch saving off in ⚙️ Settings; then the work is gone when the tab closes. <b>Delete this society</b>, in Look inside, deletes one of your own societies from this browser for good. Your own societies come after the microworlds, under <b>Yours</b>: the four you used last, and <b>☰ All yours</b> for the rest, where you can also tick several and delete them at once.</p>" +
     "<h4>The trace</h4><p>Every message is in the <b>Trace</b>. Open one to see what the agent got and what it said. <b>Show full technical details</b> shows exactly what a model was sent and what came back. A <b>…</b> opens text that was cut short, and a picture opens full size when you click it. After a run, <b>Replay</b> steps through it one message at a time.</p>" +
     "<h4>Logo</h4><p>Agents that draw write <b>Logo</b>: <code>FORWARD 50</code>, <code>RIGHT 90</code>, and <code>REPEAT 4 [FORWARD 50 RIGHT 90]</code> for a square. In Telephone, “Start with a drawing” lets you write Logo yourself, and you can change any drawing in the trace and see it drawn.</p>" +
     "<h4>Models</h4><p>A grown-up chooses the models in ⚙️ Settings: Gemini Nano (free, built into Chrome), or Claude, Gemini or OpenAI with a key. If they add more than one, you choose which agent uses which on the stage. Each microworld's question card says which model suits it.</p>" +
@@ -7269,10 +7310,25 @@ function openGuide(which) {
 function uniqueSocietyId(base) { let id = util.cleanId(base) || "society", n = 2; const b = id; while (app.societies[id]) id = b + "-" + n++; return id; }
 async function importSocietyText(text) {
   const { society, trace } = Society.importSociety(text);
-  society.id = uniqueSocietyId(isMicroworld(society.id) ? society.id + "-imported" : society.id);
+  const same = app.order.find(id => app.societies[id].title.trim().toLowerCase() === society.title.trim().toLowerCase());
+  let replace = null;
+  if (same && !isMicroworld(same)) {
+    const pick = await uiChoose("You already have a society called “" + society.title + "”. Replace yours with the one in this file, or keep both?", { title: "Import “" + society.title + "”", choices: [["replace", "Replace mine", "danger"], ["both", "Keep both", "primary"]] });
+    if (!pick) return null;
+    if (pick === "replace") replace = same;
+  }
+  if (replace) {
+    const r = app.runs[replace]; if (r) r.api.stop();
+    society.id = replace;
+    delete app.runs[replace]; delete app.traces[replace]; delete app.prevStrips[replace];
+  } else {
+    if (same) society.title = uniqueTitle(society.title);
+    society.id = uniqueSocietyId(isMicroworld(society.id) ? society.id + "-imported" : society.id);
+    app.order.push(society.id);
+  }
   app.societies[society.id] = society;
-  app.order.push(society.id);
   app.activeId = society.id;
+  touch(society.id);
   if (trace && trace.length) app.traces[society.id] = trace;
   const needs = society.agents.filter(a => a.kind === "program" && a.status !== "ok");
   if (needs.length && liveConnection()) for (const a of needs) await translateAndInstall(a, society, a.pseudocode);
@@ -7280,7 +7336,7 @@ async function importSocietyText(text) {
   save();
   renderAll();
   const left = society.agents.filter(a => a.kind === "program" && a.status !== "ok").length;
-  toast("Imported “" + society.title + "”: " + society.agents.length + " agents, " + society.rules.length + " rules." + (left ? " " + left + " program" + (left === 1 ? " needs" : "s need") + " translating." : ""));
+  toast((replace ? "Replaced “" : "Imported “") + society.title + "”: " + society.agents.length + " agents, " + society.rules.length + " rules." + (left ? " " + left + " program" + (left === 1 ? " needs" : "s need") + " translating." : ""));
   return society;
 }
 function exportSocietyFlow() {
@@ -7318,7 +7374,7 @@ async function traceDocument(s, trace, run) {
 
 /* ===== SECTION: ACTIONS (clicks) ===== */
 const ACTIONS = {
-  world(t) { app.activeId = t.dataset.id; app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); save(); renderAll(); },
+  world(t) { app.activeId = t.dataset.id; touch(app.activeId); app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); save(); renderAll(); },
   look() { app.ui.lookInside = !app.ui.lookInside; if (window.innerWidth <= 820) app.ui.mobileTab = app.ui.lookInside ? "inside" : "stage"; renderWorlds(); renderLeft(); },
   mtab(t) { app.ui.mobileTab = t.dataset.id; renderAll(); window.scrollTo && window.scrollTo(0, 0); },
   run() {
@@ -7504,6 +7560,7 @@ const ACTIONS = {
   "replay-exit"() { app.ui.replay = null; renderStage(); renderTrace(); },
   async "export-trace"() { const s = soc(); const rec = app.runs[s.id]; const trace = runOrLastTrace(s.id); if (!trace.length) return; toast("Making the web page…"); offerFile("agent-kit-" + s.id + "-trace.html", await traceDocument(s, trace, rec ? rec.api.run : null), "text/html"); },
   "export-society"() { exportSocietyFlow(); },
+  "all-yours"() { openYours(); },
   "import-society"() { pickFile(".json,application/json", text => { importSocietyText(text).catch(e => toast("Couldn't import: " + e.message, "bad")); }); },
   "new-society"() { openNewSociety(); },
   "emoji-pick"(t) { openEmojiPicker(t.dataset.id); },
@@ -7519,7 +7576,7 @@ const ACTIONS = {
     const full = t.dataset.full || "";
     openModal({ title: t.dataset.title || "All of it", wide: full.length > 600, body: t.dataset.pre ? '<pre class="box full-text">' + esc(full) + '</pre>' : '<div class="full-text">' + md(full) + '</div>' });
   },
-  "save-copy"() { const s = soc(); const c = clone(s); c.id = uniqueSocietyId(s.id + "-copy"); c.title = util.cleanName(s.title + " (copy)", 60); app.societies[c.id] = c; app.order.push(c.id); app.activeId = c.id; rerunAll().then(renderAll); save(); renderAll(); toast("Saved a copy."); },
+  "save-copy"() { const s = soc(); const c = clone(s); c.id = uniqueSocietyId(s.id + "-copy"); c.title = uniqueTitle(util.cleanName(s.title + " (copy)", 60)); app.societies[c.id] = c; app.order.push(c.id); touch(c.id); app.activeId = c.id; rerunAll().then(renderAll); save(); renderAll(); toast("Saved a copy."); },
   async "reset-world"() {
     const s = soc();
     if (!(await uiConfirm("Put " + s.title + " back the way it came? Your changes to its agents, rules and scenarios will be lost. (Export it first to keep them.)", { title: "Reset " + s.title + "?", ok: "Reset", danger: true }))) return;
@@ -7532,16 +7589,16 @@ const ACTIONS = {
   async "remove-world"() {
     const s = soc();
     if (!(await uiConfirm("Delete “" + s.title + "” and its last run from this browser? This can't be undone. (⬇ Export it first to keep a copy as a file.)", { title: "Delete a society?", ok: "Delete", danger: true }))) return;
-    delete app.societies[s.id]; delete app.runs[s.id]; delete app.traces[s.id]; app.order = app.order.filter(id => id !== s.id); app.activeId = app.order[0]; save(); renderAll();
+    forgetSociety(s.id); app.activeId = app.order[0]; save(); renderAll();
   },
   async "reset-all"() {
     const opts = { title: "Start over?", ok: "Start over", danger: true, checkbox: "Also forget my settings: the models I chose and my keys" };
-    if (!(await uiConfirm("Delete all your societies, traces and helper chats saved in this browser? The four microworlds come back as new.", opts))) return;
+    if (!(await uiConfirm("Delete all your societies, traces and helper chats saved in this browser? The microworlds come back as new.", opts))) return;
     const forget = !!opts.checked;
     try { if (storage) storage.removeItem(LS_KEY); } catch (e) { /* nothing saved */ }
     for (const id of Object.keys(app.runs)) app.runs[id].api.stop();
     if (forget) { app.settings = defaultSettings(); try { if (storage) storage.removeItem(NOSAVE_KEY); } catch (e) { /* nothing to forget */ } }   // saving is on again, as by default
-    app.societies = {}; app.order = []; app.runs = {}; app.traces = {}; app.prevStrips = {}; app.log = {}; app.helperChat = {};
+    app.societies = {}; app.order = []; app.runs = {}; app.traces = {}; app.prevStrips = {}; app.log = {}; app.helperChat = {}; app.used = {};
     ensureSocieties(); await rerunAll();
     if (!forget) await saveNow();   // the settings stay saved
     if (app.ui.settingsModal) app.ui.settingsModal.close();
@@ -7602,20 +7659,56 @@ function openNewSociety() {
     '<div class="new-choices"><button class="btn primary" data-new="blank">Start from scratch</button><p class="hint">One AI agent, and you with the start. Add agents and rules in Look inside.</p>' +
     '<button class="btn" data-new="copy">Copy ' + esc(s.title) + '</button><p class="hint">Everything in ' + esc(s.title) + ', to change as you like.</p>' +
     '<h4 style="margin:6px 0 4px">Or start from an example</h4>' + Seeds.EXAMPLES.map(x => { const e = x.make(); return '<button class="btn" data-new="example" data-id="' + esc(x.id) + '">' + esc(x.emoji + " " + e.title) + '</button><p class="hint">' + esc(x.about) + '</p>'; }).join("") + '</div>' });
-  m.body.addEventListener("click", ev => {
+  m.body.addEventListener("click", async ev => {
     const b = ev.target.closest("[data-new]");
     if (!b) return;
     const name = util.cleanName($("#newSocName", m.body).value, 60) || "My society";
     const ex = b.dataset.new === "example" && Seeds.EXAMPLES.find(x => x.id === b.dataset.id);
     const c = b.dataset.new === "blank" ? Seeds.makeBlank(name) : ex ? Object.assign(ex.make(), name !== "My society" ? { title: name } : {}) : Object.assign(clone(s), { title: name });
+    if (ex && name === "My society") {   // an example you have already made: open yours, or make another
+      const have = byRecent(yoursOf().filter(id => id === ex.id || id.indexOf(ex.id + "-") === 0 || app.societies[id].title === c.title));
+      if (have.length) {
+        const pick = await uiChoose("You already have " + (have.length === 1 ? "“" + app.societies[have[0]].title + "”" : have.length + " societies made from " + c.title) + ". Open yours, or make another one?", { title: c.title, choices: [["new", "Make another"], ["open", have.length === 1 ? "Open mine" : "Open the latest", "primary"]] });
+        if (!pick) return;
+        if (pick === "open") { app.activeId = have[0]; touch(have[0]); m.close(); save(); renderAll(); return; }
+      }
+    }
+    c.title = uniqueTitle(c.title);
     delete c.seedVersion;
     c.id = uniqueSocietyId(ex && name === "My society" ? ex.id : name);
-    app.societies[c.id] = c; app.order.push(c.id); app.activeId = c.id;
+    app.societies[c.id] = c; app.order.push(c.id); app.activeId = c.id; touch(c.id);
     app.ui.lookInside = true;
     m.close();
     rerunAll().then(renderAll);
     save(); renderAll();
     toast(b.dataset.new === "blank" ? "Your society. Look inside to give it a question, agents and rules." : ex ? c.title + ": yours to run and change." : "A copy of " + s.title + ", to change as you like.");
+  });
+}
+function openYours() {
+  const mine = byRecent(yoursOf());
+  if (!mine.length) { toast("You haven't made a society yet. Press ＋ New society."); return; }
+  const when = id => app.used[id] ? "used " + new Date(app.used[id]).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "";
+  const m = openModal({ title: "☰ All your societies (" + mine.length + ")", body:
+    '<p class="hint">The ones you used last come first. Open one, or tick some and delete them from this browser (⬇ Export first to keep a copy as a file).</p>' +
+    '<div class="yours-list">' + mine.map(id => { const s = app.societies[id]; return '<div class="yours-item' + (id === app.activeId ? " on" : "") + '"><label class="grow"><input type="checkbox" data-tick="' + esc(id) + '" aria-label="Tick ' + esc(s.title) + '"><b>' + esc(s.title) + '</b>' + (s.question ? '<span class="small muted">' + esc(s.question) + '</span>' : "") + '<span class="small muted">' + esc([plural(s.agents.length, "agent"), plural(s.rules.length, "rule"), when(id)].filter(Boolean).join(" · ")) + '</span></label><button class="btn tiny" data-open="' + esc(id) + '">Open</button></div>'; }).join("") + '</div>' +
+    '<div class="row" style="margin-top:12px"><button class="btn tiny" data-tick-all>Tick all</button><span class="grow"></span><button class="btn danger" data-del-ticked disabled>Delete the ticked ones</button></div>' });
+  const ticked = () => Array.from(m.body.querySelectorAll("[data-tick]:checked")).map(x => x.dataset.tick);
+  const del = m.body.querySelector("[data-del-ticked]");
+  const update = () => { const n = ticked().length; del.disabled = !n; del.textContent = n ? "Delete " + plural(n, "society").replace("societys", "societies") : "Delete the ticked ones"; };
+  m.body.addEventListener("change", update);
+  m.body.addEventListener("click", async ev => {
+    const open = ev.target.closest("[data-open]");
+    if (open) { app.activeId = open.dataset.open; touch(app.activeId); app.ui.replay = null; m.close(); save(); renderAll(); return; }
+    if (ev.target.closest("[data-tick-all]")) { const all = Array.from(m.body.querySelectorAll("[data-tick]")); const on = all.some(x => !x.checked); all.forEach(x => { x.checked = on; }); update(); return; }
+    if (ev.target.closest("[data-del-ticked]")) {
+      const ids = ticked();
+      if (!ids.length) return;
+      const names = ids.map(id => "“" + app.societies[id].title + "”");
+      if (!(await uiConfirm("Delete " + (ids.length === 1 ? names[0] : ids.length + " societies (" + names.slice(0, 4).join(", ") + (ids.length > 4 ? " …" : "") + ")") + " and " + (ids.length === 1 ? "its last run" : "their last runs") + " from this browser? This can't be undone.", { title: "Delete " + (ids.length === 1 ? "a society" : ids.length + " societies") + "?", ok: "Delete", danger: true }))) return;
+      for (const id of ids) forgetSociety(id);
+      m.close(); save(); renderAll();
+      toast("Deleted " + (ids.length === 1 ? names[0] : ids.length + " societies") + ".");
+    }
   });
 }
 function openAddAgent() {
@@ -7881,7 +7974,7 @@ async function boot() {
   if (app.settings.connection === "keyless" && ENV.chatArtifact) Adapters.probeAdapter(getAdapter()).then(r => { if (!r.ok) handleCallError({ errorKind: r.kind || "signedout" }); });
   window.__akReady = true;
 }
-window.__ak = { app, ENV, AK, soc, connState, setConnState, testConnection, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, adapterFor, modelRefs, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
+window.__ak = { app, ENV, AK, soc, openYours, uiChoose, yoursShown, connState, setConnState, testConnection, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, adapterFor, modelRefs, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
 window.__akBoot = boot();
 })();
 </script>

@@ -406,6 +406,13 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **Bug:** saving, export and import removed the zero-width joiner from emoji (CONTROL_RE), so 🧑‍🎨 became 🧑🎨. `cleanEmoji` keeps it now.
   - The Scorekeeper's “too big” scenario follows its range ({=highest+1}). Pretend stand-in for tests: `coach`. `examples/artist-and-critic.json`.
   - Suite: 493 PASS, fingerprint `749f5e446e60`.
+- 2026-10-03 — **Revision 1.8.0: your own societies, kept apart and tidy** (Ken's browser had five identical “Artist and critic” buttons from repeated imports, a dozen “QA: Chrome …” copies, and examples mixed in with the microworlds).
+  - The top row has the nine microworlds, then a line headed **Yours**: the four of your own societies used most recently (`app.used`, saved), shown in the order they were made so a button doesn't jump when chosen, with a light tint. Ken asked for this limit so “Yours” doesn't grow without end.
+  - **☰ All yours** (“☰ Manage yours” when all are showing) lists every one, most recent first, with its question, agents, rules and when it was used: Open, or tick several and delete them at once, after a confirmation.
+  - **Import** of a society with the same name as one of yours asks: Replace mine, Keep both (the new one gets “(2)”), or Cancel. A file named like a microworld is kept beside it as “… (2)” without asking.
+  - **＋ New society** from an example you've already made asks: Open mine (the latest), or Make another (“… (2)”). A name typed in the dialog skips the question. Copies get a unique title too.
+  - `uiChoose` (several answers, closing chooses none); `forgetSociety`; the Helper and the learner guide describe the row.
+  - Suite: 499 PASS, fingerprint `45d78b879eac`.
 
 ---
 
