@@ -413,6 +413,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **＋ New society** from an example you've already made asks: Open mine (the latest), or Make another (“… (2)”). A name typed in the dialog skips the question. Copies get a unique title too.
   - `uiChoose` (several answers, closing chooses none); `forgetSociety`; the Helper and the learner guide describe the row.
   - Suite: 499 PASS, fingerprint `45d78b879eac`.
+- 2026-10-03 — **Revision 1.8.1: the board is drawn before it's your turn.** Ken's Tic-Tac-Toe seemed to stop after the Rival's move: the Referee's message to You came before its message to the Renderer, so the run waited for his move with the board (and the O) not yet drawn. Now the messages an agent sends to a person (You, or an agent the learner plays) go after its other messages.
+  - Suite: 500 PASS, fingerprint `b4b10881d26b`.
 
 ---
 

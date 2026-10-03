@@ -432,7 +432,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.8.0";
+AK.VERSION = "1.8.1";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -5135,8 +5135,12 @@ function createRun(society, deps) {
     if (round != null) f.round = round;
     return makeMessage(agent.id, rule.to, f);
   }
+  // A person answers only when it's their turn, so what an agent sends to programs, models and the Renderer goes
+  // first: the board is drawn before You are asked for your next move.
+  const forPerson = id => { const a = byId(id); return !!a && ((deps.playAs && a.id === deps.playAs) || (a.kind === "model" && !!a.human)); };
   function fireRules(agent, response, entry) {
     const blocked = !!(response.data && response.data.pass === false);
+    const later = [];
     for (const rule of soc.rules) {
       if (rule.enabled === false) continue;
       if (!(rule.from === agent.id || (rule.from === "*" && rule.to !== agent.id))) continue;
@@ -5145,9 +5149,10 @@ function createRun(society, deps) {
       if (rule.when === "always" && blocked) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), reason: agent.name + "'s data says pass is false, so its rules that don't check for that wait." }); continue; }
       if (!byId(rule.to)) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: rule.to, reason: "There is no agent called “" + rule.to + "”." }); continue; }
       const msg = buildMessage(rule, agent, response, entry.round);
-      run.queue.push(msg);
+      (forPerson(rule.to) ? later : run.queue).push(msg);
       entry.fired.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), send: rule.send, reason: cond.reason, messageId: msg.id, rule: describeRule(rule, nameOf) });
     }
+    for (const msg of later) run.queue.push(msg);
   }
   // When the run is about to end, rules that say "when the run ends" send an agent's last response on, once.
   function beginEnding(reason, note) {

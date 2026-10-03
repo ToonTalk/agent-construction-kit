@@ -48,6 +48,15 @@ export default function (T, { modelWindow, same }) {
     return asked.length === 3 && /New game! X goes first/.test(asked[0]) && /O takes square 1/.test(asked[1]) && /Square 1 is already taken by O/.test(asked[2]) &&
       ref[1].move === 5 && ref[3].move === 1 && ref[4].taken === true && ref[5].move === 9 && acts(api.run, "rival-x").length === 0;
   });
+  T.test("Tic-Tac-Toe: when it's your turn again, the board with the Rival's O is already drawn", ["Engine"], async () => {
+    const api = await begin(Seeds.makeTicTacToe());
+    const drawnBefore = acts(api.run, "renderer").length;
+    api.answer("1");
+    await api.play();
+    const pics = acts(api.run, "renderer");
+    const last = pics[pics.length - 1];
+    return drawnBefore === 1 && api.run.status === "waiting" && pics.length === 3 && /CIRCLE 38/.test(last.render.program) && last.round === 3;
+  });
   T.test("Tic-Tac-Toe: with O going first ({O} in the Referee), the Rival opens", ["Engine", "Slots"], async () => {
     const s = Seeds.makeTicTacToe();
     const ref = s.agents.find(a => a.id === "referee");
