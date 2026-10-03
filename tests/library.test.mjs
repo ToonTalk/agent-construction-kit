@@ -4,8 +4,8 @@ export default function (T, { modelWindow, same }) {
   const { Library, Scenarios, Runtime, SafeJS, Slots, Engine } = w.AK;
   const LIB = Library.LIB;
   const types = Object.keys(LIB);
-  T.test("all twenty-two shipped programmed agents are in the library, each described for + Add an agent", ["Library"], () =>
-    same(types.slice().sort(), ["book", "brief", "checker-judge", "collector", "color-judge", "dot-counter", "escalator", "grid-judge", "keeper", "leftovers", "loop-spotter", "mystery-judge", "name-keeper", "notebook", "referee", "row-judge", "scorekeeper", "selector", "shelf", "tally", "triangle-judge", "vote"]) && types.every(t => LIB[t].about && LIB[t].about.length > 20));
+  T.test("all twenty-four shipped programmed agents are in the library, each described for + Add an agent", ["Library"], () =>
+    same(types.slice().sort(), ["book", "brief", "checker-judge", "collector", "color-judge", "dot-counter", "escalator", "grid-judge", "keeper", "ledger", "leftovers", "loop-spotter", "mystery-judge", "name-keeper", "notebook", "referee", "row-judge", "scorekeeper", "selector", "shelf", "tally", "tictactoe", "triangle-judge", "vote"]) && types.every(t => LIB[t].about && LIB[t].about.length > 20));
   for (const t of types) {
     const L = LIB[t];
     T.test(t + ": its JavaScript passes the static check", ["Library", "SafeJS"], () => SafeJS.checkJS(L.js, "program").ok);

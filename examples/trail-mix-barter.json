@@ -1,0 +1,875 @@
+{
+  "kind": "agent-kit-export",
+  "schema": 1,
+  "app": "Agent Kit 1.6.0",
+  "exportedAt": "2026-10-03T09:02:08.852Z",
+  "society": {
+    "kind": "agent-kit-society",
+    "schema": 1,
+    "id": "barter",
+    "title": "Trail Mix Barter",
+    "question": "Can AI traders keep track of a deal?",
+    "intro": "Alice has raisins, Bob has cashews and Charley has pretzels, 100 g each, and they all want a trail mix with all three. Each trader is its own AI agent. They take turns to offer trades, and the Ledger, a program, keeps track of who has what: it refuses an offer of more than someone has, and makes a trade only when the partner says yes. (When one chatbot played all three, it lost track: one trader ended up with 110 g of the 100 g there was.)",
+    "questions": [
+      "Did anyone offer more than they had? Who noticed?",
+      "Is the final split fair? Who did best, and how?",
+      "Make Alice a hard bargainer and Bob easy-going, in their instructions. Who ends up with more?",
+      "Give each trader a different model (the Models row). Do they think less alike?",
+      "Look inside the Ledger and change {yes} to {no}, so it stops telling traders what everyone has. Can they still keep track?"
+    ],
+    "openers": [
+      "Who knows how much everyone has?",
+      "What would happen without the Ledger?",
+      "How does Bob find out about a trade between Alice and Charley?"
+    ],
+    "roundAgent": "ledger",
+    "roundLimit": 20,
+    "starts": [
+      {
+        "id": "start",
+        "label": "Start",
+        "kind": "text",
+        "to": "ledger",
+        "value": "Open the market"
+      }
+    ],
+    "agents": [
+      {
+        "id": "ledger",
+        "kind": "program",
+        "typeId": "ledger",
+        "name": "Ledger",
+        "emoji": "🧾",
+        "role": "keeps track of who has what, and only lets trades happen that add up",
+        "note": "keeps track of who has what, and only lets trades happen that add up",
+        "gate": false,
+        "collect": false,
+        "pseudocode": "the traders are {Alice, Bob, Charley}, and each starts with {100} g of one of {raisins, cashews, pretzels}\ntell the traders what everyone has: {yes}\nat the start, open the market and ask the first trader for an offer\nonce the market is closed, block, and say \"The market is closed.\"\nwhen a trader answers an offer, it's a yes if their first yes-or-no word is yes\n  if it's a yes, make the trade: each gives the other what was agreed\n  if everyone now has some of every ingredient, the market closes\n  either way, it's the next trader's turn\nwhen a trader offers a trade to nobody, they pass; if everyone passes, one after another, the market closes\nif the partner or an ingredient isn't one I know, or an amount isn't more than 0\n  block, say what's wrong, and ask the same trader again\nif the trader doesn't have that much to give, or the partner doesn't have that much\n  block, say \"You only have {that much}\", and ask the same trader again\notherwise ask the partner: \"{trader} offers you {so much} for {so much}. Start your reply with yes or no.\"\nremember who has what",
+        "params": {
+          "traders": "Alice, Bob, Charley",
+          "start": 100,
+          "items": "raisins, cashews, pretzels",
+          "tell": true
+        },
+        "slots": [
+          {
+            "line": 1,
+            "text": "Alice, Bob, Charley",
+            "param": "traders"
+          },
+          {
+            "line": 1,
+            "text": "100",
+            "param": "start"
+          },
+          {
+            "line": 1,
+            "text": "raisins, cashews, pretzels",
+            "param": "items"
+          },
+          {
+            "line": 2,
+            "text": "yes",
+            "param": "tell"
+          }
+        ],
+        "scenarios": [
+          {
+            "id": "s1",
+            "name": "the market opens: the first trader is asked",
+            "input": {
+              "text": "Open the market"
+            },
+            "expect": {
+              "ask": "Alice",
+              "over": false,
+              "sayContains": "Alice has 100 g raisins, 0 g cashews, 0 g pretzels."
+            }
+          },
+          {
+            "id": "s2",
+            "name": "an offer the trader can afford goes to the partner",
+            "input": {
+              "from": "Alice",
+              "text": "Let's trade!",
+              "data": {
+                "partner": "Bob",
+                "give": 30,
+                "giveWhat": "raisins",
+                "get": 30,
+                "getWhat": "cashews"
+              },
+              "memory": {
+                "have": {
+                  "Alice": {
+                    "raisins": 100,
+                    "cashews": 0,
+                    "pretzels": 0
+                  },
+                  "Bob": {
+                    "raisins": 0,
+                    "cashews": 100,
+                    "pretzels": 0
+                  },
+                  "Charley": {
+                    "raisins": 0,
+                    "cashews": 0,
+                    "pretzels": 100
+                  }
+                },
+                "turn": 0,
+                "pending": null,
+                "passes": 0,
+                "trades": 0,
+                "over": false
+              }
+            },
+            "expect": {
+              "ask": "Bob",
+              "sayContains": "Alice offers you 30 g raisins for 30 g of your cashews."
+            }
+          },
+          {
+            "id": "s3",
+            "name": "no: you can't give more than you have",
+            "input": {
+              "from": "Alice",
+              "text": "",
+              "data": {
+                "partner": "Bob",
+                "give": 140,
+                "giveWhat": "raisins",
+                "get": 30,
+                "getWhat": "cashews"
+              },
+              "memory": {
+                "have": {
+                  "Alice": {
+                    "raisins": 100,
+                    "cashews": 0,
+                    "pretzels": 0
+                  },
+                  "Bob": {
+                    "raisins": 0,
+                    "cashews": 100,
+                    "pretzels": 0
+                  },
+                  "Charley": {
+                    "raisins": 0,
+                    "cashews": 0,
+                    "pretzels": 100
+                  }
+                },
+                "turn": 0,
+                "pending": null,
+                "passes": 0,
+                "trades": 0,
+                "over": false
+              }
+            },
+            "expect": {
+              "pass": false,
+              "ask": "Alice",
+              "sayContains": "You only have 100 g raisins"
+            }
+          },
+          {
+            "id": "s4",
+            "name": "no: the partner doesn't have that much",
+            "input": {
+              "from": "Alice",
+              "text": "",
+              "data": {
+                "partner": "Bob",
+                "give": 30,
+                "giveWhat": "raisins",
+                "get": 30,
+                "getWhat": "pretzels"
+              },
+              "memory": {
+                "have": {
+                  "Alice": {
+                    "raisins": 100,
+                    "cashews": 0,
+                    "pretzels": 0
+                  },
+                  "Bob": {
+                    "raisins": 0,
+                    "cashews": 100,
+                    "pretzels": 0
+                  },
+                  "Charley": {
+                    "raisins": 0,
+                    "cashews": 0,
+                    "pretzels": 100
+                  }
+                },
+                "turn": 0,
+                "pending": null,
+                "passes": 0,
+                "trades": 0,
+                "over": false
+              }
+            },
+            "expect": {
+              "pass": false,
+              "sayContains": "Bob only has 0 g pretzels"
+            }
+          },
+          {
+            "id": "s5",
+            "name": "a yes makes the trade, and nothing is lost",
+            "input": {
+              "from": "Bob",
+              "text": "Yes, deal!",
+              "memory": {
+                "have": {
+                  "Alice": {
+                    "raisins": 100,
+                    "cashews": 0,
+                    "pretzels": 0
+                  },
+                  "Bob": {
+                    "raisins": 0,
+                    "cashews": 100,
+                    "pretzels": 0
+                  },
+                  "Charley": {
+                    "raisins": 0,
+                    "cashews": 0,
+                    "pretzels": 100
+                  }
+                },
+                "turn": 0,
+                "pending": {
+                  "from": "Alice",
+                  "partner": "Bob",
+                  "give": 30,
+                  "giveWhat": "raisins",
+                  "get": 30,
+                  "getWhat": "cashews"
+                },
+                "passes": 0,
+                "trades": 0,
+                "over": false
+              }
+            },
+            "expect": {
+              "ask": "Bob",
+              "have": {
+                "Alice": {
+                  "raisins": 70,
+                  "cashews": 30,
+                  "pretzels": 0
+                },
+                "Bob": {
+                  "raisins": 30,
+                  "cashews": 70,
+                  "pretzels": 0
+                },
+                "Charley": {
+                  "raisins": 0,
+                  "cashews": 0,
+                  "pretzels": 100
+                }
+              }
+            }
+          },
+          {
+            "id": "s6",
+            "name": "a no changes nothing",
+            "input": {
+              "from": "Bob",
+              "text": "No thanks, not today.",
+              "memory": {
+                "have": {
+                  "Alice": {
+                    "raisins": 100,
+                    "cashews": 0,
+                    "pretzels": 0
+                  },
+                  "Bob": {
+                    "raisins": 0,
+                    "cashews": 100,
+                    "pretzels": 0
+                  },
+                  "Charley": {
+                    "raisins": 0,
+                    "cashews": 0,
+                    "pretzels": 100
+                  }
+                },
+                "turn": 0,
+                "pending": {
+                  "from": "Alice",
+                  "partner": "Bob",
+                  "give": 30,
+                  "giveWhat": "raisins",
+                  "get": 30,
+                  "getWhat": "cashews"
+                },
+                "passes": 0,
+                "trades": 0,
+                "over": false
+              }
+            },
+            "expect": {
+              "ask": "Bob",
+              "have": {
+                "Alice": {
+                  "raisins": 100,
+                  "cashews": 0,
+                  "pretzels": 0
+                },
+                "Bob": {
+                  "raisins": 0,
+                  "cashews": 100,
+                  "pretzels": 0
+                },
+                "Charley": {
+                  "raisins": 0,
+                  "cashews": 0,
+                  "pretzels": 100
+                }
+              },
+              "sayContains": "Bob said no"
+            }
+          },
+          {
+            "id": "s7",
+            "name": "when everyone has every ingredient, the market closes",
+            "input": {
+              "from": "Alice",
+              "text": "Yes!",
+              "memory": {
+                "have": {
+                  "Alice": {
+                    "raisins": 70,
+                    "cashews": 30,
+                    "pretzels": 0
+                  },
+                  "Bob": {
+                    "raisins": 30,
+                    "cashews": 40,
+                    "pretzels": 30
+                  },
+                  "Charley": {
+                    "raisins": 0,
+                    "cashews": 30,
+                    "pretzels": 70
+                  }
+                },
+                "turn": 2,
+                "pending": {
+                  "from": "Charley",
+                  "partner": "Alice",
+                  "give": 30,
+                  "giveWhat": "pretzels",
+                  "get": 30,
+                  "getWhat": "raisins"
+                },
+                "passes": 0,
+                "trades": 0,
+                "over": false
+              }
+            },
+            "expect": {
+              "over": true,
+              "ask": "",
+              "sayContains": "Altogether there are 300 g"
+            }
+          },
+          {
+            "id": "s8",
+            "name": "when everyone passes, the market closes",
+            "input": {
+              "from": "Charley",
+              "text": "I'll keep what I have.",
+              "data": {
+                "partner": "nobody"
+              },
+              "memory": {
+                "have": {
+                  "Alice": {
+                    "raisins": 100,
+                    "cashews": 0,
+                    "pretzels": 0
+                  },
+                  "Bob": {
+                    "raisins": 0,
+                    "cashews": 100,
+                    "pretzels": 0
+                  },
+                  "Charley": {
+                    "raisins": 0,
+                    "cashews": 0,
+                    "pretzels": 100
+                  }
+                },
+                "turn": 2,
+                "pending": null,
+                "passes": 2,
+                "trades": 0,
+                "over": false
+              }
+            },
+            "expect": {
+              "over": true
+            }
+          },
+          {
+            "id": "s9",
+            "name": "no: an offer without a partner isn't a pass, so it's asked again",
+            "input": {
+              "from": "Alice",
+              "text": "I'd love some cashews!",
+              "data": {},
+              "memory": {
+                "have": {
+                  "Alice": {
+                    "raisins": 100,
+                    "cashews": 0,
+                    "pretzels": 0
+                  },
+                  "Bob": {
+                    "raisins": 0,
+                    "cashews": 100,
+                    "pretzels": 0
+                  },
+                  "Charley": {
+                    "raisins": 0,
+                    "cashews": 0,
+                    "pretzels": 100
+                  }
+                },
+                "turn": 0,
+                "pending": null,
+                "passes": 0,
+                "trades": 0,
+                "over": false
+              }
+            },
+            "expect": {
+              "pass": false,
+              "ask": "Alice",
+              "sayContains": "Who do you want to trade with?"
+            }
+          }
+        ],
+        "code": {
+          "pseudocode": "the traders are {Alice, Bob, Charley}, and each starts with {100} g of one of {raisins, cashews, pretzels}\ntell the traders what everyone has: {yes}\nat the start, open the market and ask the first trader for an offer\nonce the market is closed, block, and say \"The market is closed.\"\nwhen a trader answers an offer, it's a yes if their first yes-or-no word is yes\n  if it's a yes, make the trade: each gives the other what was agreed\n  if everyone now has some of every ingredient, the market closes\n  either way, it's the next trader's turn\nwhen a trader offers a trade to nobody, they pass; if everyone passes, one after another, the market closes\nif the partner or an ingredient isn't one I know, or an amount isn't more than 0\n  block, say what's wrong, and ask the same trader again\nif the trader doesn't have that much to give, or the partner doesn't have that much\n  block, say \"You only have {that much}\", and ask the same trader again\notherwise ask the partner: \"{trader} offers you {so much} for {so much}. Start your reply with yes or no.\"\nremember who has what",
+          "js": "function run(input, params, h) {\n  const traders = String(params.traders).split(\",\").map(t => t.trim()).filter(t => t);\n  const items = String(params.items).split(\",\").map(t => t.trim().toLowerCase()).filter(t => t);\n  const fresh = () => {\n    const have = {};\n    traders.forEach((t, i) => { have[t] = {}; items.forEach((it, j) => { have[t][it] = i === j ? params.start : 0; }); });\n    return { have: have, turn: 0, pending: null, passes: 0, trades: 0, over: false };\n  };\n  const m = input.memory || fresh();\n  const have = m.have;\n  const list = t => items.map(it => have[t][it] + \" g \" + it).join(\", \");\n  const standings = () => traders.map(t => t + \" has \" + list(t) + \".\").join(\"\\n\");\n  const total = () => traders.reduce((sum, t) => sum + items.reduce((n, it) => n + have[t][it], 0), 0);\n  const others = t => traders.filter(x => x !== t).join(\" or \");\n  const base = x => { const w = String(x == null ? \"\" : x).trim().toLowerCase(); return w.slice(-1) === \"s\" ? w.slice(0, -1) : w; };\n  const yourTurn = before => {\n    const t = traders[m.turn % traders.length];\n    const say = before + \"\\n\\n\" + (params.tell ? standings() + \"\\n\\n\" : \"\") + \"Your turn, \" + t + \". Offer one trade to \" + others(t) + \", or pass.\";\n    return { ask: t, over: false, trades: m.trades, have: have, say: say, memory: m };\n  };\n  const close = before => {\n    m.over = true;\n    return { ask: \"\", over: true, trades: m.trades, have: have, say: before + \" The market is closed.\\n\\n\" + standings() + \"\\n\\nAltogether there are \" + total() + \" g, the same as at the start.\", memory: m };\n  };\n  if (!input.memory) {\n    return yourTurn(\"The market is open! Everyone wants a trail mix with \" + items.slice(0, -1).join(\", \") + \" and \" + items[items.length - 1] + \".\");\n  }\n  if (m.over) {\n    return { pass: false, ask: \"\", over: true, say: \"The market is closed.\", memory: m };\n  }\n  const from = traders.find(t => t.toLowerCase() === String(input.from).toLowerCase()) || String(input.from);\n  if (m.pending) {\n    const p = m.pending;\n    let yes = false;\n    for (const word of h.words(input.text)) {\n      h.tick();\n      if ([\"yes\", \"deal\", \"accept\", \"agreed\", \"ok\", \"okay\", \"sure\"].indexOf(word) >= 0) { yes = true; break; }\n      if ([\"no\", \"nope\", \"decline\", \"not\"].indexOf(word) >= 0) break;\n    }\n    m.pending = null;\n    m.turn = m.turn + 1;\n    if (yes) {\n      have[p.from][p.giveWhat] -= p.give; have[p.partner][p.giveWhat] += p.give;\n      have[p.partner][p.getWhat] -= p.get; have[p.from][p.getWhat] += p.get;\n      m.trades = m.trades + 1; m.passes = 0;\n      const deal = \"Deal! \" + p.from + \" gave \" + p.partner + \" \" + p.give + \" g \" + p.giveWhat + \" for \" + p.get + \" g \" + p.getWhat + \".\";\n      if (traders.every(t => items.every(it => have[t][it] > 0))) return close(deal + \" Everyone has some of every ingredient.\");\n      return yourTurn(deal);\n    }\n    m.passes = 0;\n    return yourTurn(p.partner + \" said no to \" + p.from + \"'s offer.\");\n  }\n  const d = input.data || {};\n  const who = String(d.partner == null ? \"\" : d.partner).trim().toLowerCase();\n  if (d.partner != null && (!who || who === \"nobody\" || who === \"none\" || who === \"pass\")) {\n    m.turn = m.turn + 1; m.passes = m.passes + 1;\n    if (m.passes >= traders.length) return close(from + \" passes. Everyone passed, one after another.\");\n    return yourTurn(from + \" passes.\");\n  }\n  const partner = traders.find(t => t.toLowerCase() === who && t !== from);\n  const giveWhat = items.find(it => base(it) === base(d.giveWhat)), getWhat = items.find(it => base(it) === base(d.getWhat));\n  const give = Math.round(Number(d.give)), get = Math.round(Number(d.get));\n  let problem = \"\";\n  if (!partner) problem = \"Who do you want to trade with? Say \" + others(from) + \", or nobody to pass.\";\n  else if (!giveWhat || !getWhat || giveWhat === getWhat) problem = \"Say what you give and what you want back: two different things from \" + items.join(\", \") + \".\";\n  else if (!(give > 0) || !(get > 0)) problem = \"Say how many grams you give and how many you want back, more than 0 of each.\";\n  if (!problem && have[from][giveWhat] < give) problem = \"You only have \" + have[from][giveWhat] + \" g \" + giveWhat + \", so you can't give \" + give + \" g.\";\n  else if (!problem && have[partner][getWhat] < get) problem = partner + \" only has \" + have[partner][getWhat] + \" g \" + getWhat + \", so they can't give you \" + get + \" g.\";\n  if (problem) {\n    return { pass: false, refused: true, ask: from, over: false, trades: m.trades, have: have, say: problem + \" Offer a trade again, or pass.\", memory: m };\n  }\n  m.pending = { from: from, partner: partner, give: give, giveWhat: giveWhat, get: get, getWhat: getWhat };\n  return { ask: partner, over: false, offer: m.pending, trades: m.trades, have: have, say: from + \" offers you \" + give + \" g \" + giveWhat + \" for \" + get + \" g of your \" + getWhat + \". \" + (params.tell ? \"You have \" + list(partner) + \". \" : \"\") + \"Start your reply with yes or no.\", memory: m };\n}",
+          "lineMap": [
+            {
+              "pseudo": [
+                1,
+                1
+              ],
+              "js": [
+                2,
+                2
+              ]
+            },
+            {
+              "pseudo": [
+                1,
+                1
+              ],
+              "js": [
+                3,
+                3
+              ]
+            },
+            {
+              "pseudo": [
+                1,
+                1
+              ],
+              "js": [
+                4,
+                8
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                18,
+                18
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                73,
+                73
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                25,
+                27
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                16,
+                20
+              ]
+            },
+            {
+              "pseudo": [
+                4,
+                4
+              ],
+              "js": [
+                28,
+                30
+              ]
+            },
+            {
+              "pseudo": [
+                5,
+                5
+              ],
+              "js": [
+                32,
+                38
+              ]
+            },
+            {
+              "pseudo": [
+                6,
+                6
+              ],
+              "js": [
+                42,
+                46
+              ]
+            },
+            {
+              "pseudo": [
+                7,
+                7
+              ],
+              "js": [
+                47,
+                47
+              ]
+            },
+            {
+              "pseudo": [
+                7,
+                7
+              ],
+              "js": [
+                21,
+                24
+              ]
+            },
+            {
+              "pseudo": [
+                8,
+                8
+              ],
+              "js": [
+                40,
+                41
+              ]
+            },
+            {
+              "pseudo": [
+                8,
+                8
+              ],
+              "js": [
+                48,
+                48
+              ]
+            },
+            {
+              "pseudo": [
+                8,
+                8
+              ],
+              "js": [
+                51,
+                51
+              ]
+            },
+            {
+              "pseudo": [
+                9,
+                9
+              ],
+              "js": [
+                54,
+                58
+              ]
+            },
+            {
+              "pseudo": [
+                10,
+                10
+              ],
+              "js": [
+                60,
+                66
+              ]
+            },
+            {
+              "pseudo": [
+                11,
+                11
+              ],
+              "js": [
+                69,
+                71
+              ]
+            },
+            {
+              "pseudo": [
+                12,
+                12
+              ],
+              "js": [
+                67,
+                68
+              ]
+            },
+            {
+              "pseudo": [
+                13,
+                13
+              ],
+              "js": [
+                69,
+                71
+              ]
+            },
+            {
+              "pseudo": [
+                14,
+                14
+              ],
+              "js": [
+                72,
+                73
+              ]
+            },
+            {
+              "pseudo": [
+                15,
+                15
+              ],
+              "js": [
+                9,
+                10
+              ]
+            }
+          ],
+          "hash": "43cc2b2281c5485d"
+        },
+        "lastGood": null,
+        "status": "ok",
+        "statusDetail": null,
+        "shipped": true
+      },
+      {
+        "id": "alice",
+        "kind": "model",
+        "name": "Alice",
+        "emoji": "🍇",
+        "role": "starts with 100 g of raisins",
+        "outputFields": [
+          {
+            "name": "partner",
+            "type": "text",
+            "about": "who you offer a trade to, or nobody to pass (when you're answering an offer, say nobody)"
+          },
+          {
+            "name": "give",
+            "type": "number",
+            "about": "how many grams you give"
+          },
+          {
+            "name": "giveWhat",
+            "type": "text",
+            "about": "what you give: raisins, cashews or pretzels"
+          },
+          {
+            "name": "get",
+            "type": "number",
+            "about": "how many grams you want back"
+          },
+          {
+            "name": "getWhat",
+            "type": "text",
+            "about": "what you want back: raisins, cashews or pretzels"
+          }
+        ],
+        "canSeeImages": false,
+        "history": "full",
+        "replyKind": "prose",
+        "pretend": "trader",
+        "instructions": "You are Alice, at a market with Bob and Charley. Everyone wants a nice trail mix with raisins, cashews and pretzels, but each of you started with 100 g of just one of them: you had raisins. The Ledger tells you what is going on. On your turn, offer one trade: who to, how many grams of what you give, and how many grams of what you want back; or offer nobody, to pass. When someone offers you a trade, start your reply with yes or no, and say why in one short sentence. Be friendly and fair, but look after your own trail mix."
+      },
+      {
+        "id": "bob",
+        "kind": "model",
+        "name": "Bob",
+        "emoji": "🥜",
+        "role": "starts with 100 g of cashews",
+        "outputFields": [
+          {
+            "name": "partner",
+            "type": "text",
+            "about": "who you offer a trade to, or nobody to pass (when you're answering an offer, say nobody)"
+          },
+          {
+            "name": "give",
+            "type": "number",
+            "about": "how many grams you give"
+          },
+          {
+            "name": "giveWhat",
+            "type": "text",
+            "about": "what you give: raisins, cashews or pretzels"
+          },
+          {
+            "name": "get",
+            "type": "number",
+            "about": "how many grams you want back"
+          },
+          {
+            "name": "getWhat",
+            "type": "text",
+            "about": "what you want back: raisins, cashews or pretzels"
+          }
+        ],
+        "canSeeImages": false,
+        "history": "full",
+        "replyKind": "prose",
+        "pretend": "trader",
+        "instructions": "You are Bob, at a market with Alice and Charley. Everyone wants a nice trail mix with raisins, cashews and pretzels, but each of you started with 100 g of just one of them: you had cashews. The Ledger tells you what is going on. On your turn, offer one trade: who to, how many grams of what you give, and how many grams of what you want back; or offer nobody, to pass. When someone offers you a trade, start your reply with yes or no, and say why in one short sentence. Be friendly and fair, but look after your own trail mix."
+      },
+      {
+        "id": "charley",
+        "kind": "model",
+        "name": "Charley",
+        "emoji": "🥨",
+        "role": "starts with 100 g of pretzels",
+        "outputFields": [
+          {
+            "name": "partner",
+            "type": "text",
+            "about": "who you offer a trade to, or nobody to pass (when you're answering an offer, say nobody)"
+          },
+          {
+            "name": "give",
+            "type": "number",
+            "about": "how many grams you give"
+          },
+          {
+            "name": "giveWhat",
+            "type": "text",
+            "about": "what you give: raisins, cashews or pretzels"
+          },
+          {
+            "name": "get",
+            "type": "number",
+            "about": "how many grams you want back"
+          },
+          {
+            "name": "getWhat",
+            "type": "text",
+            "about": "what you want back: raisins, cashews or pretzels"
+          }
+        ],
+        "canSeeImages": false,
+        "history": "full",
+        "replyKind": "prose",
+        "pretend": "trader",
+        "instructions": "You are Charley, at a market with Alice and Bob. Everyone wants a nice trail mix with raisins, cashews and pretzels, but each of you started with 100 g of just one of them: you had pretzels. The Ledger tells you what is going on. On your turn, offer one trade: who to, how many grams of what you give, and how many grams of what you want back; or offer nobody, to pass. When someone offers you a trade, start your reply with yes or no, and say why in one short sentence. Be friendly and fair, but look after your own trail mix."
+      }
+    ],
+    "rules": [
+      {
+        "id": "b1",
+        "from": "ledger",
+        "when": "data",
+        "send": "text",
+        "to": "alice",
+        "prefix": "",
+        "enabled": true,
+        "field": "ask",
+        "op": "=",
+        "value": "Alice"
+      },
+      {
+        "id": "b2",
+        "from": "ledger",
+        "when": "data",
+        "send": "text",
+        "to": "bob",
+        "prefix": "",
+        "enabled": true,
+        "field": "ask",
+        "op": "=",
+        "value": "Bob"
+      },
+      {
+        "id": "b3",
+        "from": "ledger",
+        "when": "data",
+        "send": "text",
+        "to": "charley",
+        "prefix": "",
+        "enabled": true,
+        "field": "ask",
+        "op": "=",
+        "value": "Charley"
+      },
+      {
+        "id": "b4",
+        "from": "alice",
+        "when": "always",
+        "send": "text+data",
+        "to": "ledger",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "b5",
+        "from": "bob",
+        "when": "always",
+        "send": "text+data",
+        "to": "ledger",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "b6",
+        "from": "charley",
+        "when": "always",
+        "send": "text+data",
+        "to": "ledger",
+        "prefix": "",
+        "enabled": true
+      }
+    ]
+  }
+}

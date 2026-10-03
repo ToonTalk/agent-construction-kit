@@ -1,0 +1,559 @@
+{
+  "kind": "agent-kit-export",
+  "schema": 1,
+  "app": "Agent Kit 1.6.0",
+  "exportedAt": "2026-10-03T09:02:08.849Z",
+  "society": {
+    "kind": "agent-kit-society",
+    "schema": 1,
+    "id": "tictactoe",
+    "title": "Tic-Tac-Toe",
+    "question": "Who makes sure an AI plays by the rules?",
+    "intro": "You play X against the Rival, an AI playing O. The Rival only suggests moves. The Referee is a small program you can read: it keeps the board, refuses a square that is already taken, and decides who won, whatever anyone says. The Renderer draws the board.",
+    "questions": [
+      "Did the Rival ever pick a square that was already taken? Who caught it?",
+      "The Rival may say it's winning. Is it? Who decides?",
+      "Switch on Two AIs. Does either one break the rules? Does the same model play X and O equally well?",
+      "Look inside the Referee. Change it so a taken square is allowed. What happens to the game?",
+      "The Rival only knows what the Referee sends it. What would help it play better?"
+    ],
+    "openers": [
+      "Who keeps the board?",
+      "What would happen without the Referee?",
+      "How does the Rival know which squares are free?"
+    ],
+    "roundAgent": "referee",
+    "roundLimit": 20,
+    "starts": [
+      {
+        "id": "start",
+        "label": "Start",
+        "kind": "text",
+        "to": "referee",
+        "value": "New game"
+      }
+    ],
+    "variants": [
+      {
+        "id": "two-ais",
+        "label": "Two AIs: Rival X plays X instead of you",
+        "enable": [
+          "g3"
+        ],
+        "disable": [
+          "g1"
+        ],
+        "on": false
+      }
+    ],
+    "agents": [
+      {
+        "id": "referee",
+        "kind": "program",
+        "typeId": "tictactoe",
+        "name": "Referee",
+        "emoji": "🧑‍⚖️",
+        "role": "keeps the board, refuses illegal moves, and decides who won",
+        "note": "keeps the board, refuses illegal moves, and decides who won",
+        "gate": false,
+        "collect": false,
+        "pseudocode": "the board starts empty, and {X} goes first\nat the start, say the empty board and who goes first\nonce the game is over, block, and say \"The game is over.\"\nthe move is the first number from 1 to 9 in what was said\nif there is no move\n  block, and say \"Please pick a free square: {free squares}.\"\nif that square is already taken\n  block, and say \"Square {move} is already taken by {its mark}. Please pick a free square: {free squares}.\"\nput the player's mark on the square\nif that makes three in a row, say who won, and the game is over\notherwise if every square is full, say \"It's a draw!\", and the game is over\notherwise say the board, and that it's the other player's turn\nremember the board, and pass on a Logo drawing of it for the Renderer",
+        "params": {
+          "first": "X"
+        },
+        "slots": [
+          {
+            "line": 1,
+            "text": "X",
+            "param": "first"
+          }
+        ],
+        "scenarios": [
+          {
+            "id": "s1",
+            "name": "a new game: {=first} goes first",
+            "input": {
+              "text": "New game"
+            },
+            "expect": {
+              "next": "=first",
+              "over": false
+            }
+          },
+          {
+            "id": "s2",
+            "name": "a free square is a legal move",
+            "input": {
+              "text": "5",
+              "memory": {
+                "board": [
+                  "",
+                  "",
+                  "",
+                  "",
+                  "",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                "next": "X",
+                "over": false
+              }
+            },
+            "expect": {
+              "pass": true,
+              "move": 5,
+              "next": "O"
+            }
+          },
+          {
+            "id": "s3",
+            "name": "no: that square is already taken",
+            "input": {
+              "text": "I'll take 5, obviously!",
+              "memory": {
+                "board": [
+                  "",
+                  "",
+                  "",
+                  "",
+                  "X",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                "next": "O",
+                "over": false
+              }
+            },
+            "expect": {
+              "pass": false,
+              "taken": true,
+              "next": "O"
+            }
+          },
+          {
+            "id": "s4",
+            "name": "no: there is no square number in what was said",
+            "input": {
+              "text": "Hmm, let me think.",
+              "memory": {
+                "board": [
+                  "",
+                  "",
+                  "",
+                  "",
+                  "X",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                "next": "O",
+                "over": false
+              }
+            },
+            "expect": {
+              "pass": false,
+              "sayContains": "Please pick a free square: 1, 2, 3, 4, 6, 7, 8, 9."
+            }
+          },
+          {
+            "id": "s5",
+            "name": "three in a row wins",
+            "input": {
+              "text": "3",
+              "memory": {
+                "board": [
+                  "X",
+                  "X",
+                  "",
+                  "O",
+                  "O",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                "next": "X",
+                "over": false
+              }
+            },
+            "expect": {
+              "winner": "X",
+              "over": true,
+              "next": ""
+            }
+          },
+          {
+            "id": "s6",
+            "name": "a full board with no winner is a draw",
+            "input": {
+              "text": "9",
+              "memory": {
+                "board": [
+                  "X",
+                  "O",
+                  "X",
+                  "X",
+                  "O",
+                  "O",
+                  "O",
+                  "X",
+                  ""
+                ],
+                "next": "X",
+                "over": false
+              }
+            },
+            "expect": {
+              "winner": "nobody",
+              "over": true
+            }
+          },
+          {
+            "id": "s7",
+            "name": "saying you won doesn't make it so",
+            "input": {
+              "text": "7. I win!",
+              "memory": {
+                "board": [
+                  "O",
+                  "",
+                  "",
+                  "",
+                  "X",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                "next": "X",
+                "over": false
+              }
+            },
+            "expect": {
+              "pass": true,
+              "over": false,
+              "next": "O"
+            }
+          }
+        ],
+        "code": {
+          "pseudocode": "the board starts empty, and {X} goes first\nat the start, say the empty board and who goes first\nonce the game is over, block, and say \"The game is over.\"\nthe move is the first number from 1 to 9 in what was said\nif there is no move\n  block, and say \"Please pick a free square: {free squares}.\"\nif that square is already taken\n  block, and say \"Square {move} is already taken by {its mark}. Please pick a free square: {free squares}.\"\nput the player's mark on the square\nif that makes three in a row, say who won, and the game is over\notherwise if every square is full, say \"It's a draw!\", and the game is over\notherwise say the board, and that it's the other player's turn\nremember the board, and pass on a Logo drawing of it for the Renderer",
+          "js": "function run(input, params, h) {\n  const first = String(params.first).toUpperCase() === \"O\" ? \"O\" : \"X\";\n  const game = input.memory || { board: [\"\", \"\", \"\", \"\", \"\", \"\", \"\", \"\", \"\"], next: first, over: false };\n  const board = game.board.slice();\n  const rows = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 4, 7], [2, 5, 8], [3, 6, 9], [1, 5, 9], [3, 5, 7]];\n  const freeSquares = () => board.map((mark, i) => (mark ? 0 : i + 1)).filter(n => n > 0).join(\", \");\n  const show = () => [\"top\", \"middle\", \"bottom\"].map((row, r) => row + \": \" + [0, 1, 2].map(c => board[3 * r + c] || String(3 * r + c + 1)).join(\" \")).join(\"\\n\");\n  const center = n => [((n - 1) % 3) * 120 - 120, 120 - Math.floor((n - 1) / 3) * 120];\n  const drawing = win => {\n    let logo = \"SETPENSIZE 4 SETPENCOLOR \\\"black\\n\";\n    for (const k of [-60, 60]) {\n      logo += \"PENUP SETXY \" + k + \" 180 PENDOWN SETXY \" + k + \" -180\\n\";\n      logo += \"PENUP SETXY -180 \" + k + \" PENDOWN SETXY 180 \" + k + \"\\n\";\n    }\n    for (let n = 1; n <= 9; n++) {\n      h.tick();\n      const x = center(n)[0], y = center(n)[1], mark = board[n - 1];\n      if (mark === \"X\") logo += \"SETPENCOLOR \\\"blue SETPENSIZE 8 PENUP SETXY \" + (x - 35) + \" \" + (y + 35) + \" PENDOWN SETXY \" + (x + 35) + \" \" + (y - 35) + \" PENUP SETXY \" + (x - 35) + \" \" + (y - 35) + \" PENDOWN SETXY \" + (x + 35) + \" \" + (y + 35) + \"\\n\";\n      else if (mark === \"O\") logo += \"SETPENCOLOR \\\"red SETPENSIZE 8 PENUP SETXY \" + x + \" \" + y + \" PENDOWN CIRCLE 38\\n\";\n      else logo += \"SETPENCOLOR \\\"gray PENUP SETXY \" + (x - 6) + \" \" + (y - 8) + \" LABEL [\" + n + \"]\\n\";\n    }\n    if (win) logo += \"SETPENCOLOR \\\"green SETPENSIZE 10 PENUP SETXY \" + center(win[0]).join(\" \") + \" PENDOWN SETXY \" + center(win[2]).join(\" \") + \"\\n\";\n    return logo;\n  };\n  if (!input.memory) {\n    return { next: first, over: false, board: board, program: drawing(null), say: \"New game! \" + first + \" goes first.\\n\\n\" + show() + \"\\n\\n\" + first + \" to play: pick a free square: \" + freeSquares() + \".\", memory: game };\n  }\n  if (game.over) {\n    return { pass: false, next: \"\", over: true, say: \"The game is over.\", memory: game };\n  }\n  let move = null;\n  for (const word of h.words(input.text)) {\n    h.tick();\n    const n = Number(word);\n    if (move === null && Number.isInteger(n) && n >= 1 && n <= 9) move = n;\n  }\n  if (move === null) {\n    return { pass: false, next: game.next, over: false, say: \"Please pick a free square: \" + freeSquares() + \".\", memory: game };\n  }\n  if (board[move - 1]) {\n    return { pass: false, next: game.next, over: false, move: move, taken: true, say: \"Square \" + move + \" is already taken by \" + board[move - 1] + \". Please pick a free square: \" + freeSquares() + \".\", memory: game };\n  }\n  const player = game.next;\n  board[move - 1] = player;\n  const win = rows.find(r => board[r[0] - 1] === player && board[r[1] - 1] === player && board[r[2] - 1] === player);\n  if (win) {\n    return { pass: true, move: move, next: \"\", over: true, winner: player, board: board, program: drawing(win), say: player + \" takes square \" + move + \" and wins with \" + win.join(\", \") + \"!\\n\\n\" + show(), memory: { board: board, next: \"\", over: true } };\n  }\n  if (board.every(mark => mark)) {\n    return { pass: true, move: move, next: \"\", over: true, winner: \"nobody\", board: board, program: drawing(null), say: player + \" takes square \" + move + \". It's a draw!\\n\\n\" + show(), memory: { board: board, next: \"\", over: true } };\n  }\n  const next = player === \"X\" ? \"O\" : \"X\";\n  return { pass: true, move: move, next: next, over: false, board: board, program: drawing(null), say: player + \" takes square \" + move + \".\\n\\n\" + show() + \"\\n\\n\" + next + \" to play: pick a free square: \" + freeSquares() + \".\", memory: { board: board, next: next, over: false } };\n}",
+          "lineMap": [
+            {
+              "pseudo": [
+                1,
+                1
+              ],
+              "js": [
+                2,
+                2
+              ]
+            },
+            {
+              "pseudo": [
+                1,
+                1
+              ],
+              "js": [
+                3,
+                3
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                25,
+                27
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                28,
+                30
+              ]
+            },
+            {
+              "pseudo": [
+                4,
+                4
+              ],
+              "js": [
+                31,
+                36
+              ]
+            },
+            {
+              "pseudo": [
+                5,
+                5
+              ],
+              "js": [
+                37,
+                37
+              ]
+            },
+            {
+              "pseudo": [
+                6,
+                6
+              ],
+              "js": [
+                38,
+                38
+              ]
+            },
+            {
+              "pseudo": [
+                6,
+                6
+              ],
+              "js": [
+                6,
+                6
+              ]
+            },
+            {
+              "pseudo": [
+                7,
+                7
+              ],
+              "js": [
+                40,
+                40
+              ]
+            },
+            {
+              "pseudo": [
+                8,
+                8
+              ],
+              "js": [
+                41,
+                41
+              ]
+            },
+            {
+              "pseudo": [
+                9,
+                9
+              ],
+              "js": [
+                43,
+                44
+              ]
+            },
+            {
+              "pseudo": [
+                10,
+                10
+              ],
+              "js": [
+                5,
+                5
+              ]
+            },
+            {
+              "pseudo": [
+                10,
+                10
+              ],
+              "js": [
+                45,
+                48
+              ]
+            },
+            {
+              "pseudo": [
+                11,
+                11
+              ],
+              "js": [
+                49,
+                51
+              ]
+            },
+            {
+              "pseudo": [
+                12,
+                12
+              ],
+              "js": [
+                52,
+                53
+              ]
+            },
+            {
+              "pseudo": [
+                12,
+                12
+              ],
+              "js": [
+                7,
+                7
+              ]
+            },
+            {
+              "pseudo": [
+                13,
+                13
+              ],
+              "js": [
+                8,
+                8
+              ]
+            },
+            {
+              "pseudo": [
+                13,
+                13
+              ],
+              "js": [
+                9,
+                24
+              ]
+            }
+          ],
+          "hash": "5c6160cf6a569588"
+        },
+        "lastGood": null,
+        "status": "ok",
+        "statusDetail": null,
+        "shipped": true
+      },
+      {
+        "id": "player-x",
+        "kind": "model",
+        "human": true,
+        "name": "You",
+        "emoji": "🙋",
+        "role": "plays X",
+        "instructions": "Type the number of a free square for your X, from 1 to 9.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "generic"
+      },
+      {
+        "id": "rival",
+        "kind": "model",
+        "name": "Rival",
+        "emoji": "⭕",
+        "role": "plays O, and teases a little",
+        "instructions": "You play O in tic-tac-toe. The Referee sends you the board, row by row. X and O mark the squares already taken; the numbers are the free squares, from 1 (top left) to 9 (bottom right). Pick one free square. Start your reply with its number, then add one short, friendly bit of teasing, like a sports commentator.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "tictac"
+      },
+      {
+        "id": "rival-x",
+        "kind": "model",
+        "name": "Rival X",
+        "emoji": "❌",
+        "role": "plays X, and teases a little",
+        "instructions": "You play X in tic-tac-toe. The Referee sends you the board, row by row. X and O mark the squares already taken; the numbers are the free squares, from 1 (top left) to 9 (bottom right). Pick one free square. Start your reply with its number, then add one short, friendly bit of teasing, like a sports commentator.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "tictac"
+      },
+      {
+        "id": "renderer",
+        "kind": "renderer",
+        "name": "Renderer",
+        "emoji": "🖼️",
+        "role": "draws the board"
+      }
+    ],
+    "rules": [
+      {
+        "id": "g1",
+        "from": "referee",
+        "when": "data",
+        "send": "text",
+        "to": "player-x",
+        "prefix": "",
+        "enabled": true,
+        "field": "next",
+        "op": "=",
+        "value": "X"
+      },
+      {
+        "id": "g2",
+        "from": "referee",
+        "when": "data",
+        "send": "text",
+        "to": "rival",
+        "prefix": "",
+        "enabled": true,
+        "field": "next",
+        "op": "=",
+        "value": "O"
+      },
+      {
+        "id": "g3",
+        "from": "referee",
+        "when": "data",
+        "send": "text",
+        "to": "rival-x",
+        "prefix": "",
+        "enabled": false,
+        "field": "next",
+        "op": "=",
+        "value": "X"
+      },
+      {
+        "id": "g4",
+        "from": "referee",
+        "when": "always",
+        "send": "data",
+        "to": "renderer",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "g5",
+        "from": "player-x",
+        "when": "always",
+        "send": "text",
+        "to": "referee",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "g6",
+        "from": "rival",
+        "when": "always",
+        "send": "text",
+        "to": "referee",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "g7",
+        "from": "rival-x",
+        "when": "always",
+        "send": "text",
+        "to": "referee",
+        "prefix": "",
+        "enabled": true
+      }
+    ]
+  }
+}

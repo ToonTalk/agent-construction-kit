@@ -432,7 +432,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.5.0";
+AK.VERSION = "1.6.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -2382,6 +2382,31 @@ const Pretend = (() => {
       reply: ctx => "The whole story: " + String((ctx.message && ctx.message.text) || "") },
     jokecritic: { id: "jokecritic", title: "Pretend joke critic", about: "Used by the tests. The Surprise critic always says to save the funny word for last; any other critic says to use shorter words.",
       reply: ctx => (/surprise/i.test((ctx.agent && ctx.agent.name) || "") ? "Save the funny word for the very end." : "Use shorter words, so a young child gets it at once.") },
+    tictac: { id: "tictac", title: "Pretend tic-tac-toe player", about: "Used by the tests. It always asks for the middle square, 5, first; if the Referee says that's taken, it takes the lowest free square.",
+      reply: ctx => {
+        const said = String((ctx.message && ctx.message.text) || "");
+        const m = /free square: ([\d, ]+)/.exec(said);
+        const free = m ? m[1].split(",").map(x => +x.trim()).filter(Boolean) : [];
+        return (/already taken/.test(said) && free.length ? free[0] : 5) + ". Your move!";
+      } },
+    trader: { id: "trader", title: "Pretend trader", about: "Used by the tests. It says yes to every offer. On its turn it offers 30 g of what it has most of, for 30 g of something it has none of, to whoever has the most of it; if it can't tell what anyone has, it passes.",
+      reply: ctx => {
+        const said = String((ctx.message && ctx.message.text) || ""), me = (ctx.agent && ctx.agent.name) || "";
+        const none = { partner: "nobody", give: 0, giveWhat: "", get: 0, getWhat: "" };
+        if (/offers you/.test(said)) return "Yes, deal! That helps my trail mix.\n" + JSON.stringify(none);
+        const has = {};
+        let m;
+        const re = /^(\S+) has (.+)\.$/gm;
+        while ((m = re.exec(said))) { has[m[1]] = {}; for (const part of m[2].split(", ")) { const p = /^(\d+) g (.+)$/.exec(part); if (p) has[m[1]][p[2]] = +p[1]; } }
+        const mine = has[me];
+        if (!mine) return "I'll keep what I have for now.\n" + JSON.stringify(none);
+        const items = Object.keys(mine), lacking = items.filter(it => !mine[it]);
+        let best = null;
+        for (const it of lacking) for (const who of Object.keys(has)) if (who !== me && (has[who][it] || 0) > (best ? best.n : 0)) best = { who, it, n: has[who][it] };
+        if (!best) return "My trail mix is fine.\n" + JSON.stringify(none);
+        const give = items.reduce((a, b) => (mine[b] > mine[a] ? b : a));
+        return "I'd like some " + best.it + ".\n" + JSON.stringify({ partner: best.who, give: 30, giveWhat: give, get: 30, getWhat: best.it });
+      } },
     generic: { id: "generic", title: "Pretend agent", about: "This agent has no pretend program of its own, so in pretend mode it just repeats the start of what it was told.",
       reply: genericReply }
   };
@@ -3523,6 +3548,204 @@ libAgent({
     { id: "s5", name: "round 6 is quiet", input: { from: "Artist", round: 6, memory: { counts: { Artist: 5 }, shownRound: 5 } }, expect: { say: "" } }
   ]
 });
+libAgent({
+  typeId: "tictactoe", name: "Tic-Tac-Toe Referee", emoji: "🧑‍⚖️", gate: false, note: "keeps the board, refuses illegal moves, and decides who won",
+  about: "Keeps a tic-tac-toe board. It reads the first number from 1 to 9 in each move, refuses a square that is already taken, says who won, and passes on a Logo drawing of the board.",
+  pseudo: [
+    "the board starts empty, and {X} goes first",
+    "at the start, say the empty board and who goes first",
+    "once the game is over, block, and say \"The game is over.\"",
+    "the move is the first number from 1 to 9 in what was said",
+    "if there is no move",
+    "  block, and say \"Please pick a free square: {free squares}.\"",
+    "if that square is already taken",
+    "  block, and say \"Square {move} is already taken by {its mark}. Please pick a free square: {free squares}.\"",
+    "put the player's mark on the square",
+    "if that makes three in a row, say who won, and the game is over",
+    "otherwise if every square is full, say \"It's a draw!\", and the game is over",
+    "otherwise say the board, and that it's the other player's turn",
+    "remember the board, and pass on a Logo drawing of it for the Renderer"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const first = String(params.first).toUpperCase() === \"O\" ? \"O\" : \"X\";",
+    "  const game = input.memory || { board: [\"\", \"\", \"\", \"\", \"\", \"\", \"\", \"\", \"\"], next: first, over: false };",
+    "  const board = game.board.slice();",
+    "  const rows = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 4, 7], [2, 5, 8], [3, 6, 9], [1, 5, 9], [3, 5, 7]];",
+    "  const freeSquares = () => board.map((mark, i) => (mark ? 0 : i + 1)).filter(n => n > 0).join(\", \");",
+    "  const show = () => [\"top\", \"middle\", \"bottom\"].map((row, r) => row + \": \" + [0, 1, 2].map(c => board[3 * r + c] || String(3 * r + c + 1)).join(\" \")).join(\"\\n\");",
+    "  const center = n => [((n - 1) % 3) * 120 - 120, 120 - Math.floor((n - 1) / 3) * 120];",
+    "  const drawing = win => {",
+    "    let logo = \"SETPENSIZE 4 SETPENCOLOR \\\"black\\n\";",
+    "    for (const k of [-60, 60]) {",
+    "      logo += \"PENUP SETXY \" + k + \" 180 PENDOWN SETXY \" + k + \" -180\\n\";",
+    "      logo += \"PENUP SETXY -180 \" + k + \" PENDOWN SETXY 180 \" + k + \"\\n\";",
+    "    }",
+    "    for (let n = 1; n <= 9; n++) {",
+    "      h.tick();",
+    "      const x = center(n)[0], y = center(n)[1], mark = board[n - 1];",
+    "      if (mark === \"X\") logo += \"SETPENCOLOR \\\"blue SETPENSIZE 8 PENUP SETXY \" + (x - 35) + \" \" + (y + 35) + \" PENDOWN SETXY \" + (x + 35) + \" \" + (y - 35) + \" PENUP SETXY \" + (x - 35) + \" \" + (y - 35) + \" PENDOWN SETXY \" + (x + 35) + \" \" + (y + 35) + \"\\n\";",
+    "      else if (mark === \"O\") logo += \"SETPENCOLOR \\\"red SETPENSIZE 8 PENUP SETXY \" + x + \" \" + y + \" PENDOWN CIRCLE 38\\n\";",
+    "      else logo += \"SETPENCOLOR \\\"gray PENUP SETXY \" + (x - 6) + \" \" + (y - 8) + \" LABEL [\" + n + \"]\\n\";",
+    "    }",
+    "    if (win) logo += \"SETPENCOLOR \\\"green SETPENSIZE 10 PENUP SETXY \" + center(win[0]).join(\" \") + \" PENDOWN SETXY \" + center(win[2]).join(\" \") + \"\\n\";",
+    "    return logo;",
+    "  };",
+    "  if (!input.memory) {",
+    "    return { next: first, over: false, board: board, program: drawing(null), say: \"New game! \" + first + \" goes first.\\n\\n\" + show() + \"\\n\\n\" + first + \" to play: pick a free square: \" + freeSquares() + \".\", memory: game };",
+    "  }",
+    "  if (game.over) {",
+    "    return { pass: false, next: \"\", over: true, say: \"The game is over.\", memory: game };",
+    "  }",
+    "  let move = null;",
+    "  for (const word of h.words(input.text)) {",
+    "    h.tick();",
+    "    const n = Number(word);",
+    "    if (move === null && Number.isInteger(n) && n >= 1 && n <= 9) move = n;",
+    "  }",
+    "  if (move === null) {",
+    "    return { pass: false, next: game.next, over: false, say: \"Please pick a free square: \" + freeSquares() + \".\", memory: game };",
+    "  }",
+    "  if (board[move - 1]) {",
+    "    return { pass: false, next: game.next, over: false, move: move, taken: true, say: \"Square \" + move + \" is already taken by \" + board[move - 1] + \". Please pick a free square: \" + freeSquares() + \".\", memory: game };",
+    "  }",
+    "  const player = game.next;",
+    "  board[move - 1] = player;",
+    "  const win = rows.find(r => board[r[0] - 1] === player && board[r[1] - 1] === player && board[r[2] - 1] === player);",
+    "  if (win) {",
+    "    return { pass: true, move: move, next: \"\", over: true, winner: player, board: board, program: drawing(win), say: player + \" takes square \" + move + \" and wins with \" + win.join(\", \") + \"!\\n\\n\" + show(), memory: { board: board, next: \"\", over: true } };",
+    "  }",
+    "  if (board.every(mark => mark)) {",
+    "    return { pass: true, move: move, next: \"\", over: true, winner: \"nobody\", board: board, program: drawing(null), say: player + \" takes square \" + move + \". It's a draw!\\n\\n\" + show(), memory: { board: board, next: \"\", over: true } };",
+    "  }",
+    "  const next = player === \"X\" ? \"O\" : \"X\";",
+    "  return { pass: true, move: move, next: next, over: false, board: board, program: drawing(null), say: player + \" takes square \" + move + \".\\n\\n\" + show() + \"\\n\\n\" + next + \" to play: pick a free square: \" + freeSquares() + \".\", memory: { board: board, next: next, over: false } };",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [2, 2] }, { pseudo: [1, 1], js: [3, 3] }, { pseudo: [2, 2], js: [25, 27] }, { pseudo: [3, 3], js: [28, 30] }, { pseudo: [4, 4], js: [31, 36] }, { pseudo: [5, 5], js: [37, 37] }, { pseudo: [6, 6], js: [38, 38] }, { pseudo: [6, 6], js: [6, 6] }, { pseudo: [7, 7], js: [40, 40] }, { pseudo: [8, 8], js: [41, 41] }, { pseudo: [9, 9], js: [43, 44] }, { pseudo: [10, 10], js: [5, 5] }, { pseudo: [10, 10], js: [45, 48] }, { pseudo: [11, 11], js: [49, 51] }, { pseudo: [12, 12], js: [52, 53] }, { pseudo: [12, 12], js: [7, 7] }, { pseudo: [13, 13], js: [8, 8] }, { pseudo: [13, 13], js: [9, 24] }],
+  params: { first: "X" },
+  slots: [{ line: 1, text: "X", param: "first" }],
+  scenarios: [
+    {"id": "s1", "name": "a new game: {=first} goes first", "input": {"text": "New game"}, "expect": {"next": "=first", "over": false}},
+    {"id": "s2", "name": "a free square is a legal move", "input": {"text": "5", "memory": {"board": ["", "", "", "", "", "", "", "", ""], "next": "X", "over": false}}, "expect": {"pass": true, "move": 5, "next": "O"}},
+    {"id": "s3", "name": "no: that square is already taken", "input": {"text": "I'll take 5, obviously!", "memory": {"board": ["", "", "", "", "X", "", "", "", ""], "next": "O", "over": false}}, "expect": {"pass": false, "taken": true, "next": "O"}},
+    {"id": "s4", "name": "no: there is no square number in what was said", "input": {"text": "Hmm, let me think.", "memory": {"board": ["", "", "", "", "X", "", "", "", ""], "next": "O", "over": false}}, "expect": {"pass": false, "sayContains": "Please pick a free square: 1, 2, 3, 4, 6, 7, 8, 9."}},
+    {"id": "s5", "name": "three in a row wins", "input": {"text": "3", "memory": {"board": ["X", "X", "", "O", "O", "", "", "", ""], "next": "X", "over": false}}, "expect": {"winner": "X", "over": true, "next": ""}},
+    {"id": "s6", "name": "a full board with no winner is a draw", "input": {"text": "9", "memory": {"board": ["X", "O", "X", "X", "O", "O", "O", "X", ""], "next": "X", "over": false}}, "expect": {"winner": "nobody", "over": true}},
+    {"id": "s7", "name": "saying you won doesn't make it so", "input": {"text": "7. I win!", "memory": {"board": ["O", "", "", "", "X", "", "", "", ""], "next": "X", "over": false}}, "expect": {"pass": true, "over": false, "next": "O"}}
+  ]
+});
+libAgent({
+  typeId: "ledger", name: "Ledger", emoji: "🧾", gate: false, note: "keeps track of who has what, and only lets trades happen that add up",
+  about: "Runs a market: it keeps track of how much each trader has, asks each in turn for an offer, refuses an offer of more than someone has, and makes a trade only when the partner says yes.",
+  pseudo: [
+    "the traders are {Alice, Bob, Charley}, and each starts with {100} g of one of {raisins, cashews, pretzels}",
+    "tell the traders what everyone has: {yes}",
+    "at the start, open the market and ask the first trader for an offer",
+    "once the market is closed, block, and say \"The market is closed.\"",
+    "when a trader answers an offer, it's a yes if their first yes-or-no word is yes",
+    "  if it's a yes, make the trade: each gives the other what was agreed",
+    "  if everyone now has some of every ingredient, the market closes",
+    "  either way, it's the next trader's turn",
+    "when a trader offers a trade to nobody, they pass; if everyone passes, one after another, the market closes",
+    "if the partner or an ingredient isn't one I know, or an amount isn't more than 0",
+    "  block, say what's wrong, and ask the same trader again",
+    "if the trader doesn't have that much to give, or the partner doesn't have that much",
+    "  block, say \"You only have {that much}\", and ask the same trader again",
+    "otherwise ask the partner: \"{trader} offers you {so much} for {so much}. Start your reply with yes or no.\"",
+    "remember who has what"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const traders = String(params.traders).split(\",\").map(t => t.trim()).filter(t => t);",
+    "  const items = String(params.items).split(\",\").map(t => t.trim().toLowerCase()).filter(t => t);",
+    "  const fresh = () => {",
+    "    const have = {};",
+    "    traders.forEach((t, i) => { have[t] = {}; items.forEach((it, j) => { have[t][it] = i === j ? params.start : 0; }); });",
+    "    return { have: have, turn: 0, pending: null, passes: 0, trades: 0, over: false };",
+    "  };",
+    "  const m = input.memory || fresh();",
+    "  const have = m.have;",
+    "  const list = t => items.map(it => have[t][it] + \" g \" + it).join(\", \");",
+    "  const standings = () => traders.map(t => t + \" has \" + list(t) + \".\").join(\"\\n\");",
+    "  const total = () => traders.reduce((sum, t) => sum + items.reduce((n, it) => n + have[t][it], 0), 0);",
+    "  const others = t => traders.filter(x => x !== t).join(\" or \");",
+    "  const base = x => { const w = String(x == null ? \"\" : x).trim().toLowerCase(); return w.slice(-1) === \"s\" ? w.slice(0, -1) : w; };",
+    "  const yourTurn = before => {",
+    "    const t = traders[m.turn % traders.length];",
+    "    const say = before + \"\\n\\n\" + (params.tell ? standings() + \"\\n\\n\" : \"\") + \"Your turn, \" + t + \". Offer one trade to \" + others(t) + \", or pass.\";",
+    "    return { ask: t, over: false, trades: m.trades, have: have, say: say, memory: m };",
+    "  };",
+    "  const close = before => {",
+    "    m.over = true;",
+    "    return { ask: \"\", over: true, trades: m.trades, have: have, say: before + \" The market is closed.\\n\\n\" + standings() + \"\\n\\nAltogether there are \" + total() + \" g, the same as at the start.\", memory: m };",
+    "  };",
+    "  if (!input.memory) {",
+    "    return yourTurn(\"The market is open! Everyone wants a trail mix with \" + items.slice(0, -1).join(\", \") + \" and \" + items[items.length - 1] + \".\");",
+    "  }",
+    "  if (m.over) {",
+    "    return { pass: false, ask: \"\", over: true, say: \"The market is closed.\", memory: m };",
+    "  }",
+    "  const from = traders.find(t => t.toLowerCase() === String(input.from).toLowerCase()) || String(input.from);",
+    "  if (m.pending) {",
+    "    const p = m.pending;",
+    "    let yes = false;",
+    "    for (const word of h.words(input.text)) {",
+    "      h.tick();",
+    "      if ([\"yes\", \"deal\", \"accept\", \"agreed\", \"ok\", \"okay\", \"sure\"].indexOf(word) >= 0) { yes = true; break; }",
+    "      if ([\"no\", \"nope\", \"decline\", \"not\"].indexOf(word) >= 0) break;",
+    "    }",
+    "    m.pending = null;",
+    "    m.turn = m.turn + 1;",
+    "    if (yes) {",
+    "      have[p.from][p.giveWhat] -= p.give; have[p.partner][p.giveWhat] += p.give;",
+    "      have[p.partner][p.getWhat] -= p.get; have[p.from][p.getWhat] += p.get;",
+    "      m.trades = m.trades + 1; m.passes = 0;",
+    "      const deal = \"Deal! \" + p.from + \" gave \" + p.partner + \" \" + p.give + \" g \" + p.giveWhat + \" for \" + p.get + \" g \" + p.getWhat + \".\";",
+    "      if (traders.every(t => items.every(it => have[t][it] > 0))) return close(deal + \" Everyone has some of every ingredient.\");",
+    "      return yourTurn(deal);",
+    "    }",
+    "    m.passes = 0;",
+    "    return yourTurn(p.partner + \" said no to \" + p.from + \"'s offer.\");",
+    "  }",
+    "  const d = input.data || {};",
+    "  const who = String(d.partner == null ? \"\" : d.partner).trim().toLowerCase();",
+    "  if (d.partner != null && (!who || who === \"nobody\" || who === \"none\" || who === \"pass\")) {",
+    "    m.turn = m.turn + 1; m.passes = m.passes + 1;",
+    "    if (m.passes >= traders.length) return close(from + \" passes. Everyone passed, one after another.\");",
+    "    return yourTurn(from + \" passes.\");",
+    "  }",
+    "  const partner = traders.find(t => t.toLowerCase() === who && t !== from);",
+    "  const giveWhat = items.find(it => base(it) === base(d.giveWhat)), getWhat = items.find(it => base(it) === base(d.getWhat));",
+    "  const give = Math.round(Number(d.give)), get = Math.round(Number(d.get));",
+    "  let problem = \"\";",
+    "  if (!partner) problem = \"Who do you want to trade with? Say \" + others(from) + \", or nobody to pass.\";",
+    "  else if (!giveWhat || !getWhat || giveWhat === getWhat) problem = \"Say what you give and what you want back: two different things from \" + items.join(\", \") + \".\";",
+    "  else if (!(give > 0) || !(get > 0)) problem = \"Say how many grams you give and how many you want back, more than 0 of each.\";",
+    "  if (!problem && have[from][giveWhat] < give) problem = \"You only have \" + have[from][giveWhat] + \" g \" + giveWhat + \", so you can't give \" + give + \" g.\";",
+    "  else if (!problem && have[partner][getWhat] < get) problem = partner + \" only has \" + have[partner][getWhat] + \" g \" + getWhat + \", so they can't give you \" + get + \" g.\";",
+    "  if (problem) {",
+    "    return { pass: false, refused: true, ask: from, over: false, trades: m.trades, have: have, say: problem + \" Offer a trade again, or pass.\", memory: m };",
+    "  }",
+    "  m.pending = { from: from, partner: partner, give: give, giveWhat: giveWhat, get: get, getWhat: getWhat };",
+    "  return { ask: partner, over: false, offer: m.pending, trades: m.trades, have: have, say: from + \" offers you \" + give + \" g \" + giveWhat + \" for \" + get + \" g of your \" + getWhat + \". \" + (params.tell ? \"You have \" + list(partner) + \". \" : \"\") + \"Start your reply with yes or no.\", memory: m };",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [2, 2] }, { pseudo: [1, 1], js: [3, 3] }, { pseudo: [1, 1], js: [4, 8] }, { pseudo: [2, 2], js: [18, 18] }, { pseudo: [2, 2], js: [73, 73] }, { pseudo: [3, 3], js: [25, 27] }, { pseudo: [3, 3], js: [16, 20] }, { pseudo: [4, 4], js: [28, 30] }, { pseudo: [5, 5], js: [32, 38] }, { pseudo: [6, 6], js: [42, 46] }, { pseudo: [7, 7], js: [47, 47] }, { pseudo: [7, 7], js: [21, 24] }, { pseudo: [8, 8], js: [40, 41] }, { pseudo: [8, 8], js: [48, 48] }, { pseudo: [8, 8], js: [51, 51] }, { pseudo: [9, 9], js: [54, 58] }, { pseudo: [10, 10], js: [60, 66] }, { pseudo: [11, 11], js: [69, 71] }, { pseudo: [12, 12], js: [67, 68] }, { pseudo: [13, 13], js: [69, 71] }, { pseudo: [14, 14], js: [72, 73] }, { pseudo: [15, 15], js: [9, 10] }],
+  params: { traders: "Alice, Bob, Charley", start: 100, items: "raisins, cashews, pretzels", tell: true },
+  slots: [{ line: 1, text: "Alice, Bob, Charley", param: "traders" }, { line: 1, text: "100", param: "start" }, { line: 1, text: "raisins, cashews, pretzels", param: "items" }, { line: 2, text: "yes", param: "tell" }],
+  scenarios: [
+    {"id": "s1", "name": "the market opens: the first trader is asked", "input": {"text": "Open the market"}, "expect": {"ask": "Alice", "over": false, "sayContains": "Alice has 100 g raisins, 0 g cashews, 0 g pretzels."}},
+    {"id": "s2", "name": "an offer the trader can afford goes to the partner", "input": {"from": "Alice", "text": "Let's trade!", "data": {"partner": "Bob", "give": 30, "giveWhat": "raisins", "get": 30, "getWhat": "cashews"}, "memory": {"have": {"Alice": {"raisins": 100, "cashews": 0, "pretzels": 0}, "Bob": {"raisins": 0, "cashews": 100, "pretzels": 0}, "Charley": {"raisins": 0, "cashews": 0, "pretzels": 100}}, "turn": 0, "pending": null, "passes": 0, "trades": 0, "over": false}}, "expect": {"ask": "Bob", "sayContains": "Alice offers you 30 g raisins for 30 g of your cashews."}},
+    {"id": "s3", "name": "no: you can't give more than you have", "input": {"from": "Alice", "text": "", "data": {"partner": "Bob", "give": 140, "giveWhat": "raisins", "get": 30, "getWhat": "cashews"}, "memory": {"have": {"Alice": {"raisins": 100, "cashews": 0, "pretzels": 0}, "Bob": {"raisins": 0, "cashews": 100, "pretzels": 0}, "Charley": {"raisins": 0, "cashews": 0, "pretzels": 100}}, "turn": 0, "pending": null, "passes": 0, "trades": 0, "over": false}}, "expect": {"pass": false, "ask": "Alice", "sayContains": "You only have 100 g raisins"}},
+    {"id": "s4", "name": "no: the partner doesn't have that much", "input": {"from": "Alice", "text": "", "data": {"partner": "Bob", "give": 30, "giveWhat": "raisins", "get": 30, "getWhat": "pretzels"}, "memory": {"have": {"Alice": {"raisins": 100, "cashews": 0, "pretzels": 0}, "Bob": {"raisins": 0, "cashews": 100, "pretzels": 0}, "Charley": {"raisins": 0, "cashews": 0, "pretzels": 100}}, "turn": 0, "pending": null, "passes": 0, "trades": 0, "over": false}}, "expect": {"pass": false, "sayContains": "Bob only has 0 g pretzels"}},
+    {"id": "s5", "name": "a yes makes the trade, and nothing is lost", "input": {"from": "Bob", "text": "Yes, deal!", "memory": {"have": {"Alice": {"raisins": 100, "cashews": 0, "pretzels": 0}, "Bob": {"raisins": 0, "cashews": 100, "pretzels": 0}, "Charley": {"raisins": 0, "cashews": 0, "pretzels": 100}}, "turn": 0, "pending": {"from": "Alice", "partner": "Bob", "give": 30, "giveWhat": "raisins", "get": 30, "getWhat": "cashews"}, "passes": 0, "trades": 0, "over": false}}, "expect": {"ask": "Bob", "have": {"Alice": {"raisins": 70, "cashews": 30, "pretzels": 0}, "Bob": {"raisins": 30, "cashews": 70, "pretzels": 0}, "Charley": {"raisins": 0, "cashews": 0, "pretzels": 100}}}},
+    {"id": "s6", "name": "a no changes nothing", "input": {"from": "Bob", "text": "No thanks, not today.", "memory": {"have": {"Alice": {"raisins": 100, "cashews": 0, "pretzels": 0}, "Bob": {"raisins": 0, "cashews": 100, "pretzels": 0}, "Charley": {"raisins": 0, "cashews": 0, "pretzels": 100}}, "turn": 0, "pending": {"from": "Alice", "partner": "Bob", "give": 30, "giveWhat": "raisins", "get": 30, "getWhat": "cashews"}, "passes": 0, "trades": 0, "over": false}}, "expect": {"ask": "Bob", "have": {"Alice": {"raisins": 100, "cashews": 0, "pretzels": 0}, "Bob": {"raisins": 0, "cashews": 100, "pretzels": 0}, "Charley": {"raisins": 0, "cashews": 0, "pretzels": 100}}, "sayContains": "Bob said no"}},
+    {"id": "s7", "name": "when everyone has every ingredient, the market closes", "input": {"from": "Alice", "text": "Yes!", "memory": {"have": {"Alice": {"raisins": 70, "cashews": 30, "pretzels": 0}, "Bob": {"raisins": 30, "cashews": 40, "pretzels": 30}, "Charley": {"raisins": 0, "cashews": 30, "pretzels": 70}}, "turn": 2, "pending": {"from": "Charley", "partner": "Alice", "give": 30, "giveWhat": "pretzels", "get": 30, "getWhat": "raisins"}, "passes": 0, "trades": 0, "over": false}}, "expect": {"over": true, "ask": "", "sayContains": "Altogether there are 300 g"}},
+    {"id": "s8", "name": "when everyone passes, the market closes", "input": {"from": "Charley", "text": "I'll keep what I have.", "data": {"partner": "nobody"}, "memory": {"have": {"Alice": {"raisins": 100, "cashews": 0, "pretzels": 0}, "Bob": {"raisins": 0, "cashews": 100, "pretzels": 0}, "Charley": {"raisins": 0, "cashews": 0, "pretzels": 100}}, "turn": 2, "pending": null, "passes": 2, "trades": 0, "over": false}}, "expect": {"over": true}},
+    {"id": "s9", "name": "no: an offer without a partner isn't a pass, so it's asked again", "input": {"from": "Alice", "text": "I'd love some cashews!", "data": {}, "memory": {"have": {"Alice": {"raisins": 100, "cashews": 0, "pretzels": 0}, "Bob": {"raisins": 0, "cashews": 100, "pretzels": 0}, "Charley": {"raisins": 0, "cashews": 0, "pretzels": 100}}, "turn": 0, "pending": null, "passes": 0, "trades": 0, "over": false}}, "expect": {"pass": false, "ask": "Alice", "sayContains": "Who do you want to trade with?"}}
+  ]
+});
 // Canned translations for pretend mode: every shipped agent, plus two edits a learner might try.
 const VARIANT_TRANSLATIONS = [
   { pseudo: ["if rows is {3} and columns is {5}, or rows is {5} and columns is {3}", "  pass, and say \"done\"", "otherwise", "  block, and say \"You drew {rows} by {columns}. I need {3} by {5}.\""],
@@ -4034,9 +4257,85 @@ function makeContemplative() {
     rules: [r("t1", "you", "contemplative"), r("t2", "plain", "comparer", { enabled: false }), r("t3", "contemplative", "comparer", { enabled: false })]
   };
 }
+// After Ken Kahn's experiments with chatbots that can't stick to the rules of chess, and a snarky tic-tac-toe AI:
+// the model only suggests moves; a program anyone can read keeps the board and decides.
+const RIVAL_HOW = "The Referee sends you the board, row by row. X and O mark the squares already taken; the numbers are the free squares, from 1 (top left) to 9 (bottom right). Pick one free square. Start your reply with its number, then add one short, friendly bit of teasing, like a sports commentator.";
+function makeTicTacToe() {
+  const r = (id, from, to, extra) => Object.assign({ id, from, when: "always", send: "text", to, prefix: "", enabled: true }, extra || {});
+  const turn = (id, to, mark, extra) => r(id, "referee", to, Object.assign({ when: "data", field: "next", op: "=", value: mark }, extra || {}));
+  const rival = (id, name, emoji, mark) => ({ id, kind: "model", name, emoji, role: "plays " + mark + ", and teases a little", instructions: "You play " + mark + " in tic-tac-toe. " + RIVAL_HOW, outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "tictac" });
+  return {
+    kind: "agent-kit-society", schema: 1, id: "tictactoe", title: "Tic-Tac-Toe", question: "Who makes sure an AI plays by the rules?",
+    intro: "You play X against the Rival, an AI playing O. The Rival only suggests moves. The Referee is a small program you can read: it keeps the board, refuses a square that is already taken, and decides who won, whatever anyone says. The Renderer draws the board.",
+    questions: [
+      "Did the Rival ever pick a square that was already taken? Who caught it?",
+      "The Rival may say it's winning. Is it? Who decides?",
+      "Switch on Two AIs. Does either one break the rules? Does the same model play X and O equally well?",
+      "Look inside the Referee. Change it so a taken square is allowed. What happens to the game?",
+      "The Rival only knows what the Referee sends it. What would help it play better?"
+    ],
+    openers: ["Who keeps the board?", "What would happen without the Referee?", "How does the Rival know which squares are free?"],
+    roundAgent: "referee", roundLimit: 20,
+    starts: [{ id: "start", label: "Start", kind: "text", to: "referee", value: "New game" }],
+    variants: [{ id: "two-ais", label: "Two AIs: Rival X plays X instead of you", enable: ["g3"], disable: ["g1"], on: false }],
+    agents: [
+      programAgent("referee", "tictactoe", { name: "Referee" }),
+      { id: "player-x", kind: "model", human: true, name: "You", emoji: "🙋", role: "plays X", instructions: "Type the number of a free square for your X, from 1 to 9.", outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "generic" },
+      rival("rival", "Rival", "⭕", "O"),
+      rival("rival-x", "Rival X", "❌", "X"),
+      { id: "renderer", kind: "renderer", name: "Renderer", emoji: "🖼️", role: "draws the board" }
+    ],
+    rules: [
+      turn("g1", "player-x", "X"), turn("g2", "rival", "O"), turn("g3", "rival-x", "X", { enabled: false }),
+      r("g4", "referee", "renderer", { send: "data" }),
+      r("g5", "player-x", "referee"), r("g6", "rival", "referee"), r("g7", "rival-x", "referee")
+    ]
+  };
+}
+// From Ken Kahn's “Trail Mix Barter by Chatbots” (2024): one chatbot playing three traders lost track of the trades
+// (one trader ended with 110 g of 100), so here each trader is its own agent, and a program keeps the accounts.
+const TRADER_FIELDS = [
+  { name: "partner", type: "text", about: "who you offer a trade to, or nobody to pass (when you're answering an offer, say nobody)" },
+  { name: "give", type: "number", about: "how many grams you give" },
+  { name: "giveWhat", type: "text", about: "what you give: raisins, cashews or pretzels" },
+  { name: "get", type: "number", about: "how many grams you want back" },
+  { name: "getWhat", type: "text", about: "what you want back: raisins, cashews or pretzels" }
+];
+function makeBarter() {
+  const r = (id, from, to, extra) => Object.assign({ id, from, when: "always", send: "text", to, prefix: "", enabled: true }, extra || {});
+  const turn = (id, to, name) => r(id, "ledger", to, { when: "data", field: "ask", op: "=", value: name });
+  const trader = (id, name, emoji, has, others) => ({ id, kind: "model", name, emoji, role: "starts with 100 g of " + has, outputFields: clone(TRADER_FIELDS), canSeeImages: false, history: "full", replyKind: "prose", pretend: "trader",
+    instructions: "You are " + name + ", at a market with " + others + ". Everyone wants a nice trail mix with raisins, cashews and pretzels, but each of you started with 100 g of just one of them: you had " + has + ". The Ledger tells you what is going on. On your turn, offer one trade: who to, how many grams of what you give, and how many grams of what you want back; or offer nobody, to pass. When someone offers you a trade, start your reply with yes or no, and say why in one short sentence. Be friendly and fair, but look after your own trail mix." });
+  return {
+    kind: "agent-kit-society", schema: 1, id: "barter", title: "Trail Mix Barter", question: "Can AI traders keep track of a deal?",
+    intro: "Alice has raisins, Bob has cashews and Charley has pretzels, 100 g each, and they all want a trail mix with all three. Each trader is its own AI agent. They take turns to offer trades, and the Ledger, a program, keeps track of who has what: it refuses an offer of more than someone has, and makes a trade only when the partner says yes. (When one chatbot played all three, it lost track: one trader ended up with 110 g of the 100 g there was.)",
+    questions: [
+      "Did anyone offer more than they had? Who noticed?",
+      "Is the final split fair? Who did best, and how?",
+      "Make Alice a hard bargainer and Bob easy-going, in their instructions. Who ends up with more?",
+      "Give each trader a different model (the Models row). Do they think less alike?",
+      "Look inside the Ledger and change {yes} to {no}, so it stops telling traders what everyone has. Can they still keep track?"
+    ],
+    openers: ["Who knows how much everyone has?", "What would happen without the Ledger?", "How does Bob find out about a trade between Alice and Charley?"],
+    roundAgent: "ledger", roundLimit: 20,
+    starts: [{ id: "start", label: "Start", kind: "text", to: "ledger", value: "Open the market" }],
+    agents: [
+      programAgent("ledger", "ledger"),
+      trader("alice", "Alice", "🍇", "raisins", "Bob and Charley"),
+      trader("bob", "Bob", "🥜", "cashews", "Alice and Charley"),
+      trader("charley", "Charley", "🥨", "pretzels", "Alice and Bob")
+    ],
+    rules: [
+      turn("b1", "alice", "Alice"), turn("b2", "bob", "Bob"), turn("b3", "charley", "Charley"),
+      r("b4", "alice", "ledger", { send: "text+data" }), r("b5", "bob", "ledger", { send: "text+data" }), r("b6", "charley", "ledger", { send: "text+data" })
+    ]
+  };
+}
 const EXAMPLES = [
   { id: "evolution", make: makeEvolution, emoji: "🧬", about: "Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner. Needs a model that sees pictures well." },
-  { id: "contemplative", make: makeContemplative, emoji: "🧘", about: "The same question to two AI agents: one just answers, the other pauses first on four contemplative principles. Which answer would you rather get? Any model will do." }
+  { id: "contemplative", make: makeContemplative, emoji: "🧘", about: "The same question to two AI agents: one just answers, the other pauses first on four contemplative principles. Which answer would you rather get? Any model will do." },
+  { id: "tictactoe", make: makeTicTacToe, emoji: "⭕", about: "You play X against an AI. It only suggests moves; a Referee program keeps the board, refuses illegal moves and decides who won. Any model will do: weaker ones break the rules more often, which is the point." },
+  { id: "barter", make: makeBarter, emoji: "🥜", about: "Three AI traders, each with one trail mix ingredient, take turns to barter. A Ledger program keeps track of who has what and refuses offers that don't add up. Any model that can fill in a few fields; a different model for each trader is more interesting." }
 ];
 // Free play: one AI agent and you. Everything else is added in Look inside.
 function makeBlank(title) {
@@ -4066,7 +4365,7 @@ const V1_TEXTS = [
   ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
   ["a turtle program", "a Logo program"]
 ];
-AK.Seeds = { makeEvolution, makeContemplative, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+AK.Seeds = { makeEvolution, makeContemplative, makeTicTacToe, makeBarter, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
 const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "collect", "wait", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "contract", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
@@ -5034,7 +5333,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- A programmed agent's editor shows what it Gets, Says and Remembers (worked out from its scenarios, or written by the learner as the first lines of its pseudocode); the translator keeps to it. “↩ Go back to the running version” undoes an edit that hasn't been translated.\n" +
   "- Scenarios are tests for a programmed agent, in its editor. A model agent that counts pictures has a test bench in its editor.\n" +
   "- A collecting program (like Vote or Referee) waits until it has heard several messages (its {wait} number), then runs once on all of them. If an answer never comes, it runs on what it has at the end. An AI agent can collect too (in its editor: “It answers … once it has N messages”); then it sees all their pictures together, numbered in order, like the Critic in the Evolution example.\n" +
-  "- ＋ New society also offers examples to start from: Evolution (three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree tab shows which picture came from which) and Two Answers (the same question to a Plain agent and to a Contemplative one that pauses on four principles first: emptiness, non-duality, mindfulness and boundless care).\n" +
+  "- ＋ New society also offers examples to start from: Evolution (three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree tab shows which picture came from which) and Two Answers (the same question to a Plain agent and to a Contemplative one that pauses on four principles first: emptiness, non-duality, mindfulness and boundless care) and Tic-Tac-Toe (you play X against an AI Rival; the Referee, a program, keeps the board, refuses a square that is already taken and decides who won; a variant lets two AIs play) and Trail Mix Barter (three AI traders barter raisins, cashews and pretzels; the Ledger, a program, keeps track of who has what and refuses offers that don't add up).\n" +
   "- An agent called You is the learner: the run waits for their answer.\n" +
   "- A rule can come from You (“when You start the run, send your words to …”), so the start reaches more than one agent. A rule can also say “when the run ends”: then the agent's last message is sent on, once, at the very end (Story Chain's Book sends the whole story to the Editor that way).\n" +
   "- Everything is saved in this browser as you go (refreshing keeps it); ⚙️ Settings can switch saving off, and then the work is gone when the tab closes. “Delete this society”, in Look inside, deletes one of your own societies from this browser for good; microworlds have “Reset” instead.\n" +
@@ -6613,7 +6912,8 @@ function programEditorHTML(a, s) {
     const keys = Object.keys(a.params || {});
     if (keys.length) h += '<div class="params">' + keys.map(k => '<span class="param"><code>params.' + esc(k) + '</code><input data-bind="param" data-param="' + esc(k) + '" value="' + esc(Slots.formatSlotValue(a.params[k])) + '" aria-label="' + esc(k) + '"></span>').join("") + '</div>';
   }
-  if (String(ed.mode === "edit" ? ed.draft : a.pseudocode).split("\n").filter(l => l.trim()).length > 8) h += '<div class="nudge">This agent is getting long. Could it be two agents?</div>';
+  const mine = ed.mode === "edit" ? ed.draft : a.pseudocode, lib = AK.Library.LIB[a.typeId];   // a nudge for the learner's own pseudocode, not the kit's
+  if (!(lib && mine === lib.pseudocode) && String(mine).split("\n").filter(l => l.trim()).length > 8) h +='<div class="nudge">This agent is getting long. Could it be two agents?</div>';
   h += '</div>' + connectionsHTML(a, s) + peekHTML(a) + scenariosHTML(a);
   return h;
 }
@@ -6851,7 +7151,7 @@ const GUIDES = {
     "<ol class='steps'>" +
     "<li><b>Try one.</b> Pick <b>Story Chain</b>, the first microworld at the top, and read its question. Before you press <b>▶ Run</b>, say what you think will happen. Then watch the writers, round by round.</li>" +
     "<li><b>Change one thing.</b> Tick a switch under the start (like “Writer A remembers everything”), or press <b>🔍 Look inside</b> and change one agent's instructions or one rule. Run it again. What changed, and why?</li>" +
-    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, start from scratch, or start from an example like <b>Evolution</b> or <b>Two Answers</b>. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
+    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, start from scratch, or start from an example like <b>Evolution</b>, <b>Two Answers</b>, <b>Tic-Tac-Toe</b> or <b>Trail Mix Barter</b>. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
     "</ol>" +
     "<p>Stuck? Ask the <b>🤔 Helper</b> (bottom right). It knows where everything is, and it will ask you questions back. Working with a friend? One of you drives and the other predicts; swap every run.</p>" +
     "<details class='ref'><summary><b>Everything else, when you need it</b></summary>" +
@@ -6879,7 +7179,7 @@ const GUIDES = {
     "<li><b>Fool the Eyes: “Can a drawing trick a looker?”</b> A Trickster draws pebbles to fool Eyes; a Referee keeps score. <i>Powerful idea:</i> an adversary finds weaknesses a friendly test never would.</li>" +
     "<li><b>Joke Workshop: “Do critics make jokes funnier?”</b> A Joker writes, two Critics send notes, and the learner rates every version. <i>Powerful idea:</i> whose judgment counts, and whether critics improve work or only make it more careful.</li>" +
     "<li><b>Small Helper, Big Helper: “When do you need the big one?”</b> A cheap model tries first; an Escalator hands the job to a strong one when it fails. It needs two models. <i>Powerful idea:</i> cost against capability.</li></ol>" +
-    "<p><b>Examples to start from</b> (“＋ New society”): <b>Evolution</b>, where three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree shows which picture came from which. <i>Powerful idea:</i> a simple critic and chooser, arranged in a loop, steer a model somewhere it wouldn't go alone. It needs a model that sees pictures well, and makes about 4 model calls per round. <b>Two Answers</b>, after the paper <i>Contemplative Artificial Intelligence</i> (Laukkonen and others, 2025): the same question goes to a Plain agent and to a Contemplative one asked to pause on four principles first. <i>Powerful idea:</i> the instructions are the only difference, so learners can change one principle and see what it does; and wise is not the same as careful. Any model; 2 or 3 calls a run.</p>" +
+    "<p><b>Examples to start from</b> (“＋ New society”): <b>Evolution</b>, where three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree shows which picture came from which. <i>Powerful idea:</i> a simple critic and chooser, arranged in a loop, steer a model somewhere it wouldn't go alone. It needs a model that sees pictures well, and makes about 4 model calls per round. <b>Two Answers</b>, after the paper <i>Contemplative Artificial Intelligence</i> (Laukkonen and others, 2025): the same question goes to a Plain agent and to a Contemplative one asked to pause on four principles first. <i>Powerful idea:</i> the instructions are the only difference, so learners can change one principle and see what it does; and wise is not the same as careful. Any model; 2 or 3 calls a run. <b>Tic-Tac-Toe</b>: a learner plays X against an AI Rival, and a Referee program keeps the board. <i>Powerful idea:</i> the model suggests and the program decides; a rule written as a program holds however confident the model sounds. Any model (weaker ones make more illegal moves, which is the point); about 5 calls a game, or 9 with Two AIs. <b>Trail Mix Barter</b>, from Ken Kahn's experiments: three AI traders, each starting with one ingredient, take turns to barter, and a Ledger program keeps the accounts. <i>Powerful idea:</i> agents can talk their way into a deal, but a program has to keep the books; when one chatbot played all three traders, the grams stopped adding up. Try a different model for each trader. About 2 calls a trade, 20 rounds at most.</p>" +
     "<h3>Which model, and how many calls</h3><p>Model choice is where sessions get stuck, so here is what we have seen. Calls are model calls in one run with the default rounds; each AI agent's button counts them after a run.</p>" +
     "<table class='guide-table'><tr><th>Microworld</th><th>Model</th><th>Why</th><th>Calls per run</th></tr>" +
     row("Story Chain", "any, even Gemini Nano", "only text; the lesson is in what each writer sees", "13") +
