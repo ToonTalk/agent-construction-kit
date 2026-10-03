@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const HTML_PATH = join(here, "..", "index.html");
+const HTML_PATH = process.env.AK_HTML ? join(here, "..", process.env.AK_HTML) : join(here, "..", "index.html");   // AK_HTML=sv/index.html tests a translated copy
 const HTML = readFileSync(HTML_PATH, "utf8");
 const MODEL_SRC = (HTML.match(/<script id="ak-model">([\s\S]*?)<\/script>/) || [])[1];
 const UI_SRC = (HTML.match(/<script id="ak-ui">([\s\S]*?)<\/script>/) || [])[1];

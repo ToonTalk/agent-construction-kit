@@ -978,7 +978,7 @@ function makeGuard(limit) {
 // The helper library every programmed agent receives as h. Small and fully visible in "peek under the hood".
 function makeH(seed, guard) {
   const rng = mulberry32((seed >>> 0) || 1);
-  const words = text => String(text == null ? "" : text).toLowerCase().match(/[a-z0-9']+/g) || [];
+  const words = text => String(text == null ? "" : text).toLowerCase().match(/[\p{L}\p{N}']+/gu) || [];   // any alphabet: “så” is one word
   const unique = list => {
     const seen = new Set(), out = [];
     for (const x of (list || [])) {
@@ -5605,7 +5605,8 @@ const ENV = (() => {
 })();
 
 /* ===== SECTION: STATE & PERSISTENCE ===== */
-const LS_KEY = "agentkit.v1";
+const LS_KEY = "agentkit.v1";   // a translated copy uses its own key (agentkit.v1.sv …), so the languages don't share saved work
+const PAGE_LANG = document.documentElement.lang || "en";   // speech listens and speaks in this language
 const PROJECT_URL = "https://github.com/ToonTalk/agent-construction-kit";
 let storage = null;
 try { const k = LS_KEY + ".probe"; localStorage.setItem(k, "1"); localStorage.removeItem(k); storage = localStorage; } catch (e) { storage = null; }
@@ -8010,7 +8011,7 @@ const SpeechUI = (() => {
   }
   function pickVoice() {
     const sy = synth(), voices = sy && sy.getVoices ? sy.getVoices() : [];
-    const lang = (navigator.language || "en").slice(0, 2).toLowerCase();
+    const lang = PAGE_LANG.slice(0, 2).toLowerCase();
     return voices.find(v => v.name === app.settings.voice) || voices.find(v => v.default && (v.lang || "").toLowerCase().indexOf(lang) === 0) || voices.find(v => (v.lang || "").toLowerCase().indexOf(lang) === 0) || null;
   }
   function stop() {
@@ -8088,7 +8089,7 @@ const SpeechUI = (() => {
     stop();   // don't listen to ourselves
     const r = new R();
     rec = r;
-    r.lang = navigator.language || "en-US"; r.interimResults = true; r.continuous = !opts.once; r.maxAlternatives = 1;
+    r.lang = PAGE_LANG.length > 2 ? PAGE_LANG : (navigator.language || "").toLowerCase().indexOf(PAGE_LANG) === 0 ? navigator.language : PAGE_LANG; r.interimResults = true; r.continuous = !opts.once; r.maxAlternatives = 1;
     const a = field.selectionStart != null ? field.selectionStart : field.value.length, z = field.selectionEnd != null ? field.selectionEnd : a;
     const before = field.value.slice(0, a), after = field.value.slice(z), gap = before && !/\s$/.test(before) ? " " : "";
     let finals = "";
