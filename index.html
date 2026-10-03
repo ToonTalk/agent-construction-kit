@@ -432,7 +432,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.9.0";
+AK.VERSION = "1.10.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -4356,7 +4356,8 @@ function makeArtCritic() {
       "Is the Critic a fair judge of pictures drawn from its own advice?",
       "Did the Artist follow every suggestion? Compare what it was sent with what it drew next.",
       "Switch on: the Critic reads the program instead of seeing the picture. Is its advice better or worse?",
-      "Change the Critic's taste in its instructions, say to “you love simple shapes”. Where does the drawing go?"
+      "Change the Critic's taste in its instructions, say to “you love simple shapes”. Where does the drawing go?",
+      "Make a copy (＋ New society, then Copy) and turn it into a Poet and a Critic. Which agents and rules do you change, which can go, and which stay the same?"
     ],
     openers: ["What does the Critic know about what the Artist was asked to draw?", "Who decides what “better” means?", "What would the Artist do with no Critic?"],
     roundAgent: "artist", roundLimit: 4,
@@ -5051,6 +5052,7 @@ function createRun(society, deps) {
     t0: now(), msgSeq: 0, renderSeq: 0, start: null
   };
   run.maxDeliveries = run.roundLimit * 25 + 50;
+  run.parked = [];   // messages kept back by Stop or the round limit; carryOn() delivers them
   const listeners = [];
   let abort = null;
   const emit = e => { for (const fn of listeners) { try { fn(e, run); } catch (err) { /* a listener's problem is not the run's */ } } };
@@ -5199,12 +5201,13 @@ function createRun(society, deps) {
     const agent = byId(msg.to);
     if (!agent) { addTrace({ kind: "error", text: "A message went to “" + msg.to + "”, but there is no agent with that name.", round: run.round }); return true; }
     const isRoundAgent = agent.id === soc.roundAgent;
-    if (isRoundAgent && run.closing && !run.ending) return true;   // past the round limit: no new round starts
+    if (isRoundAgent && run.closing && !run.ending) { run.parked.push(msg); return true; }   // past the round limit: no new round starts (kept, to carry on later)
     if (isRoundAgent && !run.ending) {
-      if (run.activations > 0) run.round++;        // every visit to the round agent after the first delivery starts a new round
+      if (run.activations > 0 && !msg.again) run.round++;        // every visit to the round agent after the first delivery starts a new round (not a message delivered again after Stop)
       if (run.round > run.roundLimit) {
         // The last round is over, but messages already on their way still arrive, so the last thing said counts.
         run.round = run.roundLimit;
+        run.parked.push(msg);
         run.closing = { note: "Reached the round limit (" + run.roundLimit + ")." };
         addTrace({ kind: "note", round: run.round, text: "That was the last round (" + run.roundLimit + "): " + agent.name + " won't start another, but messages already on their way are still delivered." });
         return true;
@@ -5242,7 +5245,7 @@ function createRun(society, deps) {
       entry.errorKind = e.kind || "";
       if (e.trace) entry.call = Object.assign(entry.call || {}, e.trace);
     }
-    if (run.status === "stopped") { entry.error = entry.error || "Stopped."; addTrace(entry); return false; }
+    if (run.status === "stopped") { entry.error = entry.error || "Stopped."; entry.stopped = true; run.parked.unshift(Object.assign(msg, { again: true })); addTrace(entry); return false; }
     entry.response = response;
     if (response) {
       if (response.renderId) entry.response = Object.assign({}, response);
@@ -5292,8 +5295,25 @@ function createRun(society, deps) {
     stop() {
       if (run.status === "done" || run.status === "stopped") return;
       if (abort) abort.abort();
-      run.queue.length = 0;
+      if (run.waiting) { run.parked.push(Object.assign(run.waiting.entry.message, { again: true })); run.waiting = null; }
+      run.parked = run.parked.concat(run.queue.splice(0));
       finish("stopped", "Stopped by you.");
+    },
+    // Run and Step carry on from where a run stopped or reached its round limit: the kept messages go out again,
+    // and a run at its limit gets more rounds (the society's Rounds). False when there is nothing left to deliver.
+    canCarryOn() { return (run.status === "done" || run.status === "stopped") && run.parked.length > 0; },
+    carryOn(moreRounds) {
+      if (!api.canCarryOn()) return false;
+      const was = run.stopReason;
+      run.queue.unshift(...run.parked.splice(0));
+      const atLimit = !!run.closing || was === "round-limit";
+      run.closing = null; run.ending = null; run.waiting = null;
+      if (atLimit) run.roundLimit = run.round + Math.max(1, moreRounds || soc.roundLimit || 1);
+      run.maxDeliveries = Math.max(run.maxDeliveries, run.deliveries + run.roundLimit * 25 + 50);
+      run.status = "paused"; run.stopReason = ""; run.note = "";
+      addTrace({ kind: "note", round: run.round, text: "Carrying on from where the run " + (was === "stopped" ? "was stopped" : "reached its round limit") + (atLimit ? ", up to round " + run.roundLimit : "") + "." });
+      emit({ kind: "status" });
+      return true;
     },
     render(id) { return run.renders[id] || null; },
     setDelay(ms) { deps.delayMs = ms; }
@@ -6168,7 +6188,7 @@ async function resumeRun() {
 async function stepNow() {
   let rec = app.runs[app.activeId];
   const st = rec ? rec.api.run.status : "idle";
-  if (!rec || st === "done" || st === "stopped") { rec = beginRun(); if (!rec) return; }
+  if (!rec || ((st === "done" || st === "stopped") && !rec.api.carryOn(soc().roundLimit))) { rec = beginRun(); if (!rec) return; }
   await rec.api.step();
   if (rec.api.run.status === "done" || rec.api.run.status === "stopped") afterRun(rec);
   renderAll();
@@ -6401,7 +6421,7 @@ function statusLineHTML(s, rec, run) {
   if (run.status === "waiting") { const w = run.waiting && run.waiting.agent; return "🙋 " + round + " · your turn" + (w && !w.human ? ": you are the " + esc(w.name) : "") + "."; }
   if (run.status === "ready") return '<span class="pulse"></span>Starting…';
   if (run.status === "paused") return "⏸ " + round + " · paused, " + run.queue.length + " message" + (run.queue.length === 1 ? "" : "s") + " waiting.";
-  if (run.status === "done" || run.status === "stopped") return "■ " + esc(run.note || "Finished.") + " <span class=\"muted\">(" + round + ", " + run.deliveries + " messages)</span>" + (tooEasy(s, run) ? '<span class="nudge-inline">The Designer passed on its first try. Can you invent a challenge it can’t meet?</span>' : "");
+  if (run.status === "done" || run.status === "stopped") return "■ " + esc(run.note || "Finished.") + " <span class=\"muted\">(" + round + ", " + run.deliveries + " messages)</span>" + (run.parked && run.parked.length ? ' <span class="muted">▶ Run or Step carries on' + (run.stopReason === "round-limit" ? " for " + plural(s.roundLimit, "more round") : "") + '; ↺ Reset starts again.</span>' : ' <span class="muted">▶ Run starts a new run.</span>') + (tooEasy(s, run) ? '<span class="nudge-inline">The Designer passed on its first try. Can you invent a challenge it can’t meet?</span>' : "");
   return "";
 }
 // A live model that meets a challenge at once has nothing to learn from the Critic.
@@ -7413,6 +7433,7 @@ const ACTIONS = {
     const r = app.runs[app.activeId], st = r ? r.api.run.status : "";
     if (st === "paused" || st === "ready") return resumeRun();   // after Step, Run carries on
     if (st === "waiting") { toast("It's your turn: write your answer and press Send."); return; }
+    if (r && r.api.carryOn(soc().roundLimit)) return resumeRun();   // after Stop or the round limit, Run carries on too; ↺ Reset starts again
     return runNow();
   },
   reset() {

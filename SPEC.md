@@ -423,6 +423,11 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **When the browser can't listen** (no SpeechRecognition, the microphone not allowed, no network), the 🎤 explains the computer's own dictation, this computer's first: Windows key + H; Mac Globe/Fn twice or Edit → Start Dictation; Chromebook Search + D; the keyboard's 🎤 on phones and tablets; and, when blocked, how to allow the microphone. Settings and the dialog say that Chrome and Edge send speech to Google or Microsoft.
   - Tests use stand-in voices and microphones (jsdom has neither). Open: Referees and Keepers read digits only, so “five” said aloud isn't a move; spoken number words could be added.
   - Suite: 505 PASS, fingerprint `d14ae00d7ce9`.
+- 2026-10-03 — **Revision 1.10.0: Run and Step carry on** (Ken: they reset, but there is a Reset button).
+  - The engine keeps the messages Stop or the round limit held back (`run.parked`), instead of dropping them. `carryOn(rounds)` puts them back on the queue; a run at its limit gets the society's Rounds more; “when the run ends” rules can fire again at the next end. A message delivered again after Stop (`again`) doesn't start a new round, and a stopped call is marked in the trace.
+  - ▶ Run and ⏭ Step carry on after Stop or the round limit (the stage says so: “▶ Run or Step carries on for 4 more rounds; ↺ Reset starts again”). Only a run with nothing left to deliver, or one from before a reload, starts afresh.
+  - Artist and Critic: a new question, from Ken: copy it and turn it into a Poet and a Critic.
+  - Suite: 510 PASS, fingerprint `7e7d3458d908`.
 
 ---
 
