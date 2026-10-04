@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Making of Agent Kit</title>
+<meta name="description" content="How Agent Kit, a glass-box construction kit for societies of AI agents, was built by Claude Code with Ken Kahn in four days, with statistics.">
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#1d2a44;--soft:#56627a;--line:#dfe3ec;--accent:#3a63e6;--accent-bg:#eaf0ff;--ok:#1a8a55;--warm:#b45309}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#11161f;--card:#1a212d;--ink:#e8ecf4;--soft:#a3adbf;--line:#2c3545;--accent:#7f9cff;--accent-bg:#1f2a44;--ok:#4cc38a;--warm:#f0a35c}}
+:root[data-theme="dark"]{--bg:#11161f;--card:#1a212d;--ink:#e8ecf4;--soft:#a3adbf;--line:#2c3545;--accent:#7f9cff;--accent-bg:#1f2a44;--ok:#4cc38a;--warm:#f0a35c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:880px;margin:0 auto;padding:36px 16px 64px}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0 0 8px}
+h2{font-size:22px;margin:44px 0 10px}
+h3{font-size:17px;margin:22px 0 6px}
+p{margin:10px 0}
+a{color:var(--accent)}
+.lede{color:var(--soft);font-size:18px;margin:0 0 26px}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:18px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.stat b{display:block;font-size:28px;line-height:1.1;color:var(--accent)}
+.stat span{color:var(--soft);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:12px 0}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--soft);font-weight:600}
+td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.bar{height:8px;background:var(--accent-bg);border-radius:4px;overflow:hidden;min-width:60px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
+.flow span{background:var(--accent-bg);border-radius:999px;padding:4px 12px;font-size:14px}
+.flow em{color:var(--soft);font-style:normal}
+ul{padding-left:22px}
+li{margin:4px 0}
+.ver{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--soft)}
+.note{color:var(--soft);font-size:14px}
+code{font-size:14px;background:var(--accent-bg);padding:1px 5px;border-radius:5px}
+.scroll{overflow-x:auto}
+footer{margin-top:48px;color:var(--soft);font-size:14px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<main>
+<h1>The Making of Agent Kit</h1>
+<p class="lede">Agent Kit is a glass-box construction kit in which young people build societies of AI agents and small programs, and watch every message between them. Claude Code built it with Ken Kahn in one long session, from 30 September to 3 October 2026. This is how.</p>
+
+<div class="stats">
+  <div class="stat"><b>4 days</b><span>from the first prompt to version 1.12.0</span></div>
+  <div class="stat"><b>44</b><span>prompts from Ken (11 with screenshots)</span></div>
+  <div class="stat"><b>1,406</b><span>tool calls: 1,273 by Claude Code, 133 by nine translation agents</span></div>
+  <div class="stat"><b>36</b><span>releases (v1, then 1.0.1 to 1.12.0) in 41 commits</span></div>
+  <div class="stat"><b>8,334</b><span>lines in one file, <code>index.html</code> (673 KB); v1 had 4,518</span></div>
+  <div class="stat"><b>520</b><span>automated tests in 29 files, up from 213 at v1</span></div>
+  <div class="stat"><b>9 + 5</b><span>microworlds, and examples to start from</span></div>
+  <div class="stat"><b>24</b><span>library programs, each with pseudocode, JavaScript and its own tests</span></div>
+  <div class="stat"><b>2</b><span>languages, English and Swedish, plus claude.ai artifact builds of each</span></div>
+</div>
+
+<h2>Where it came from</h2>
+<p>Agent Kit grew out of several of Ken's earlier apps, each of which explored part of the idea:</p>
+<ul>
+  <li>the <a href="https://docs.google.com/document/d/1Vz38nDugVgO_SWmH2qesmlbDSXuCFty2SbTQTvrAzyU/edit?usp=sharing">Atelier</a>, a meta-constructionist app in which children build societies of minds;</li>
+  <li>the <a href="https://docs.google.com/document/d/1WjC7pjD9rxvgv86ICrzFL7GHfJyprHzv-Ueboh1lwF8/edit?usp=sharing">Agentic AI Explorer</a>, whose agents passed messages by rules;</li>
+  <li>the <a href="https://docs.google.com/document/d/1gjJFFj42vtFrYi7Ao-pEOdTZ6Gu_CPTyLlMnkKPc3Cc/edit?usp=sharing">Logo Evolution Lab</a>, which evolved turtle drawings with AI critics;</li>
+  <li>the PB&amp;J Algorithm Sandbox, from <a href="https://docs.google.com/document/d/1jP3Aiama-YHflDuK_TQ_a5F-oi3lbtit4i5QO2RhSZE/edit?usp=sharing">Acquiring computational thinking skills together with a chatbot</a>.</li>
+</ul>
+<p>Before any code, Ken held a <a href="https://github.com/ToonTalk/agent-construction-kit/blob/main/panel-conversation-summary.md">simulated panel</a> in a claude.ai chat, with the voices of Seymour Papert, Marvin Minsky, Lev Vygotsky and Alan Kay. They discussed these apps and agreed on a design: a kit with microworlds shipped inside it, programmed agents written as pseudocode but translated <em>once</em> into deterministic JavaScript (“a stable bug is a gift; a stochastic bug is a ghost”), and a glass box throughout. The chat produced a specification, which Claude Code then built from.</p>
+
+<h2>How it was built</h2>
+<p>Every change went around the same loop:</p>
+<div class="flow">
+  <span>Ken tries it</span><em>→</em><span>a prompt, often with a screenshot or a tester's report</span><em>→</em><span>a patch script</span><em>→</em><span>the test suite</span><em>→</em><span>screenshots in headless Chrome</span><em>→</em><span>commit and push</span><em>→</em><span>wait until GitHub Pages serves it</span>
+</div>
+<ul>
+  <li><b>Patches were scripts,</b> not hand edits. Each change was a small Python script of exact replacements, and each replacement asserted that its anchor appeared exactly once. A change aimed at the wrong spot failed loudly instead of landing quietly.</li>
+  <li><b>Tests ran the real page in jsdom,</b> including whole runs of every microworld with scripted stand-in models. The suite grew from 213 tests to 520. Several bugs were found only because a new test failed: an emoji whose invisible joiner was stripped on saving, and a board that wasn't drawn before it was your turn.</li>
+  <li><b>Claude Code checked its own screenshots.</b> A headless Chrome script took 91 of them, of new features and of layouts at full size, and the session looked at each before reporting.</li>
+  <li><b>Reviews from outside.</b> Ken's own testing came first. There were also test runs by Claude in Chrome (some with simulated panels of their own), a review by ChatGPT 6.1 Sol, and a “next changes” document Ken put together from all of them.</li>
+  <li><b>Memory across the long session.</b> The conversation was compacted three times. A specification with an append-only change log (35 entries), a handoff file and a few memory notes carried the decisions forward.</li>
+</ul>
+
+<h3>Where the tool calls went</h3>
+<div class="card scroll">
+<table>
+  <tr><th>Tool</th><th>What it was for</th><th class="n">Calls</th><th></th></tr>
+  <tr><td>Bash</td><td>tests, patch scripts, git, screenshots, waiting for Pages</td><td class="n">591</td><td><div class="bar"><i style="width:100%"></i></div></td></tr>
+  <tr><td>Edit</td><td>small exact changes, mostly to tests and patch scripts</td><td class="n">238</td><td><div class="bar"><i style="width:40%"></i></div></td></tr>
+  <tr><td>Read</td><td>code, screenshots, Ken's files</td><td class="n">169</td><td><div class="bar"><i style="width:29%"></i></div></td></tr>
+  <tr><td>Write</td><td>patch scripts, tests, documents</td><td class="n">146</td><td><div class="bar"><i style="width:25%"></i></div></td></tr>
+  <tr><td>Browser</td><td>trying the page live: clicks, screenshots</td><td class="n">38</td><td><div class="bar"><i style="width:6%"></i></div></td></tr>
+  <tr><td>PowerShell</td><td>Windows housekeeping</td><td class="n">32</td><td><div class="bar"><i style="width:5%"></i></div></td></tr>
+  <tr><td>Other</td><td>searching, reading Ken's Google Docs, web lookups, agents</td><td class="n">59</td><td><div class="bar"><i style="width:10%"></i></div></td></tr>
+  <tr><td><b>Total</b></td><td>by Claude Code itself</td><td class="n"><b>1,273</b></td><td></td></tr>
+</table>
+<p class="note">Counted from the session transcript, once per call. The nine translation agents made 133 more. Claude Code wrote about 1.9 million tokens of output, which includes its thinking.</p>
+</div>
+
+<h3>Inside the one file</h3>
+<div class="card scroll">
+<table>
+  <tr><th>Part</th><th class="n">Lines</th><th class="n">KB</th></tr>
+  <tr><td>The model layer: the Logo interpreter, the JavaScript checker and sandbox, model adapters, the library, the microworlds, the engine, the Helper. It has no screen code, so it also runs in the tests.</td><td class="n">5,139</td><td class="n">389</td></tr>
+  <tr><td>The interface: the stage, trace, editors, Settings, guides, speech</td><td class="n">2,768</td><td class="n">248</td></tr>
+  <tr><td>Styles</td><td class="n">415</td><td class="n">35</td></tr>
+  <tr><td>Tests (29 files)</td><td class="n">3,050</td><td class="n"></td></tr>
+  <tr><td>The specification, handoff, README and translation guide</td><td class="n">866</td><td class="n"></td></tr>
+</table>
+</div>
+
+<h2>How it grew</h2>
+<div class="card scroll">
+<table>
+  <tr><th>Day</th><th>Prompts</th><th>What happened</th></tr>
+  <tr><td class="ver">30 Sep</td><td class="n">3</td><td><b>v1</b> from the spec: the message bus and rules, programmed agents (pseudocode → checked JavaScript, run in a Worker or a step-counted sandbox), scenarios as tests, a trace of everything, and two microworlds, Telephone and Pebble Challenge.</td></tr>
+  <tr><td class="ver">1 Oct</td><td class="n">5</td><td><b>1.0.1–1.0.5:</b> drawings in Logo instead of JavaScript; far less detail for children (“details on click”); cheaper default models; Gemini Nano; Secret Number and Lost and Found.</td></tr>
+  <tr><td class="ver">2 Oct</td><td class="n">21</td><td><b>1.0.6–1.4.1:</b>
+    <ul>
+      <li>a model per agent, chosen by the children;</li>
+      <li>rules readable as sentences;</li>
+      <li>all nine microworlds, with agents that collect messages and “You” as an agent;</li>
+      <li>free play, with rules for the start and the end of a run;</li>
+      <li>a teaching order and new guides;</li>
+      <li>the Evolution and Two Answers examples.</li>
+    </ul></td></tr>
+  <tr><td class="ver">3 Oct</td><td class="n">15</td><td><b>1.4.2–1.12.0:</b>
+    <ul>
+      <li>honest wording, and contracts for programs;</li>
+      <li>three more examples from Ken's earlier projects: Tic-Tac-Toe, Trail Mix Barter, Artist and Critic;</li>
+      <li>“Yours” kept apart from the microworlds;</li>
+      <li>speech;</li>
+      <li>Run and Step that carry on;</li>
+      <li>a Swedish copy;</li>
+      <li>Read aloud that makes sense;</li>
+      <li>a Helper you can move;</li>
+      <li>claude.ai artifact builds.</li>
+    </ul></td></tr>
+</table>
+<p class="note">The full list of changes, with the reason for each, is the change log at the end of <a href="https://github.com/ToonTalk/agent-construction-kit/blob/main/SPEC.md">SPEC.md</a>.</p>
+</div>
+
+<h2>Decisions that shaped it</h2>
+<ul>
+  <li><b>Glass box, but simple first.</b> Each screen shows a short, simple view by default, and the details open on a click. Drawings are Logo, never JavaScript. Rules read as sentences, with an Edit button for the controls.</li>
+  <li><b>Programs judge, models perceive.</b> A model only suggests; a program anyone can read decides, as the Referee does in Tic-Tac-Toe and the Ledger does in Trail Mix Barter.</li>
+  <li><b>Stop adding microworlds, and test with children.</b> After nine, the reviewers agreed. New ideas became examples under ＋ New society.</li>
+  <li><b>Settings is for grown-ups.</b> Children choose among the models a teacher has added, without opening Settings.</li>
+  <li><b>Honest wording.</b> The trace shows what the kit sent and got back, not what a model learned in training.</li>
+</ul>
+
+<h2>Making the Swedish copy</h2>
+<p>To test whether anyone with a coding agent could make Agent Kit in their own language, Claude Code made a Swedish copy the way such an agent would:</p>
+<ul>
+  <li>It wrote a shared glossary, split the file into nine parts at its section markers, and had nine agents translate the parts at the same time, each keeping its line count.</li>
+  <li>While they worked, it passed messages between them about words that one part depends on another part getting exactly right. For example, the learner's name is now “Du”, and the Small Helper's program checks for that name.</li>
+  <li>It joined the parts and checked them with tests that don't depend on the language.</li>
+</ul>
+<p>About 25 English sentences were left out of roughly 1,200, all from the scripted stand-ins. The recipe is now <a href="https://github.com/ToonTalk/agent-construction-kit/blob/main/TRANSLATING.md">TRANSLATING.md</a>.</p>
+
+<h2>Links</h2>
+<ul>
+  <li><a href="https://toontalk.github.io/agent-construction-kit/">Agent Kit</a> · <a href="https://toontalk.github.io/agent-construction-kit/sv/">på svenska</a> · <a href="https://github.com/ToonTalk/agent-construction-kit/tree/main/artifact">claude.ai artifact builds</a></li>
+  <li><a href="https://github.com/ToonTalk/agent-construction-kit">The source on GitHub</a>, with <a href="https://github.com/ToonTalk/agent-construction-kit/blob/main/SPEC.md">SPEC.md</a>, <a href="https://github.com/ToonTalk/agent-construction-kit/blob/main/HANDOFF.md">HANDOFF.md</a> and <a href="https://github.com/ToonTalk/agent-construction-kit/blob/main/panel-conversation-summary.md">the panel summary</a></li>
+  <li><a href="https://docs.google.com/document/d/1nklXpAJfOm0VE4lAVwkBqIHhIl_HKYeboIOg5F9qFkU/edit?tab=t.0">Ken Kahn's recent research</a>, where the earlier projects are written up</li>
+</ul>
+
+<footer>Written by Claude Code (Claude Opus 5.5) on 4 October 2026 from the repository and the session transcript. The statistics count this one build session; the claude.ai chat that produced the spec isn't included.</footer>
+</main>
+</body>
+</html>

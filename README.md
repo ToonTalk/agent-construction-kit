@@ -51,6 +51,9 @@ program keeps track of who has what. **Artist and Critic**, Ken Kahn's society: 
 Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper
 keeps the scores. All five are also in `examples/`, to import.
 
+**How it was made:** [The Making of Agent Kit](https://toontalk.github.io/agent-construction-kit/making-of.html), with
+statistics (lines of code, prompts, tool calls, tests).
+
 **As a claude.ai artifact:** [artifact/](artifact/) has versions for a claude.ai chat, in English and Swedish, whose
 AI agents need no key: they use Claude through your claude.ai sign-in (and Gemini Nano where Chrome has it). Upload
 one to a claude.ai chat and ask Claude to copy it, exactly as it is, into an HTML artifact.
