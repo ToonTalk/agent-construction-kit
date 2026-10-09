@@ -152,8 +152,10 @@ all from the scripted stand-ins.
   run (as Tic-Tac-Toe's Referee). “helps” is a word no expert knows in the default story, on purpose (a question asks
   the learner to fill Relationships' empty line). A default trace is 464 KB (50 KB gzipped). Not built yet: chapter
   marks on the film slider from the Director's `steps`; the AI voices (1.15.0). The revival's run-pass1 wasn't run
-  (it may write there); the revival's SHA-256 manifest was unchanged before and after. films.test's “drawing the
-  stage again doesn't restart the film” is timed: it failed once while headless Chrome ran alongside, and passes alone.
+  (it may write there). A SHA-256 manifest of the revival (3,893 files) before and after: `original/` unchanged; 12
+  files in app/, src/ and tools/ changed at 22:32 by the team working there, none by this work, which only read.
+  films.test's “drawing the stage again doesn't restart the film” is timed: it failed once while headless Chrome ran
+  alongside, and passes alone.
 - Pretend-mode translation only knows the shipped pseudocode plus two variants. Anything else
   says it needs translation and keeps running the last good program, as §4.2 asks.
 
