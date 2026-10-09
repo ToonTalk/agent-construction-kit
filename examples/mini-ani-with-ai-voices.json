@@ -2,35 +2,34 @@
   "kind": "agent-kit-export",
   "schema": 1,
   "app": "Agent Kit 1.15.0",
-  "exportedAt": "2026-10-09T22:31:59.087Z",
+  "exportedAt": "2026-10-09T22:31:59.329Z",
   "society": {
     "kind": "agent-kit-society",
     "schema": 1,
-    "id": "miniani",
-    "title": "Mini-Ani",
-    "question": "Why is Cinderella small and slow?",
-    "intro": "In 1978 Ken Kahn's program Ani made cartoons from stories. Here small programs play its parts: experts suggest how each character moves and looks, the Choice Points settle their arguments and say why, a Method Chooser plans each scene, and a Director writes it as a Logo film. It needs no AI model.",
+    "id": "miniani-voices",
+    "title": "Mini-Ani with AI voices",
+    "question": "When the AI Animator disagrees with the experts, who wins?",
+    "intro": "The Mini-Ani, with AI agents where words are needed. An AI Animator suggests how the characters move and look, in Ani's words, and the Choice Points weigh its lines like any expert's. A Reader turns a story told in your own words into the Cast's simple sentences, and a Narrator tells the finished film. The weighing, the plans and the films are still programs.",
     "link": {
       "url": "https://toontalk.github.io/ani/",
       "label": "Watch Ani's own 1978 Cinderella film"
     },
     "questions": [
-      "Why is Cinderella small and slow? Find who suggested it, in the Choice Points' answer for scene 1.",
-      "Change the Choice Points' “more than {2} times as strong” to 1, then to 100. Do the characters look more alike, or less?",
-      "No expert knows “helps” (the Choice Points say so). Fill Relationships' empty line, “{-} suggests {-}”, to say what helping suggests. What changes?",
-      "Make shy suggest “very fast”. Can the Stepmother still stand guard in scene 2? Who says why not?",
-      "Switch on “Like Ani in 1978”. What does the Looks expert add to the film?",
-      "In the Method Chooser, make a change take 0 frames. Which looks more like magic?",
-      "Make the film subtle (obviousness low, in Taste). How many things still show who is shy?",
-      "Who made this film: the experts, the Choice Points, the Director, or the people who wrote their knowledge?"
+      "When the AI Animator disagrees with the experts, who wins? Find “AI Animator” among the Choice Points' reasons for scene 1.",
+      "Did the AI Animator use a word the Choice Points don't know? Where is it named, and what happened to it?",
+      "Switch on “You suggest too” and try to outvote shy: can you make Cinderella fast? (Your line counts {3} times its strength, the AI Animator's {2}: see the Choice Points.)",
+      "Choose “Your own story” and tell a story of your own. What did the Reader change to fit the Cast's sentences? Which of your words did no expert know?",
+      "Switch on “Only the AI Animator suggests”. Is the film better or worse with one AI expert instead of three programmed ones?",
+      "The Narrator gets only the Method Chooser's plans. What does its telling add that the film doesn't show, and what does it get wrong?",
+      "Which agents use a model, and which are programs? Could a program do the Reader's job? Could a model do the Choice Points'?"
     ],
     "openers": [
-      "Which agent decides how big Cinderella is?",
-      "What happens when two experts disagree?",
-      "What would the film be like with no Looks expert?"
+      "What does the AI Animator know about Cinderella?",
+      "How much does the AI Animator's line count?",
+      "Why is the Reader a model and the Cast a program?"
     ],
     "roundAgent": "cast",
-    "roundLimit": 6,
+    "roundLimit": 8,
     "starts": [
       {
         "id": "cinderella",
@@ -40,41 +39,51 @@
         "value": "Cinderella is shy, good, friendly, hardworking, beautiful and shabby.\nThe Stepmother is mean, selfish, strong and evil.\nThe Godmother is good, kind, strong, pretty and magical.\nThe Prince is good, stubborn, determined, beautiful and strong.\nThe Stepmother dominates Cinderella. Cinderella obeys the Stepmother. The Godmother helps Cinderella.\nScene 1: Cinderella is shy. The Stepmother dominates Cinderella.\nScene 2: The Stepmother keeps Cinderella from the Prince. Cinderella becomes sad.\nScene 3: The Godmother changes Cinderella from shabby to elegant. Cinderella becomes happy.\nScene 4: Cinderella changes from shy to bold. Cinderella meets the Prince."
       },
       {
-        "id": "joins",
-        "label": "The shy one joins in",
+        "id": "own",
+        "label": "Your own story, in your own words",
         "kind": "text",
-        "to": "cast",
-        "value": "Tom is shy, kind and graceful.\nSam is friendly, strong and determined.\nIvy is friendly, kind and beautiful.\nSam helps Ivy.\nScene 1: Tom is shy. Sam meets Ivy.\nScene 2: Ivy helps Tom. Tom becomes happy.\nScene 3: Tom changes from shy to friendly. Tom meets Sam."
-      },
-      {
-        "id": "repents",
-        "label": "The grumpy one becomes kind",
-        "kind": "text",
-        "to": "cast",
-        "value": "The Wolf is mean, strong and grumpy.\nThe Lamb is shy, good and graceful.\nThe Owl is good, kind and magical.\nThe Wolf dominates the Lamb. The Owl helps the Lamb.\nScene 1: The Lamb is shy. The Wolf dominates the Lamb.\nScene 2: The Owl changes the Wolf from grumpy to good. The Wolf becomes sad.\nScene 3: The Wolf changes from mean to kind. The Wolf meets the Lamb. The Lamb becomes happy."
+        "to": "reader",
+        "value": "Once there was a shy, kind little mouse called Pip. A mean, grumpy old cat called Tom lived in the same house, and Tom bossed Pip about all day. One day a good, magical owl called Ola helped Pip, and Pip became happy. At last Pip became bold, and Pip met Tom without hiding."
       }
     ],
     "variants": [
       {
-        "id": "1978",
-        "label": "Like Ani in 1978: no Looks expert; Ken's shapes and colors",
-        "disable": [
-          "m2",
-          "m7"
+        "id": "you",
+        "label": "You suggest too: the run waits for your lines when values are chosen",
+        "enable": [
+          "v3",
+          "v4"
         ],
         "on": false
       },
       {
-        "id": "norel",
-        "label": "No Relationships expert: nobody is compared with anyone",
+        "id": "only-ai",
+        "label": "Only the AI Animator suggests: no Personality, Looks or Relationships",
         "disable": [
+          "m1",
+          "m2",
           "m3",
+          "m6",
+          "m7",
           "m8"
         ],
         "on": false
       }
     ],
     "agents": [
+      {
+        "id": "reader",
+        "kind": "model",
+        "name": "Reader",
+        "emoji": "📖",
+        "role": "turns a story told in your own words into the Cast's simple sentences",
+        "instructions": "You turn a story that someone tells in their own words into the simple sentences that the Cast, a small program, can read. Write only those sentences, in three parts.\n1. One line for each character, at most 4: “Name is word, word and word.” A name is one word, or “the” and one word, like “the Wolf”. Use only words that Ani's experts know: shy, bold, kind, good, friendly, unfriendly, hardworking, lazy, graceful, clumsy, strong, weak, determined, stubborn, mean, selfish, evil, grumpy, beautiful, pretty, ugly, shabby, elegant, magical. When the story uses another word, choose the nearest of these.\n2. How they get on, on one line: “A dominates B.”, “A obeys B.”, “A helps B.”, “A likes B.” or “A dislikes B.”\n3. The scenes, at most 5, each on its own line starting “Scene 1:”, with sentences like “A is shy.”, “A dominates B.”, “A keeps B from C.”, “A helps B.”, “A meets B.”, “A becomes happy.” (or sad), “A changes from shy to bold.” or “A changes B from shabby to elegant.”\nFor example:\nThe Wolf is mean, strong and grumpy.\nThe Lamb is shy, good and graceful.\nThe Wolf dominates the Lamb.\nScene 1: The Lamb is shy. The Wolf dominates the Lamb.\nScene 2: The Wolf changes from mean to kind. The Wolf meets the Lamb. The Lamb becomes happy.\nIf the Cast says it couldn't read what you wrote, write the whole story again so that it can.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "full",
+        "replyKind": "prose",
+        "pretend": "reader"
+      },
       {
         "id": "cast",
         "kind": "program",
@@ -3709,6 +3718,33 @@
         "status": "ok",
         "statusDetail": null,
         "shipped": true
+      },
+      {
+        "id": "animator",
+        "kind": "model",
+        "name": "AI Animator",
+        "emoji": "✏️",
+        "role": "suggests how characters move and look, in Ani's words, like one more expert",
+        "instructions": "You are one more expert in a society of small programs that turns a story into a cartoon, as Ken Kahn's program Ani did in 1978. The Cast tells you whose values are being chosen, and the words that describe each of them. For each of those characters, write one line: the name exactly as the Cast writes it, a colon, then at most 4 suggestions for how the character moves and looks, separated by commas. Use only these words: slow, fast, calm, lively, straight, curvy, steady, jerky, aimless, purposeful, wary of friends, drawn to friends, wary of strangers, drawn to strangers, small, big, smooth, pointed, simple, fancy, dim, bright, cool, warm, lower down, higher up. Put “a bit” or “very” before a word to make it weaker or stronger, or “not” to rule it out. For example:\nCinderella: a bit slow, small, very drawn to friends, warm\nWrite only those lines.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "animator"
+      },
+      {
+        "id": "person",
+        "kind": "model",
+        "human": true,
+        "name": "You",
+        "emoji": "🙋",
+        "role": "suggests too, when “You suggest too” is on",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "generic",
+        "instructions": "One line for each character being chosen, like “Cinderella: very fast, big”, with at most 4 of Ani's words: slow/fast, calm/lively, straight/curvy, steady/jerky, aimless/purposeful, small/big, smooth/pointed, simple/fancy, dim/bright, cool/warm, lower down/higher up, wary of friends/drawn to friends, wary of strangers/drawn to strangers. Put “a bit”, “very” or “not” before a word if you like. The Choice Points weigh your line with the experts' suggestions."
       },
       {
         "id": "choice-points",
@@ -9246,6 +9282,21 @@
         "name": "Renderer",
         "emoji": "🖼️",
         "role": "runs the Director's Logo, and plays each scene's film"
+      },
+      {
+        "id": "narrator",
+        "kind": "model",
+        "name": "Narrator",
+        "emoji": "🎙️",
+        "role": "collects the Method Chooser's plans, and tells the finished film",
+        "instructions": "You are the narrator of a short cartoon that a society of small programs made from a story, as Ken Kahn's program Ani did in 1978. When the film is over, you get the plan of every scene from the Method Chooser, all together. Tell the whole film to the audience as a short story, scene by scene, in 4 to 8 sentences: what the characters do, and how they move. Don't mention plans, programs or experts.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "generic",
+        "collect": true,
+        "wait": 20
       }
     ],
     "rules": [
@@ -9375,6 +9426,74 @@
         "prefix": "",
         "enabled": true,
         "field": "pass",
+        "op": "=",
+        "value": "false"
+      },
+      {
+        "id": "v1",
+        "from": "cast",
+        "when": "text",
+        "send": "text",
+        "to": "animator",
+        "prefix": "",
+        "enabled": true,
+        "word": "suggest values"
+      },
+      {
+        "id": "v2",
+        "from": "animator",
+        "when": "always",
+        "send": "text",
+        "to": "choice-points",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v3",
+        "from": "cast",
+        "when": "text",
+        "send": "text",
+        "to": "person",
+        "prefix": "",
+        "enabled": false,
+        "word": "suggest values"
+      },
+      {
+        "id": "v4",
+        "from": "person",
+        "when": "always",
+        "send": "text",
+        "to": "choice-points",
+        "prefix": "",
+        "enabled": false
+      },
+      {
+        "id": "v5",
+        "from": "methods",
+        "when": "always",
+        "send": "text",
+        "to": "narrator",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v6",
+        "from": "reader",
+        "when": "always",
+        "send": "text",
+        "to": "cast",
+        "prefix": "",
+        "enabled": true
+      },
+      {
+        "id": "v7",
+        "from": "cast",
+        "when": "data",
+        "send": "text",
+        "to": "reader",
+        "prefix": "",
+        "enabled": true,
+        "field": "understood",
         "op": "=",
         "value": "false"
       }

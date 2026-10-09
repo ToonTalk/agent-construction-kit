@@ -154,6 +154,11 @@ Toys / Clothes / Animals / Tools (shelves) → Leksaker / Kläder / Djur / Verkt
   jagar bort · looms over → tornar upp sig · stands guard → står vakt · goes along → följer med · come together → möts ·
   goes to and changes → går fram och ändrar · comes closer bit by bit → närmar sig bit för bit · moves about → rör sig
   fritt · feels → känner.
+- Mini-Ani with AI voices (1.15.0) → Mini-Ani med AI-röster: AI Animator → AI-animatören · Reader → Läsaren ·
+  Narrator → Berättarrösten · You → Du (also the Choice Points' {You} slot). The rules to the AI Animator and to
+  You look for the Cast's “suggest values” → “föreslår värden”. “Your own story, in your own words” → “Din egen
+  berättelse, med dina egna ord”; “Not used” → “Inte använt”. The AI agents' instructions list the Choice Points'
+  and the experts' Swedish words, and ask for them without endings (“utan ändelser”).
 - The Director's shapes and colors (also its `SHAPES` and `HUES` keys): circle → cirkel · square → kvadrat ·
   pentagon → femhörning · triangle → triangel · star → stjärna · nine-point star → niouddig stjärna · flower → blomma ·
   red → röd · orange → orange · yellow → gul · green → grön · blue → blå · purple → lila · pink → rosa · white → vit ·

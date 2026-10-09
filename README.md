@@ -54,7 +54,10 @@ miniature, made only of programs, so it needs no model: a Cast reads a story; Pe
 Relationships and Taste suggest how each character moves and looks; the Choice Points settle their
 arguments in the open and say why; a Method Chooser plans each scene, and a Director writes it as a
 Logo film the Renderer plays. Its knowledge is in slots you can edit, mostly transcribed from Ani's
-own (see [Ani's 1978 film](https://toontalk.github.io/ani/)). All six are also in `examples/`, to import.
+own (see [Ani's 1978 film](https://toontalk.github.io/ani/)). **Mini-Ani with AI voices** is the same society with
+AI agents where words are needed: an AI Animator suggests in Ani's words and the Choice Points weigh its lines like
+any expert's, a Reader turns a story told in your own words into the Cast's simple sentences, a Narrator tells the
+finished film, and a switch lets you join in as one more expert. All seven are also in `examples/`, to import.
 
 **How it was made:** [The Making of Agent Kit](https://toontalk.github.io/agent-construction-kit/making-of.html), with
 statistics (lines of code, prompts, tool calls, tests).

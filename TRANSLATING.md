@@ -47,6 +47,11 @@ Start from `sv/GLOSSARY.md` (the Swedish one): it lists everything that must be 
     (energy, flashiness), and “the film's ”, which the Choice Points put before it. Translate the story so that each
     describing word is the form the experts know (Swedish adjectives agree with the noun: choose common-gender
     characters, like *Kaninen*, not *Lammet*). `sv/GLOSSARY.md` has the Swedish table.
+  - **Mini-Ani with AI voices** (the same programs and AI agents): the rules from the Cast to the AI Animator and to
+    You fire when the Cast's words contain “suggest values”, so they must use the Cast's own phrase; the Choice
+    Points weigh a line from the agent named in their {You} slot as a person's, so it must be the human agent's name;
+    the AI agents' instructions list Ani's words, copied from the Choice Points' and the experts' slots, so translate
+    them with the same words.
   - **The learner's name** (“You”): the engine names the start's sender “You”; the Escalator program checks
     `input.from === "You"`, and the human agents in Joke Workshop and Tic-Tac-Toe are named “You”. All must match.
   - Vote and the Fool the Eyes Referee compare `input.from` with the Dot Counter's name (`params.truth`).

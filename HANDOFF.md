@@ -4,7 +4,7 @@
 
 ## State (2026-10-09)
 
-Agent Kit **1.14.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.14.0 follow reviews
+Agent Kit **1.15.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.15.0 follow reviews
 and the first real-model runs (see `SPEC.md` §14). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -30,8 +30,17 @@ folder is a copy without the §14 log.)
   “Like Ani in 1978” = no Looks expert, so Ken's star, square, circle, triangle (inferred from `looksFrom`). Societies
   can carry one https `link` (the card links to toontalk.github.io/ani). Agrees with CP 29 on 17 of 28 compared
   choices (`tests/fixtures/cp29-cinderella.json`, floor 17, never tuned). Library: 31 types, the seven under their own
-  heading in + Add an agent. Next: 1.15.0, a second example with AI voices (AI Animator, You, Reader, Narrator).
-- The app is the single file `index.html` (829 KB): the `ak-model` script is DOM-free, and
+  heading in + Add an agent.
+- **Mini-Ani with AI voices** (1.15.0, `examples/mini-ani-with-ai-voices.json`): the same programs plus ✏️ AI Animator
+  (stateless; lines “Name: …” in Ani's words, ≤ 4; asked when the Cast's words contain “suggest values”), 📖 Reader (the
+  start “Your own story, in your own words” → Reader → Cast; the Cast's `understood: false` sends its complaint back),
+  🎙️ Narrator (collects the Method Chooser's plans, speaks once after “The end.”) and 🙋 You behind “You suggest too”;
+  switch “Only the AI Animator suggests”. The Choice Points read lines from messages with words and no data: {2} from an
+  AI agent, {3} from {You} (slots `ai`, `you`, `person`, 30 params: the cap), first 4 suggestions only, the rest and
+  unknown words named. Pretend personas `animator` and `reader` (tests only). The programs-only Mini-Ani says exactly
+  what it said in 1.14.0 (all nine start/switch runs, English and Swedish; a test pins the default run's hash).
+  SPEC §14 1.15.0 has the notes on what mixing models with programs showed.
+- The app is the single file `index.html` (848 KB): the `ak-model` script is DOM-free, and
   the `ak-ui` script is the interface. There is no build step.
 - **Drawings are Logo.** The Artist, the Designer and the drawing pad write Logo
   (`REPEAT 4 [FORWARD 50 RIGHT 90]`), and a small interpreter in the model layer runs it.
@@ -99,10 +108,10 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**592 PASS, 0 FAIL · fingerprint `87bdca0b279e`** · model modules covered 19/19.
+**604 PASS, 0 FAIL · fingerprint `010e44edcd6d`** · model modules covered 19/19.
 Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; `library.test` 183/192 (the 9 look for
-English words, two of them the Mini-Ani's “no …” scenario names); `node tests/leftovers.mjs sv/index.html` 25 sentences,
-all from the scripted stand-ins.
+English words, two of them the Mini-Ani's “no …” scenario names; the same 9 as 1.14.0); `node tests/leftovers.mjs
+sv/index.html` 25 sentences (of 1,247), all from the scripted stand-ins, which stay English in the copy.
 
 ## Acceptance criteria (§11)
 
@@ -118,7 +127,7 @@ all from the scripted stand-ins.
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 829 KB, under 1 MB (tested); artifact builds 829 KB and 846 KB, under 950 KB, scripts under 545 KB. |
+| 11 | 848 KB, under 1 MB (tested); artifact builds 847 KB and 865 KB, under 950 KB, scripts under 565 KB. |
 
 ## Open issues
 
@@ -151,28 +160,46 @@ all from the scripted stand-ins.
   runs when nobody else has anything to say). The Cast's “The end.” blocks, so the stage marks the Cast ✗ after a good
   run (as Tic-Tac-Toe's Referee). “helps” is a word no expert knows in the default story, on purpose (a question asks
   the learner to fill Relationships' empty line). A default trace is 464 KB (50 KB gzipped). Not built yet: chapter
-  marks on the film slider from the Director's `steps`; the AI voices (1.15.0). The revival's run-pass1 wasn't run
+  marks on the film slider from the Director's `steps`. The revival's run-pass1 wasn't run
   (it may write there). A SHA-256 manifest of the revival (3,893 files) before and after: `original/` unchanged; 12
   files in app/, src/ and tools/ changed at 22:32 by the team working there, none by this work, which only read.
   films.test's “drawing the stage again doesn't restart the film” is timed: it failed once while headless Chrome ran
   alongside, and passes alone.
+- **Mini-Ani with AI voices (1.15.0) has met no live model.** To try in the artifact build (keyless Claude) or with a
+  key, then with Gemini Nano: ＋ New society → 🗣️ Mini-Ani with AI voices, speed normal.
+  (1) Start “Cinderella, as Ani told it”. In the trace, the AI Animator's R1 reply should be one line per character,
+  named as the Cast names them (“the Stepmother”), at most 4 suggestions, only Ani's words; scenes 3 and 4 should say
+  “Cinderella after:”. The Choice Points' R1 answer: is “AI Animator” among Cinderella's reasons, and are “I couldn't
+  read” and “Not used” short or absent? (On the stand-ins her speed meets in the middle: slow from shy and graceful
+  against the AI's fast.) The Narrator's telling after “The end.”: does it keep to the plans, or does it read the
+  collector's “Not every message you were waiting for came” as missing scenes?
+  (2) Start “Your own story, in your own words”, then a story of your own with words outside Ani's (brave, wise,
+  bossy): does the Cast read the Reader's sentences first time, are the words mapped to known ones (the Choice Points'
+  “Words no expert knew”), and if the Cast's ✗ “There are no scenes” appears, does the second try recover?
+  (3) Gemini Nano: expect format slips; watch “Not used” for chatter and whether the Reader's output parses at all.
+  (4) “You suggest too”: answer “Cinderella: very fast” at scene 1; she should come out fast, with You among her
+  reasons (unless the AI Animator said slow).
+  Known: a Mini-Ani saved by 1.14.0 shows its Choice Points and Cast as changed (their shipped pseudocode changed; they
+  still run the library programs); making the example again gives a clean copy. With your own story, the focus and
+  “explain” slots still say Cinderella, so nobody is explained in full until they are changed. The pretend AI Animator
+  and Reader read only English, so in the Swedish copy they suggest nothing. The revival (read only, as before):
+  `original/` unchanged; it is now a git repository, and its team changed 16 files and added 3 since 1.14.0.
 - Pretend-mode translation only knows the shipped pseudocode plus two variants. Anything else
   says it needs translation and keeps running the last good program, as §4.2 asks.
 
 ## Next steps
 
 0. **The mini-Ani** (Ken, 9 October: a test of expressiveness, no children involved, so it needn't wait for the
-   pilot): 1.14.0 programs only is done; next is 1.15.0, the AI voices as a second example (“Mini-Ani with AI voices”:
-   AI Animator, You, Reader with its rule on, Narrator; pretend personas `animator` and `reader` for tests; a live run
-   with keyless Claude and Gemini Nano), with notes on what the kit expressed easily, what needed new features, and
-   what it couldn't express.
+   pilot): films (1.13.0), programs only (1.14.0) and the AI voices (1.15.0) are built, with notes in SPEC §14 on what
+   the kit expressed easily, what needed new features, and what it couldn't express. Next: the live runs above, with
+   keyless Claude and Gemini Nano; then, if Ken wants, chapter marks on the film slider.
 0. **The “next changes” document is done up to C** (1.5.0). **D, accessible dialogs** (focus, Tab trap, inert
    background, aria-labelledby, focus restored), comes after the pilot.
 0. **Rewrite the guides after the first session with children** (Kay): they were brought up to date
    in 1.3.0, but “Sessions to try” and the misconceptions are guesses until then.
 0. **Stop adding microworlds and try the kit with two or three children** (Claude in Chrome and
    the panel agree; all nine are built and none has met a child). Story Chain is a good first one:
-   it works even on Gemini Nano. Watch whether the menu (nine microworlds, six examples, 31 library agents) is
+   it works even on Gemini Nano. Watch whether the menu (nine microworlds, seven examples, 31 library agents) is
    more than one child's project needs.
 
 1. Live runs (see Open issues), then tune the Artist, Designer, Eyes and Critic instructions
