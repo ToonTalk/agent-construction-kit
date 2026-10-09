@@ -37,6 +37,16 @@ Start from `sv/GLOSSARY.md` (the Swedish one): it lists everything that must be 
   - Tic-Tac-Toe: the Referee's board rows and messages (the Rival is told what they look like); its start text.
   - Secret Number: what the Keeper says (higher / lower / yes!), which the Notebook and the Guesser read.
   - Artist and Critic: the score format “7/10” stays (rules look for “/10”).
+  - **Mini-Ani** (seven library programs that pass words to each other): the Cast's story words (is, and, Scene,
+    changes, from, to, becomes, after) and its start stories; the Choice Points' words for each value and comparison
+    (slow/fast, slower/faster …), its levels (low, medium, high) and its strength words (a bit, very, not), which
+    every expert's slots, Taste's lists and the Method Chooser's feelings must use exactly; the experts' words and
+    the story's words; the ways of showing things (keeps away, chases off …), which the Method Chooser and the
+    Director both compare; the Director's shape and color names, which are also the keys of its `SHAPES` and `HUES`
+    (keep the Logo color names it writes, like "silver", in English); the word the Taste suggestions are named by
+    (energy, flashiness), and “the film's ”, which the Choice Points put before it. Translate the story so that each
+    describing word is the form the experts know (Swedish adjectives agree with the noun: choose common-gender
+    characters, like *Kaninen*, not *Lammet*). `sv/GLOSSARY.md` has the Swedish table.
   - **The learner's name** (“You”): the engine names the start's sender “You”; the Escalator program checks
     `input.from === "You"`, and the human agents in Joke Workshop and Tic-Tac-Toe are named “You”. All must match.
   - Vote and the Fool the Eyes Referee compare `input.from` with the Dot Counter's name (`params.truth`).

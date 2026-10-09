@@ -1,0 +1,83 @@
+{
+  "about": "Ani's 1978 choices for the Cinderella film (pass 1), for the Mini-Ani's fidelity report. The test only reports how often the Mini-Ani agrees and asserts a recorded floor; the knowledge is never tuned to raise it (Ken's legitimacy rule, AI-TR-540 Chapter X C).",
+  "provenance": "Ani's choice-point file CP 29 (14 September 1978), ani-revival/original/7005017/cp.29, as read by the ani-revival project (reports/pass1-choices.txt, which its run-pass1 tool reproduces 102 of 102), and checked against cp.29 itself. Copied read-only on 9 October 2026: 4 characters x 12 absolute choice points.",
+  "mapping": {
+    "SPEED": "speed",
+    "ACTIVITY-LEVEL": "liveliness",
+    "PATH-CURVATURE": "curves",
+    "PATH-JAGGEDNESS": "jerkiness (low is steady, high is jerky)",
+    "DELIBERATENESS": "purpose",
+    "ATTRACTION-TOWARDS-FRIENDS": "friends (negative is wary, positive is drawn; the miniature's three values collapse Ani's signed ones)",
+    "ATTRACTION-TOWARDS-STRANGERS": "strangers (as friends)",
+    "not compared": "RHYTHMIC-LEVEL, ACCELERATION, REPETIVENESS, PATH-LENGTH and ATTRACTION-TOWARDS-ENEMIES have no element in the miniature, which has five looks elements instead"
+  },
+  "compared": {
+    "speed": "SPEED",
+    "liveliness": "ACTIVITY-LEVEL",
+    "curves": "PATH-CURVATURE",
+    "jerkiness": "PATH-JAGGEDNESS",
+    "purpose": "DELIBERATENESS",
+    "friends": "ATTRACTION-TOWARDS-FRIENDS",
+    "strangers": "ATTRACTION-TOWARDS-STRANGERS"
+  },
+  "floor": 17,
+  "floorNote": "Recorded on 9 October 2026 (Agent Kit 1.14.0) with the shipped knowledge: 17 of the 28 compared choices agree (Cinderella 5, the Stepmother 5, the Godmother 2, the Prince 5). A change of knowledge may lower it only with a reason, and must never be made to raise it.",
+  "choices": {
+    "Cinderella": {
+      "ATTRACTION-TOWARDS-STRANGERS": "negative high",
+      "ATTRACTION-TOWARDS-ENEMIES": "negative medium",
+      "ATTRACTION-TOWARDS-FRIENDS": "positive high",
+      "SPEED": "low",
+      "ACTIVITY-LEVEL": "high",
+      "RHYTHMIC-LEVEL": "high",
+      "ACCELERATION": "low",
+      "REPETIVENESS": "medium",
+      "DELIBERATENESS": "medium",
+      "PATH-LENGTH": "medium",
+      "PATH-CURVATURE": "high",
+      "PATH-JAGGEDNESS": "medium"
+    },
+    "Stepmother": {
+      "ATTRACTION-TOWARDS-STRANGERS": "negative medium",
+      "ATTRACTION-TOWARDS-ENEMIES": "negative high",
+      "ATTRACTION-TOWARDS-FRIENDS": "negative high",
+      "SPEED": "high",
+      "ACTIVITY-LEVEL": "high",
+      "RHYTHMIC-LEVEL": "medium",
+      "ACCELERATION": "high",
+      "REPETIVENESS": "medium",
+      "DELIBERATENESS": "high",
+      "PATH-LENGTH": "medium",
+      "PATH-CURVATURE": "low",
+      "PATH-JAGGEDNESS": "medium"
+    },
+    "Godmother": {
+      "ATTRACTION-TOWARDS-STRANGERS": "positive medium",
+      "ATTRACTION-TOWARDS-ENEMIES": "positive medium",
+      "ATTRACTION-TOWARDS-FRIENDS": "positive high",
+      "SPEED": "medium",
+      "ACTIVITY-LEVEL": "low",
+      "RHYTHMIC-LEVEL": "low",
+      "ACCELERATION": "medium",
+      "REPETIVENESS": "low",
+      "DELIBERATENESS": "low",
+      "PATH-LENGTH": "short",
+      "PATH-CURVATURE": "low",
+      "PATH-JAGGEDNESS": "high"
+    },
+    "Prince": {
+      "ATTRACTION-TOWARDS-STRANGERS": "positive medium",
+      "ATTRACTION-TOWARDS-ENEMIES": "positive low",
+      "ATTRACTION-TOWARDS-FRIENDS": "positive high",
+      "SPEED": "high",
+      "ACTIVITY-LEVEL": "medium",
+      "RHYTHMIC-LEVEL": "medium",
+      "ACCELERATION": "high",
+      "REPETIVENESS": "high",
+      "DELIBERATENESS": "medium",
+      "PATH-LENGTH": "long",
+      "PATH-CURVATURE": "medium",
+      "PATH-JAGGEDNESS": "low"
+    }
+  }
+}

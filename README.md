@@ -49,7 +49,12 @@ which only suggests moves; a Referee program keeps the board, refuses a taken sq
 who won. **Trail Mix Barter**: three AI traders barter raisins, cashews and pretzels, and a Ledger
 program keeps track of who has what. **Artist and Critic**, Ken Kahn's society: an Artist draws, a
 Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper
-keeps the scores. All five are also in `examples/`, to import.
+keeps the scores. **Mini-Ani**, Ken Kahn's 1978 program Ani (story descriptions into animation) in
+miniature, made only of programs, so it needs no model: a Cast reads a story; Personality, Looks,
+Relationships and Taste suggest how each character moves and looks; the Choice Points settle their
+arguments in the open and say why; a Method Chooser plans each scene, and a Director writes it as a
+Logo film the Renderer plays. Its knowledge is in slots you can edit, mostly transcribed from Ani's
+own (see [Ani's 1978 film](https://toontalk.github.io/ani/)). All six are also in `examples/`, to import.
 
 **How it was made:** [The Making of Agent Kit](https://toontalk.github.io/agent-construction-kit/making-of.html), with
 statistics (lines of code, prompts, tool calls, tests).
