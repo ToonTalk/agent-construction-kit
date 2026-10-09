@@ -257,6 +257,7 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 .errline{background:var(--bad-bg);border-radius:8px;padding:5px 8px;font-size:12.5px;color:#7A1F17;white-space:pre-wrap}
 .replay{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--accent-bg);border-radius:12px;padding:6px 8px;margin-bottom:8px;font-size:12.5px}
 .replay input[type=range]{flex:1;min-width:120px}
+.filmbar{display:flex;align-items:center;gap:6px;width:min(100%,460px);margin:0 auto;background:var(--accent-bg);border-radius:12px;padding:4px 8px;font-size:12.5px}.filmbar input[type=range]{flex:1;min-width:80px}
 
 /* modal */
 .modal-back{position:fixed;inset:0;z-index:60;background:rgba(21,30,50,.42);display:flex;align-items:flex-start;justify-content:center;padding:34px 14px;overflow:auto}
@@ -432,7 +433,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.12.0";
+AK.VERSION = "1.13.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -1027,16 +1028,27 @@ function makeH(seed, guard) {
 }
 // The turtle: records drawing operations as plain data. Canvas 512 x 512, starts in the middle facing up.
 // It works in canvas units (x from the left, y down from the top, heading 0 = right); Logo converts.
+// WAIT makes a film: each WAIT keeps the picture so far as one frame, at most 240 frames and 100,000 lines, dots and
+// labels in all. A picture changed after the last WAIT is kept as a closing frame, so a film ends on its picture.
 function makeTurtle(guard) {
   let x = 256, y = 256, heading = -90, pen = true, color = "black", width = 2, segments = 0;
-  const ops = [], dots = [], labels = [];
+  const ops = [], dots = [], labels = [], film = [];
+  let filmOps = 0, filmCut = false, changed = false;   // changed: the picture isn't the film's last frame
   const num = (v, d) => { const n = +v; return isFinite(n) ? n : d; };
   const r2 = v => Math.round(v * 100) / 100;
   const col = c => { const s = String(c == null ? "" : c).trim().toLowerCase().slice(0, 40); return s || color; };
+  const draw = op => { ops.push(op); changed = true; };
   function lineTo(nx, ny) {
-    if (pen) { ops.push({ t: "L", x1: r2(x), y1: r2(y), x2: r2(nx), y2: r2(ny), c: color, w: width }); segments++; }
+    if (pen) { draw({ t: "L", x1: r2(x), y1: r2(y), x2: r2(nx), y2: r2(ny), c: color, w: width }); segments++; }
     else ops.push({ t: "M", x2: r2(nx), y2: r2(ny) });
     x = nx; y = ny;
+  }
+  // One frame of the film: the picture so far (moves with the pen up draw nothing, so they are left out).
+  function keep(ms) {
+    const shown = ops.filter(o => o.t !== "M");
+    if (film.length < 240 && filmOps + shown.length <= 100000) { film.push({ ops: shown, ms: ms }); filmOps += shown.length; }
+    else filmCut = true;
+    changed = false;
   }
   function move(d) { guard.tick(); const a = heading * Math.PI / 180; lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d); }
   // Part of a circle around (cx, cy), from angle a0 through sweep degrees; the turtle ends back at the middle.
@@ -1053,7 +1065,7 @@ function makeTurtle(guard) {
       const rr = Math.min(Math.abs(num(r, 0)), 2000), sweep = Math.max(-3600, Math.min(3600, num(angle, 0)));
       if (rr > 0 && sweep) around(x, y, rr, heading * Math.PI / 180, sweep, Math.max(1, Math.ceil(Math.abs(sweep) / 10)));
     },
-    clear(home) { guard.tick(); ops.length = 0; dots.length = 0; labels.length = 0; segments = 0; if (home) { x = 256; y = 256; heading = -90; } },
+    clear(home) { guard.tick(); if (ops.some(o => o.t !== "M")) changed = true; ops.length = 0; dots.length = 0; labels.length = 0; segments = 0; if (home) { x = 256; y = 256; heading = -90; } },
     state() { return { x: x, y: y, heading: heading, pen: pen }; },
     forward(d) { move(num(d, 0)); },
     back(d) { move(-num(d, 0)); },
@@ -1070,17 +1082,23 @@ function makeTurtle(guard) {
       guard.tick();
       const s = Math.max(1, Math.min(1000, num(size, 10)));
       const dc = c == null ? color : col(c);
-      ops.push({ t: "D", x: r2(x), y: r2(y), s: s, c: dc });
+      draw({ t: "D", x: r2(x), y: r2(y), s: s, c: dc });
       dots.push({ x: r2(x), y: r2(y), color: dc });
     },
     label(text, size) {
       guard.tick();
       const tx = String(text == null ? "" : text).slice(0, 80);
-      ops.push({ t: "T", x: r2(x), y: r2(y), text: tx, c: color, s: Math.max(6, Math.min(72, num(size, 18))) });
+      draw({ t: "T", x: r2(x), y: r2(y), text: tx, c: color, s: Math.max(6, Math.min(72, num(size, 18))) });
       labels.push(tx);
-    }
+    },
+    frame(ms) { guard.tick(); keep(Math.max(20, Math.min(5000, Math.round(num(ms, 250))))); }   // WAIT: shown for ms milliseconds
   };
-  return { api: api, result() { return { ops: ops, dots: dots, labels: labels, segments: segments }; } };
+  return { api: api, result() {
+    if (film.length && changed) keep(film[film.length - 1].ms);
+    const out = { ops: ops, dots: dots, labels: labels, segments: segments };
+    if (film.length > 1) { out.film = film; if (filmCut) out.filmCut = true; }   // a single frame is just a picture
+    return out;
+  } };
 }
 // Every global name becomes a parameter set to undefined, so even a name the checker missed resolves to nothing.
 function computeShadowNames(realm, keep) {
@@ -1319,7 +1337,7 @@ const Logo = (() => {
     def("CLEARSCREEN CS", 0, () => T.api.clear(true));
     def("CLEAN", 0, () => T.api.clear(false));
     def("HIDETURTLE HT SHOWTURTLE ST", 0, () => guard.tick());
-    def("WAIT", 1, () => guard.tick());
+    def("WAIT", 1, (a, t) => T.api.frame(num(a[0], t) * 1000 / 60));   // keeps a frame of a film; in 60ths of a second, as in Berkeley Logo, so WAIT 15 is a quarter second
     def("DOT", 1, (a, t) => T.api.dot(num(a[0], t), a.length > 1 ? color(a[1], t) : undefined));
     def("CIRCLE", 1, (a, t) => T.api.circle(num(a[0], t)));
     def("ARC", 2, (a, t) => T.api.arc(num(a[0], t), num(a[1], t)));
@@ -1565,6 +1583,7 @@ const Logo = (() => {
         const names = idle.length === 1 ? idle[0] : idle.slice(0, -1).join(", ") + " and " + idle[idle.length - 1];
         res.note = "You taught the turtle " + names + " but never asked it to draw " + (idle.length === 1 ? idle[0] : "them") + ". Add a line that says " + idle[0] + " after the END.";
       }
+      if (out.filmCut) res.note = (res.note ? res.note + " " : "") + "The film was cut short at " + plural(out.film.length, "frame") + ": a film can have at most 240 frames, and 100,000 lines, dots and labels in all.";
       return res;
     } catch (e) {
       let msg = e instanceof RangeError ? "The program is nested too deeply to run." : String((e && e.message) || e);
@@ -4769,6 +4788,7 @@ function sanitizeTrace(list) {
     if (e.call && typeof e.call === "object") o.call = { model: cleanName(e.call.model, 60), system: cleanText(e.call.system, 12000), reply: cleanText(e.call.reply, 12000), pretend: !!e.call.pretend };
     if (e.program && typeof e.program === "object") o.program = { output: safeData(e.program.output), error: cleanText(e.program.error, 1000), pseudocode: cleanText(e.program.pseudocode, 3000) };
     if (e.render && typeof e.render === "object") o.render = { program: cleanText(e.render.program, 20000), error: cleanText(e.render.error, 1000) };
+    if (o.render && +e.render.frames > 1) Object.assign(o.render, { frames: clampInt(e.render.frames, 2, 240, 2), seconds: Math.max(0, Math.min(1200, +e.render.seconds || 0)) });   // a film: its frames are made again from its Logo
     o.imported = true;
     return o;
   });
@@ -5041,6 +5061,8 @@ function composeUserText(msg, agent, render) {
   if (!parts.length) parts.push("(" + msg.fromName + " sent an empty message.)");
   return parts.join("\n\n");
 }
+// How long a film lasts, in milliseconds (each frame is shown for its WAIT's time).
+const filmMs = film => (film || []).reduce((t, f) => t + f.ms, 0);
 function createRun(society, deps) {
   const soc = society;
   deps = deps || {};
@@ -5054,7 +5076,7 @@ function createRun(society, deps) {
   run.maxDeliveries = run.roundLimit * 25 + 50;
   run.parked = [];   // messages kept back by Stop or the round limit; carryOn() delivers them
   const listeners = [];
-  let abort = null;
+  let abort = null, plays = 0;
   const emit = e => { for (const fn of listeners) { try { fn(e, run); } catch (err) { /* a listener's problem is not the run's */ } } };
   const addTrace = e => { e.i = run.trace.length; e.t = Math.round(now() - run.t0); run.trace.push(e); emit(e); return e; };
   const byId = id => agentById(soc, id);
@@ -5114,15 +5136,19 @@ function createRun(society, deps) {
     const program = extractProgram(msg.data && typeof msg.data.program === "string" && sendParts(msg.send).data ? msg.data.program : msg.text || "");
     const res = await runtime.runTurtle(program, { seed: run.seed });
     const out = res.output || { ops: [], dots: [], labels: [], segments: 0 };
+    const film = res.ok && out.film ? out.film : null;   // the frames its WAITs kept: the picture is the film's last frame
     const renderId = "p" + (++run.renderSeq);
     let image = null;
-    try { image = deps.rasterize ? deps.rasterize(out.ops) : null; } catch (e) { image = null; }
-    run.renders[renderId] = { program, by: msg.fromName, ops: out.ops, dots: out.dots, labels: out.labels, segments: out.segments, image, error: res.ok ? null : res.error, seed: run.seed };
+    try { image = deps.rasterize ? deps.rasterize(out.ops) : null; } catch (e) { image = null; }   // so a model that sees pictures gets a film's last frame
+    run.renders[renderId] = { program, by: msg.fromName, ops: out.ops, dots: out.dots, labels: out.labels, segments: out.segments, image, film, error: res.ok ? null : res.error, seed: run.seed };
     entry.render = { renderId, program, by: msg.fromName, seed: run.seed, dots: out.dots, labels: out.labels, segments: out.segments, ms: Math.round(res.ms || 0), ticks: res.ticks, mode: res.mode, error: res.ok ? null : res.error, note: res.note || "" };
+    if (film) Object.assign(entry.render, { frames: film.length, seconds: Math.round(filmMs(film) / 100) / 10 });
     if (!res.ok) return { text: "The program did not run. " + res.error, data: { pass: false, error: res.error, program, by: msg.fromName, dots: out.dots, segments: out.segments, labels: out.labels }, renderId };
     const bits = [plural(strokesOf(out.ops).length, "shape"), plural(out.dots.length, "dot")];   // a circle is one shape, not 36 little lines
     if (out.labels.length) bits.push(plural(out.labels.length, "label"));
-    return { text: "I drew " + bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1] + "." + (res.note ? " " + res.note : ""), data: { pass: true, program, by: msg.fromName, dots: out.dots, segments: out.segments, labels: out.labels }, renderId };
+    const data = { pass: true, program, by: msg.fromName, dots: out.dots, segments: out.segments, labels: out.labels };
+    if (film) data.frames = film.length;   // so a rule or a program can tell a film from a picture
+    return { text: "I drew " + bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1] + "." + (film ? " It is a film of " + plural(film.length, "frame") + " (" + plural(entry.render.seconds, "second") + ")." : "") + (res.note ? " " + res.note : ""), data, renderId };
   }
   // A message belongs to the round of the work it answers, not to whatever round the run has reached since:
   // if the round agent got two messages in a row, the Renderer may draw round 2's picture after round 3 began.
@@ -5254,6 +5280,13 @@ function createRun(society, deps) {
     addTrace(entry);
     return true;
   }
+  // After each delivery the run waits for the speed's delay. At slow and normal speed (deps.filmsWait) it also waits
+  // until a film just made has played to its end, so the next delivery can't cut it off.
+  function pauseAfter() {
+    const e = run.trace[run.trace.length - 1];
+    const r = deps.filmsWait && e && e.kind === "activation" && e.render ? run.renders[e.render.renderId] : null;
+    return Math.max(deps.delayMs || 0, r && r.film ? filmMs(r.film) : 0);
+  }
   const api = {
     run, start,
     on(fn) { listeners.push(fn); return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); }; },
@@ -5275,10 +5308,12 @@ function createRun(society, deps) {
       run.status = "running";
       abort = typeof AbortController === "function" ? new AbortController() : null;
       emit({ kind: "status" });
-      while (run.status === "running") {
+      const me = ++plays;   // Pause, then Run while this loop waits, starts another loop: this one then stops
+      while (run.status === "running" && me === plays) {
         const more = await stepOnce();
         if (!more) break;
-        if (run.status === "running" && deps.delayMs) await sleep(deps.delayMs);
+        const ms = pauseAfter();
+        if (run.status === "running" && ms) await sleep(ms);
       }
       emit({ kind: "status" });
     },
@@ -5316,7 +5351,7 @@ function createRun(society, deps) {
       return true;
     },
     render(id) { return run.renders[id] || null; },
-    setDelay(ms) { deps.delayMs = ms; }
+    setDelay(ms, filmsWait) { deps.delayMs = ms; if (filmsWait !== undefined) deps.filmsWait = !!filmsWait; }
   };
   return api;
 }
@@ -5419,6 +5454,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- ⬇ Export and ⬆ Import, at the top of the page, save the society you are in as a file and open one from a file. An agent's emoji is changed by clicking it at the top of its editor.\n" +
   "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
   "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.\n" +
+  "- Films: in Logo, WAIT keeps the picture so far as one frame of a film (WAIT 15 is a quarter of a second), so REPEAT 12 [CLEARSCREEN RIGHT 30 * REPCOUNT FORWARD 100 WAIT 15] is a film of 12 frames. The stage plays a film with ▶ / ⏸ and a frame slider; a film in the trace has “Play the film on the stage”. At slow and normal speed the run waits for a film to end. The Renderer's data says how many frames it has (frames), and a model that sees pictures gets the last one.\n" +
   "- Small Helper, Big Helper needs two models; with only one set up, its button is grayed with a 🔒 and it can't run until a grown-up adds another in Settings, under More models.";
 function describeSociety(soc) {
   if (!soc) return "(no society)";
@@ -5487,7 +5523,7 @@ function helperRequest(soc, trace, question, chat, models) {
 AK.Helper = { HELPER_SYSTEM, describeSociety, describeModels, describeTrace, describeScenarioResults, helperRequest };
 
 /* ===== SECTION: WORDS (data said in plain words, so the trace needn't show JSON) ===== */
-const FIELD_WORDS = { cols: "columns", rowList: "rows from the top", dots: "dots", segments: "lines", labels: "labels" };
+const FIELD_WORDS = { cols: "columns", rowList: "rows from the top", dots: "dots", segments: "lines", labels: "labels", frames: "film frames" };
 const fieldWords = k => FIELD_WORDS[k] || String(k).replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ").toLowerCase();
 function colorCounts(colors) {
   const n = new Map();
@@ -5823,6 +5859,28 @@ async function imageForRender(r, run) {
   imgCache.set(key, url);
   return url;
 }
+// A film's frames: from the run in memory, or by running its Logo again (traces keep programs, not pictures).
+const filmCache = new Map();
+async function filmOf(render, run) {
+  if (!render || !(render.frames > 1)) return null;
+  const mem = run && run.renders && run.renders[render.renderId];
+  if (mem && mem.program === render.program && mem.film) return mem.film;
+  const key = hash((render.program || "") + "|" + (render.seed || 1));
+  if (filmCache.has(key)) return filmCache.get(key);
+  const res = await Runtime.runTurtle(render.program || "", { seed: render.seed || 1 });
+  const film = (res.ok && res.output && res.output.film) || null;
+  if (filmCache.size > 12) filmCache.clear();
+  filmCache.set(key, film);
+  return film;
+}
+// For the exported trace page, which has no script: a film's first, middle and last frames, as pictures.
+async function filmStills(render, run) {
+  const film = await filmOf(render, run);
+  if (!film) return [];
+  const n = film.length;
+  return Array.from(new Set([1, Math.ceil(n / 2), n])).map(at => ({ at, url: rasterize(film[at - 1].ops) })).filter(x => x.url);
+}
+const filmWords = r => "A film of " + plural(r.frames, "frame") + " (" + plural(r.seconds, "second") + ")";
 let imgSeq = 0;
 const imgJobs = new Map();
 function imgTag(render, cls, alt, run) {
@@ -6081,6 +6139,8 @@ function handleCallError(entry) {
 }
 
 /* ===== SECTION: RUNS ===== */
+// At slow and normal speed the run waits for a film to end before the next message; faster, films queue on the stage.
+const filmsWait = () => ["fast", "instant"].indexOf(app.settings.speed) < 0;
 function speedDelay() { const v = { slow: 900, normal: 350, fast: 60, instant: 0 }[app.settings.speed]; return v === undefined ? 350 : v; }
 function startChoice(s) { const id = app.ui.startKind[s.id]; return (s.starts || []).find(x => x.id === id) || (s.starts || [])[0] || null; }
 function startSpec(s) {
@@ -6159,13 +6219,14 @@ function beginRun(override) {
   }
   // A new seed every run: programs that pick at random pick differently, like the models do.
   const used = Array.from(new Set(s.agents.filter(a => a.kind === "model" && !a.human).map(a => (refOfAgent(a) || {}).label).filter(Boolean)));
-  const api = Engine.createRun(s, { adapter: getAdapter(), adapterFor, modelsLabel: used.length ? used.join(" + ") : "no AI agents", runtime: Runtime, rasterize, delayMs: speedDelay(), seed: 1 + Math.floor(Math.random() * 2147483646), playAs: app.ui.playAs[s.id] || null });
+  const api = Engine.createRun(s, { adapter: getAdapter(), adapterFor, modelsLabel: used.length ? used.join(" + ") : "no AI agents", runtime: Runtime, rasterize, delayMs: speedDelay(), filmsWait: filmsWait(), seed: 1 + Math.floor(Math.random() * 2147483646), playAs: app.ui.playAs[s.id] || null });
   const rec = { api, startText: spec.text, working: null, socId: s.id };
   app.runs[s.id] = rec;
   app.ui.replay = null;
   app.ui.expanded = new Set();
   app.ui.tech = new Set();
   app.ui.logoEdit = null;
+  filmStop();
   api.on((e, run) => onRunEvent(rec, e, run));
   try { api.start({ to: spec.to, text: spec.text }); }
   catch (e) { toast(e.message, "bad"); delete app.runs[s.id]; return null; }
@@ -6187,7 +6248,7 @@ async function runNow(override) {
 async function resumeRun() {
   const rec = app.runs[app.activeId];
   if (!rec) return runNow();
-  rec.api.setDelay(speedDelay());
+  rec.api.setDelay(speedDelay(), filmsWait());
   const p = rec.api.play();
   renderAll();
   await p;
@@ -6208,6 +6269,7 @@ function onRunEvent(rec, e, run) {
   else if (e.kind === "activation") {
     rec.working = null;
     if (e.error) handleCallError(e);
+    if (e.render && !e.render.error && rec.socId === app.activeId) filmArrived(rec.socId, e, run);   // a film plays on the stage
     // a real call through the main connection says whether it works
     if (e.call && !e.call.pretend && e.call.adapter === app.settings.connection) { if (!e.error) setConnState("ok"); else if (["auth", "network", "signedout", "nano", "timeout", "unreadable", "empty"].indexOf(e.errorKind) >= 0) setConnState("failed", e.error); }
   }
@@ -6439,7 +6501,7 @@ function rcardHTML(r, prev, run, view) {
   const many = (r.renders || []).length > 1;
   const pic = many ? '<div class="rgrid">' + r.renders.map((x, k) => { const mark = (r.marks || {})[x.renderId] || ""; return '<div class="rthumb ' + mark + '" title="' + esc((x.by ? "Drawn from " + x.by + "’s program" : "") + (mark === "chosen" ? ". Chosen: it was passed on." : mark === "again" ? ". The same drawing as an earlier one (a parent drawn again)." : "")) + '">' + imgTag(x, "", "round " + r.round + ", picture " + (k + 1) + (x.by ? ", from " + x.by : ""), prev ? null : run) + (mark === "chosen" ? '<span class="mk">★</span>' : mark === "again" ? '<span class="mk">↺</span>' : "") + '</div>'; }).join("") + '</div>'
     : r.render ? imgTag(r.render, "", "round " + r.round, prev ? null : run) : r.pics === false ? "" : '<div class="noimg">no picture</div>';
-  return '<div class="rcard' + (many ? " multi" : "") + (prev ? " prev" : "") + (here ? " here" : "") + '"><div class="rn">Round ' + r.round + '</div>' + pic +
+  return '<div class="rcard' + (many ? " multi" : "") + (prev ? " prev" : "") + (here ? " here" : "") + '"><div class="rn">Round ' + r.round + filmMarkHTML(r.renders) + '</div>' + pic +
     r.lines.slice(0, r.pics === false ? 4 : 3).map(l => '<div class="ln' + (l.pass === true ? " p-ok" : l.pass === false ? " p-bad" : "") + '">' + esc(l.emoji) + " " + shortHTML(l.text, 90) + '</div>').join("") + '</div>';
 }
 function statusLineHTML(s, rec, run) {
@@ -6489,17 +6551,105 @@ function switchesHTML(s) {
   for (const v of s.variants || []) h += '<label class="row small" style="margin-top:6px"><input type="checkbox" data-bind="variant" data-id="' + esc(v.id) + '"' + (v.on ? " checked" : "") + '> ' + esc(v.label) + '</label>';
   return h;
 }
+const startRows = v => Math.max(2, Math.min(12, String(v || "").split("\n").length));
+// The start box grows with its lines, and with lines that wrap where the browser can measure them, up to 12.
+function fitStart(ta) {
+  if (!ta) return;
+  ta.rows = startRows(ta.value);
+  while (ta.rows < 12 && ta.scrollHeight > ta.clientHeight + 2) ta.rows++;
+}
 function startHTML(s) {
   const starts = s.starts || [];
   const cur = startChoice(s);
   let h = '<div class="start-tabs">' + (starts.length > 1 ? starts.map(st => '<button class="seg' + (st === cur ? " on" : "") + '" data-act="start-kind" data-id="' + esc(st.id) + '">' + esc(st.label) + '</button>').join("") : '<b class="small muted">' + esc(cur ? cur.label : "Start") + '</b>') + (cur ? '<span class="small muted">→ goes to ' + esc(nameOf(s, cur.to)) + '</span>' : "") + '</div>';
   if (!cur) return h + '<p class="hint">This society has no start.</p>';
   if (cur.kind === "text") {
-    h += '<textarea class="field" rows="2" data-bind="start-value" data-id="' + esc(cur.id) + '" placeholder="Write a start…" aria-label="Start">' + esc(cur.value || "") + '</textarea>';
+    h += '<textarea class="field" rows="' + startRows(cur.value) + '" data-bind="start-value" data-id="' + esc(cur.id) + '" placeholder="Write a start…" aria-label="Start">' + esc(cur.value || "") + '</textarea>';
     if (cur.examples && cur.examples.length) h += '<div class="examples">' + cur.examples.map(x => '<button class="example" data-act="example" data-text="' + esc(x) + '">' + esc(x) + '</button>').join("") + '</div>';
   } else if (cur.kind === "program") h += padHTML(cur);
   else if (cur.kind === "challenge") h += challengeHTML(s);
   return h + switchesHTML(s);
+}
+// The stage's film player. A film is the frames a Logo program kept with WAIT. app.ui.film is the film on the stage,
+// { soc, render, round, film, i, playing, queue, held }, kept out of the page so that drawing the stage again during a
+// run doesn't restart it. A film made while another plays waits its turn (at slow and normal speed the run itself
+// waits for each film to end, so none is cut off). A film you play, stop or slide stays on the stage until the next picture.
+let filmTimer = null;
+const filmAtText = (i, n) => "frame " + i + " of " + n;
+function filmStop() { clearTimeout(filmTimer); app.ui.film = null; }
+// What the stage shows: the film playing, waiting or held there, or else the latest picture.
+function stageShown(s, view) {
+  const f = app.ui.film;
+  if (f && f.soc === s.id && !view.replay && (f.playing || f.queue.length || f.held)) return { render: f.render, round: f.round };
+  return { render: view.render, round: view.renderRound };
+}
+const filmState = (s, render) => { const f = app.ui.film; return f && render && f.soc === s.id && f.render.renderId === render.renderId && f.render.program === render.program ? f : null; };
+function filmMarkHTML(renders) {   // 🎞️ on a round card whose round made a film
+  const films = (renders || []).filter(x => x.frames > 1);
+  return films.length ? ' <span class="film-mark" title="' + esc(films.length === 1 ? filmWords(films[0]) : plural(films.length, "film")) + '">🎞️</span>' : "";
+}
+function filmBarHTML(s, render) {
+  if (!render || !(render.frames > 1)) return "";
+  const f = filmState(s, render), n = render.frames, i = f ? f.i : n - 1, on = !!(f && f.playing);
+  return '<div class="filmbar"><button class="btn tiny" id="filmPlay" data-act="film-play" aria-label="' + (on ? "Pause the film" : "Play the film") + '">' + (on ? "⏸" : "▶") + '</button><input type="range" min="1" max="' + n + '" value="' + (i + 1) + '" data-bind="film-frame" aria-label="Which frame"><span id="filmAt">' + esc(filmAtText(i + 1, n)) + '</span></div>';
+}
+// Paint the frame the film is at, and move its slider, without drawing the stage again.
+function filmShow() {
+  const f = app.ui.film, c = $("#stageCanvas");
+  if (!f || !c) return;
+  let ctx = null;
+  try { ctx = c.getContext("2d"); } catch (e) { ctx = null; }
+  if (ctx) paintOps(ctx, f.film[f.i].ops);
+  const slider = $('[data-bind="film-frame"]'), at = $("#filmAt"), btn = $("#filmPlay");
+  if (slider) slider.value = String(f.i + 1);
+  if (at) at.textContent = filmAtText(f.i + 1, f.film.length);
+  if (btn) { btn.textContent = f.playing ? "⏸" : "▶"; btn.setAttribute("aria-label", f.playing ? "Pause the film" : "Play the film"); }
+}
+function filmNext() {   // after this frame's time: the next frame, the next film waiting, or the end
+  clearTimeout(filmTimer);
+  const f = app.ui.film;
+  if (!f || !f.playing) return;
+  filmTimer = setTimeout(() => {
+    if (app.ui.film !== f || !f.playing) return;
+    if (f.soc !== app.activeId || !$("#stageCanvas")) { f.playing = false; f.queue = []; return; }   // the stage has moved on
+    if (f.i < f.film.length - 1) { f.i++; filmShow(); filmNext(); return; }
+    const next = f.queue.shift();
+    if (next) { filmStart(next, f.queue, f.held); return; }
+    f.playing = false;
+    renderStage();   // it stays on its last frame; the stage may go back to the latest picture
+  }, f.film[f.i].ms);
+}
+function filmStart(item, queue, held) {   // item: { soc, render, round, film }
+  clearTimeout(filmTimer);
+  app.ui.film = Object.assign({}, item, { i: 0, playing: true, queue: queue || [], held: !!held });
+  renderStage();
+  filmNext();
+}
+// A picture made during a run: a film plays at once, or after the film playing now; any picture ends a film held there.
+function filmArrived(socId, e, run) {
+  const f = app.ui.film && app.ui.film.soc === socId ? app.ui.film : null;
+  const mem = run.renders[e.render.renderId];
+  if (f) f.held = false;
+  if (!(e.render.frames > 1) || !mem || !mem.film) return;
+  const item = { soc: socId, render: e.render, round: e.round, film: mem.film };
+  if (f && f.playing) f.queue.push(item);
+  else filmStart(item);
+}
+// The player's state for the film on the stage, made (stopped on its last frame) if it has none yet.
+async function filmHere() {
+  const s = soc(), rec = app.runs[s.id], run = rec ? rec.api.run : null;
+  const shown = stageShown(s, viewState(s, run, run ? run.trace : (app.traces[s.id] || [])));
+  if (!shown.render || !(shown.render.frames > 1)) return null;
+  const had = filmState(s, shown.render);
+  if (had) return had;
+  const film = await filmOf(shown.render, run);
+  if (!film) return null;
+  clearTimeout(filmTimer);
+  return (app.ui.film = { soc: s.id, render: shown.render, round: shown.round, film, i: film.length - 1, playing: false, queue: [], held: false });
+}
+function paintStage(s, render, run) {
+  if (filmState(s, render)) filmShow();
+  else paintInto($("#stageCanvas"), render, run);
 }
 function renderStage() {
   const s = soc();
@@ -6525,9 +6675,10 @@ function renderStage() {
   if (status === "waiting") h += yourTurnHTML(s, run);
   const view = viewState(s, run, trace);
   view.calls = callCounts(trace);
+  const shown = stageShown(s, view);   // a film still playing stays on the stage
   h += '<div class="agent-strip">' + s.agents.map(a => achipHTML(a, s, view)).join("") + '</div>' + modelsRowHTML(s);
   if (hasPictures(s)) h += '<div class="picture-wrap"><div class="picture"><canvas id="stageCanvas" width="512" height="512" aria-label="The latest picture"></canvas>' +
-    (view.render ? '<span class="tag">' + (view.replay ? "replay · " : "") + "round " + view.renderRound + '</span>' : '<div class="empty">' + (trace.length ? "No picture yet." : "Press ▶ Run to start.<br>Every message will show up in the Trace.") + '</div>') + '</div>' +
+    (shown.render ? '<span class="tag">' + (view.replay ? "replay · " : "") + "round " + shown.round + (shown.render.frames > 1 ? " · 🎞️" : "") + '</span>' : '<div class="empty">' + (trace.length ? "No picture yet." : "Press ▶ Run to start.<br>Every message will show up in the Trace.") + '</div>') + '</div>' + filmBarHTML(s, shown.render) +
     '<div class="bubbles">' + view.bubbles.map(bubbleHTML).join("") + '</div></div>';
   else h += '<div class="bubbles wide">' + (view.bubbles.length ? view.bubbles.map(bubbleHTML).join("") : '<p class="hint">' + (trace.length ? "No messages yet." : "Press ▶ Run to start. Every message will show up here and in the Trace.") + '</p>') + '</div>';
   const rounds = stripOf(trace, s);
@@ -6536,7 +6687,8 @@ function renderStage() {
   if (prev && prev.rounds.length) h += '<div class="strip-title">The run before' + (prev.label ? ', for “' + esc(prev.label) + '”' : "") + ' <span class="small muted">— it started with “' + shortHTML(prev.start, 60, "How the run before started") + '”</span></div><div class="strip">' + prev.rounds.map(r => rcardHTML(r, true, null, null)).join("") + '</div>';
   host.innerHTML = h + '</div>';
   hydrateImages(host);
-  paintInto($("#stageCanvas"), view.render, run);
+  paintStage(s, shown.render, run);
+  fitStart($('textarea[data-bind="start-value"]:not(.code)', host));
   const cur = startChoice(s);
   if (cur && cur.kind === "program") paintPad();
   if (status === "waiting") paintYours();
@@ -6645,6 +6797,7 @@ function responseHTML(e, s, run) {
     const editing = app.ui.logoEdit && app.ui.logoEdit.i === e.i;
     if (e.render && !e.render.error && !editing) body += imgTag(e.render, "thumb big", "the " + e.agentName + "’s picture, round " + e.round, run);
     if (text && !editing) body += '<div class="said">' + esc(text) + '</div>';
+    if (e.render && e.render.frames > 1 && !e.render.error && !editing) body += '<button class="btn tiny" data-act="film-show" data-i="' + e.i + '">🎞️ Play the film on the stage</button>';
     if (e.render && e.render.program) body += logoEditHTML(e, s, null);
     return h + '<div class="tsec"><h4>Response</h4>' + body + '</div>';
   }
@@ -6734,6 +6887,7 @@ function traceEntryHTML(e, s, run, trace, currentI) {
   else if (resp) sum += '<br>' + shortHTML(summaryText(e, s), 170, e.agentName);
   if (e.call && e.call.pretend) sum += ' <span class="badge warn" title="Played by a small built-in program, not an AI">pretend</span>';
   if (e.byYou) sum += ' <span class="badge ok" title="You played this agent">you</span>';
+  if (e.render && e.render.frames > 1 && !e.render.error) sum += ' <span class="badge plain" title="' + esc(filmWords(e.render)) + '">🎞️ film</span>';
   if (e.parseError) sum += ' <span class="badge bad" title="' + esc(e.parseError) + '">data missing</span>';
   let h = '<div class="tentry kind-' + esc(e.agentKind) + (e.error ? " err" : "") + (quiet ? " quiet" : "") + (e.i === currentI ? " here" : "") + '"><button class="th" data-act="trace-toggle" data-i="' + e.i + '" data-say="' + esc(sayEntry(e, s)) + '" aria-expanded="' + open + '"><span class="rb">R' + esc(e.round) + '</span><span class="sum">' + sum + '</span><span class="faint">' + (open ? "▾" : "▸") + '</span></button>';
   if (open) h += '<div class="tbody">' + entryBodyHTML(e, s, run, trace) + '</div>';
@@ -6821,6 +6975,8 @@ function setReplay(i) {
   const trace = rec ? rec.api.run.trace : (app.traces[s.id] || []);
   const acts = trace.filter(e => e.kind === "activation");
   if (!acts.length) return;
+  const f = app.ui.film;
+  if (f && f.playing) { f.playing = false; f.queue = []; clearTimeout(filmTimer); }   // the stage shows the replay's picture now
   app.ui.replay = i == null ? null : Math.max(0, Math.min(acts.length - 1, i));
   if (app.ui.replay != null) app.ui.expanded.add(acts[app.ui.replay].i);
   renderStage();
@@ -6959,7 +7115,7 @@ function agentModelHTML(a) {
     (missing ? '<option value="' + esc(own) + '" selected>' + esc(own) + ' (not set up here, so it uses the main model)</option>' : "") + '</select>';
 }
 function rendererEditorHTML(a, s) {
-  return editorHead(a, s, "built-in") + connectionsHTML(a, s) + '<div class="section"><h3>What the Renderer does</h3><p>The Renderer is not a model. It runs the Logo program it is sent and makes a picture (white background, 512 by 512). Along with the picture it sends data:</p><ul><li><code>dots</code>: every dot drawn with <code>DOT</code>, as <code>{x, y, color}</code>, counted in pixels from the top-left corner</li><li><code>segments</code>: how many straight pieces of line were drawn</li><li><code>labels</code>: the words written with <code>LABEL</code></li><li><code>pass</code>: false if the program didn\'t run (then only its rules that check for pass is false send anything)</li></ul><h3 style="margin-top:12px">The Logo it understands</h3><p class="hint">This is also what the Artist and the Designer are told.</p>' + logoBox(Prompts.LOGO_HELP, "", true) + '<p class="hint">Logo is never turned into JavaScript: a small interpreter reads it, so a drawing can only move the turtle. A drawing that takes more than ' + Runtime.tickLimit.toLocaleString("en-US") + ' steps is stopped. It also knows SETX, SETY, ARC, CLEARSCREEN, FOR, WHILE, RANDOM, PICK and the usual arithmetic, like SUM and SQRT.</p></div>';
+  return editorHead(a, s, "built-in") + connectionsHTML(a, s) + '<div class="section"><h3>What the Renderer does</h3><p>The Renderer is not a model. It runs the Logo program it is sent and makes a picture (white background, 512 by 512). Along with the picture it sends data:</p><ul><li><code>dots</code>: every dot drawn with <code>DOT</code>, as <code>{x, y, color}</code>, counted in pixels from the top-left corner</li><li><code>segments</code>: how many straight pieces of line were drawn</li><li><code>labels</code>: the words written with <code>LABEL</code></li><li><code>frames</code>: how many frames, when the program made a film with <code>WAIT</code></li><li><code>pass</code>: false if the program didn\'t run (then only its rules that check for pass is false send anything)</li></ul><h3 style="margin-top:12px">The Logo it understands</h3><p class="hint">This is also what the Artist and the Designer are told.</p>' + logoBox(Prompts.LOGO_HELP, "", true) + '<p class="hint">Logo is never turned into JavaScript: a small interpreter reads it, so a drawing can only move the turtle. A drawing that takes more than ' + Runtime.tickLimit.toLocaleString("en-US") + ' steps is stopped. It also knows SETX, SETY, ARC, CLEARSCREEN, FOR, WHILE, RANDOM, PICK and the usual arithmetic, like SUM and SQRT. WAIT 15 keeps the picture so far as one frame of a film (WAIT counts in 60ths of a second); the stage plays films, and a model that sees pictures gets the last frame.</p></div>';
 }
 function pseudoViewHTML(a) {
   const text = a.pseudocode || "";
@@ -7367,7 +7523,7 @@ const GUIDES = {
     "<h4>Saving and sharing</h4><p>Everything is saved in this browser as you go, so refreshing the tab keeps it all. It stays in this browser on this computer. <b>⬇ Export</b> at the top saves the society you are in as a file, to keep, move or give a friend; <b>⬆ Import</b> opens one. A grown-up can switch saving off in ⚙️ Settings; then the work is gone when the tab closes. <b>Delete this society</b>, in Look inside, deletes one of your own societies from this browser for good. Your own societies come after the microworlds, under <b>Yours</b>: the four you used last, and <b>☰ All yours</b> for the rest, where you can also tick several and delete them at once.</p>" +
     "<h4>Listening and talking</h4><p>Press <b>🔊 Read aloud</b> at the top, then click any words to hear them; point at a button to hear what it is. Press it again, or Esc, to stop. To talk instead of typing, click in a box and press the <b>🎤</b> beside it; in the Helper, the 🎤 asks your question and reads the answer to you. If your browser can't listen, the 🎤 shows how your computer can do it (on Windows, press the Windows key + H).</p>" +
     "<h4>The trace</h4><p>Every message is in the <b>Trace</b>. Open one to see what the agent got and what it said. <b>Show full technical details</b> shows exactly what a model was sent and what came back. A <b>…</b> opens text that was cut short, and a picture opens full size when you click it. After a run, <b>Replay</b> steps through it one message at a time.</p>" +
-    "<h4>Logo</h4><p>Agents that draw write <b>Logo</b>: <code>FORWARD 50</code>, <code>RIGHT 90</code>, and <code>REPEAT 4 [FORWARD 50 RIGHT 90]</code> for a square. In Telephone, “Start with a drawing” lets you write Logo yourself, and you can change any drawing in the trace and see it drawn.</p>" +
+    "<h4>Logo</h4><p>Agents that draw write <b>Logo</b>: <code>FORWARD 50</code>, <code>RIGHT 90</code>, and <code>REPEAT 4 [FORWARD 50 RIGHT 90]</code> for a square. In Telephone, “Start with a drawing” lets you write Logo yourself, and you can change any drawing in the trace and see it drawn. <code>WAIT 15</code> keeps the picture so far as one frame of a film (WAIT counts in 60ths of a second, so 15 is a quarter second): <code>REPEAT 12 [CLEARSCREEN RIGHT 30 * REPCOUNT FORWARD 100 WAIT 15]</code> is a film of 12 frames, and the stage plays it with ▶ and a slider.</p>" +
     "<h4>Models</h4><p>A grown-up chooses the models in ⚙️ Settings: Gemini Nano (free, built into Chrome), or Claude, Gemini or OpenAI with a key. If they add more than one, you choose which agent uses which on the stage. Each microworld's question card says which model suits it.</p>" +
     "<h4>Tips</h4><ul><li>Change one thing at a time.</li><li>Run the same start twice and compare: AI agents don't always say the same thing.</li><li>Before you press Run, say what you think will happen.</li></ul>" +
     "</details>" },
@@ -7468,7 +7624,9 @@ async function traceDocument(s, trace, run) {
     else if (e.kind === "run-end") parts.push('<p class="slim">■ ' + esc(e.text) + '</p>');
     else if (e.kind === "activation") {
       let img = "", got = "";
-      if (e.render && !e.render.error) { const url = await imageForRender(e.render, run); if (url) img = '<img class="zoom" tabindex="0" src="' + url + '" alt="' + esc("the " + e.agentName + "’s picture, round " + e.round) + '" title="Click to see it full size">'; }
+      const stills = e.render && !e.render.error && e.render.frames > 1 ? await filmStills(e.render, run) : [];
+      if (stills.length) img = '<p class="slim">' + esc(filmWords(e.render) + ": its first, middle and last frames.") + '</p><div class="film">' + stills.map(x => '<figure><img class="zoom" tabindex="0" src="' + x.url + '" alt="' + esc("frame " + x.at + " of the " + e.agentName + "’s film, round " + e.round) + '" title="Click to see it full size"><figcaption>' + esc(filmAtText(x.at, e.render.frames)) + '</figcaption></figure>').join("") + '</div>';
+      else if (e.render && !e.render.error) { const url = await imageForRender(e.render, run); if (url) img = '<img class="zoom" tabindex="0" src="' + url + '" alt="' + esc("the " + e.agentName + "’s picture, round " + e.round) + '" title="Click to see it full size">'; }
       if (e.message && e.message.renderId) { const r = findRender(trace, e.message.renderId); const url = r ? await imageForRender(r, run) : null; if (url) got = '<img class="zoom" tabindex="0" src="' + url + '" alt="' + esc("the picture " + e.agentName + " was sent") + '" title="Click to see it full size">'; }
       const logoOf = text => '<pre class="logo">' + logoHTML(text) + '</pre>';
       const said = e.error ? "⚠ " + e.error : e.response ? summaryText(e, s) : "";
@@ -7481,7 +7639,7 @@ async function traceDocument(s, trace, run) {
       parts.push('<details class="' + esc(e.agentKind) + '"><summary><b>R' + esc(e.round) + ' · ' + esc((e.emoji || "") + " " + e.agentName) + '</b> ← ' + esc(e.message ? e.message.fromName : "") + ': ' + esc(short(said, 200)) + '</summary>' + body + '</details>');
     }
   }
-  const css = "body{font-family:system-ui,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;color:#1D2A44;background:#F7F9FC}h1{font-size:24px}details{background:#fff;border:1px solid #E1E7F0;border-left:5px solid #8A94AB;border-radius:10px;margin:6px 0;padding:6px 10px}details.model{border-left-color:#6655F0}details.program{border-left-color:#12876A}details.renderer{border-left-color:#B96F07}summary{cursor:pointer}pre{white-space:pre-wrap;background:#F3F6FA;border-radius:8px;padding:8px;font-size:12px}pre.logo{background:#FCFBF5;line-height:1.55}img{width:260px;border:1px solid #E1E7F0;border-radius:8px;background:#fff}img.zoom{cursor:zoom-in}h4{margin:10px 0 4px;font-size:13px;color:#56627C}.slim{color:#56627C}" +
+  const css = "body{font-family:system-ui,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;color:#1D2A44;background:#F7F9FC}h1{font-size:24px}details{background:#fff;border:1px solid #E1E7F0;border-left:5px solid #8A94AB;border-radius:10px;margin:6px 0;padding:6px 10px}details.model{border-left-color:#6655F0}details.program{border-left-color:#12876A}details.renderer{border-left-color:#B96F07}summary{cursor:pointer}pre{white-space:pre-wrap;background:#F3F6FA;border-radius:8px;padding:8px;font-size:12px}pre.logo{background:#FCFBF5;line-height:1.55}img{width:260px;border:1px solid #E1E7F0;border-radius:8px;background:#fff}img.zoom{cursor:zoom-in}h4{margin:10px 0 4px;font-size:13px;color:#56627C}.slim{color:#56627C}.film{display:flex;flex-wrap:wrap;gap:8px}.film figure{margin:0}.film img{width:200px}figcaption{font-size:12px;color:#56627C;text-align:center}" +
     ".lg-k{color:#5B4BDB;font-weight:700}.lg-n{color:#B05E00}.lg-q{color:#12876A}.lg-v{color:#2563EB}.lg-b{color:#8A94AB;font-weight:700}.lg-c{color:#8A94AB;font-style:italic}" +
     "img.zoom:focus{position:fixed;inset:0;margin:auto;width:min(92vw,88vh,768px);height:auto;z-index:9;cursor:zoom-out;outline:none;box-shadow:0 0 0 100vmax rgba(20,28,45,.82)}";   // no script: a click focuses the picture, which fills the page; a click anywhere else puts it back
   return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(s.title) + ' trace</title><style>' + css + '</style></head><body><h1>' + esc(s.title) + ': a trace</h1><p>Exported from Agent Kit ' + esc(AK.VERSION) + ' on ' + esc(new Date().toLocaleString()) + '. Open any line to see exactly what was sent and what came back.</p>' + parts.join("") + '</body></html>';
@@ -7505,7 +7663,7 @@ const ACTIONS = {
     const trace = r ? r.api.run.trace : (app.traces[s.id] || []);
     if (trace.length) app.prevStrips[s.id] = { start: r ? r.startText : traceStartText(trace), rounds: stripOf(trace, s) };
     delete app.runs[s.id]; delete app.traces[s.id];
-    app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); app.ui.logoEdit = null;
+    app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); app.ui.logoEdit = null; filmStop();
     save(); renderAll();
     toast("Reset. ▶ Run starts from the beginning.");
   },
@@ -7674,6 +7832,27 @@ const ACTIONS = {
   "replay-next"() { setReplay((app.ui.replay || 0) + 1); },
   "replay-last"() { setReplay(1e9); },
   "replay-exit"() { app.ui.replay = null; renderStage(); renderTrace(); },
+  async "film-play"() {   // ▶ plays the film on the stage (from the start, if it is at the end); ⏸ stops it where it is
+    const f = await filmHere();
+    if (!f) return;
+    f.held = true;
+    if (f.playing) { f.playing = false; f.queue = []; clearTimeout(filmTimer); filmShow(); return; }
+    if (f.i >= f.film.length - 1) f.i = 0;
+    f.playing = true;
+    filmShow();
+    filmNext();
+  },
+  async "film-show"(t) {   // a film in the trace plays on the stage
+    const s = soc(), rec = app.runs[s.id];
+    const e = runOrLastTrace(s.id).find(x => x.i === +t.dataset.i);
+    const film = e && e.render ? await filmOf(e.render, rec ? rec.api.run : null) : null;
+    if (!film) return;
+    const again = app.ui.replay != null || window.innerWidth <= 820;
+    app.ui.replay = null;
+    if (window.innerWidth <= 820) app.ui.mobileTab = "stage";
+    filmStart({ soc: s.id, render: e.render, round: e.round, film }, [], true);
+    if (again) renderAll();
+  },
   async "export-trace"() { const s = soc(); const rec = app.runs[s.id]; const trace = runOrLastTrace(s.id); if (!trace.length) return; toast("Making the web page…"); offerFile("agent-kit-" + s.id + "-trace.html", await traceDocument(s, trace, rec ? rec.api.run : null), "text/html"); },
   "export-society"() { exportSocietyFlow(); },
   "all-yours"() { openYours(); },
@@ -7927,10 +8106,10 @@ async function handleBind(t, evt) {
   const s = soc();
   const change = evt === "change";
   switch (b) {
-    case "start-value": { const st = (s.starts || []).find(x => x.id === t.dataset.id); if (st) { st.value = util.cleanText(t.value, 20000); save(); if (st.kind === "program") paintPad(); } return; }
+    case "start-value": { const st = (s.starts || []).find(x => x.id === t.dataset.id); if (st) { st.value = util.cleanText(t.value, 20000); save(); if (st.kind === "program") paintPad(); else fitStart(t); } return; }
     case "challenge-task": { const ch = (s.challenges || []).find(c => c.id === t.dataset.id); if (ch) { ch.task = util.cleanText(t.value, 400); save(); } return; }
     case "roundLimit": if (change) { s.roundLimit = Math.max(1, Math.min(50, Math.round(+t.value) || 4)); save(); renderAll(); } return;
-    case "speed": { app.settings.speed = t.value; const r = app.runs[app.activeId]; if (r) r.api.setDelay(speedDelay()); save(); return; }
+    case "speed": { app.settings.speed = t.value; const r = app.runs[app.activeId]; if (r) r.api.setDelay(speedDelay(), filmsWait()); save(); return; }
     case "roundAgent": if (change) { s.roundAgent = t.value; save(); renderAll(); } return;
     case "variant": { Society.applyVariant(s, t.dataset.id, t.checked); save(); renderAll(); return; }
     case "bench-times": { const a = editorAgent(); if (!a) return; const key = s.id + "/" + a.id; app.ui.bench[key] = Object.assign(app.ui.bench[key] || { results: [] }, { times: Math.max(1, Math.min(10, Math.round(+t.value) || 3)) }); renderEditor(); return; }
@@ -7945,6 +8124,14 @@ async function handleBind(t, evt) {
     case "your-answer": { app.ui.yourDraft[draftKey(s)] = String(t.value); paintYours(); return; }
     case "logo-edit": { if (app.ui.logoEdit) { app.ui.logoEdit.text = String(t.value); paintLogoEdit(); } return; }
     case "replay": { setReplay(+t.value); return; }
+    case "film-frame": {   // the film's slider: that frame, stopped there
+      const f = await filmHere();
+      if (!f) return;
+      clearTimeout(filmTimer);
+      Object.assign(f, { playing: false, queue: [], held: true, i: Math.max(0, Math.min(f.film.length - 1, Math.round(+t.value) - 1)) });
+      filmShow();
+      return;
+    }
     case "rule-send": {
       const r = s.rules.find(x => x.id === t.dataset.id);
       if (!r || !change) return;
@@ -8325,7 +8512,7 @@ async function boot() {
   if (app.settings.connection === "keyless" && ENV.chatArtifact) Adapters.probeAdapter(getAdapter()).then(r => { if (!r.ok) handleCallError({ errorKind: r.kind || "signedout" }); });
   window.__akReady = true;
 }
-window.__ak = { app, ENV, AK, soc, SpeechUI, sameAsExample, openYours, uiChoose, yoursShown, connState, setConnState, testConnection, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, adapterFor, modelRefs, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
+window.__ak = { app, ENV, AK, soc, renderStage, filmsWait, SpeechUI, sameAsExample, openYours, uiChoose, yoursShown, connState, setConnState, testConnection, renderAll, beginRun, runNow, resumeRun, stepNow, openAgent, getAdapter, adapterFor, modelRefs, saveNow, load, importSocietyText, traceDocument, askHelper, rerunScenarios, openSettings, setReplay, savePseudo, applyParamChange, uiConfirm, md, logoHTML };
 window.__akBoot = boot();
 })();
 </script>

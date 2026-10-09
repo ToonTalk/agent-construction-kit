@@ -64,4 +64,23 @@ export default function (T, { pageWindow }) {
     if (errors.length > before) throw new Error(errors.slice(before).join(" | "));
     return /<html lang="/.test(page) && !/<script/i.test(page);
   });
+  T.test("any language: the exported trace page has no script, and shows a film as its first, middle and last frames", ["Engine"], async () => {
+    // jsdom has no canvas, so a stand-in counts the lines each picture draws, and that count is the picture.
+    let strokes = 0;
+    const ctx = new Proxy({}, { get: (o, k) => (k === "fillRect" ? () => { strokes = 0; } : k === "stroke" ? () => { strokes++; } : k in o ? o[k] : () => {}), set: (o, k, v) => { o[k] = v; return true; } });
+    const { w, errors } = await pageWindow({ before(win) { win.HTMLCanvasElement.prototype.getContext = () => ctx; win.HTMLCanvasElement.prototype.toDataURL = () => "data:image/png;base64," + win.btoa("lines " + strokes); } });
+    const ak = w.__ak, { Seeds, Society } = ak.AK;
+    ak.app.settings.connection = "pretend"; ak.app.settings.speed = "instant";
+    const s = Seeds.makeBlank("x");
+    s.id = "films"; s.roundAgent = "renderer";
+    s.agents = [{ id: "renderer", kind: "renderer", name: "R", emoji: "🖼️", role: "" }];
+    s.starts = [{ id: "start", label: "x", kind: "text", to: "renderer", value: "REPEAT 8 [FORWARD 20 RIGHT 45 WAIT 15]" }];
+    const c = Society.sanitizeSociety(s);
+    ak.app.societies[c.id] = c; ak.app.order.push(c.id); ak.app.activeId = c.id; ak.renderAll();
+    const rec = await ak.runNow(); await sleep(20);
+    const page = await ak.traceDocument(ak.soc(), rec.api.run.trace, null);   // no run in memory: the film is made again from its Logo
+    const srcs = Array.from(page.matchAll(/<figure><img[^>]* src="([^"]+)"/g)).map(m => w.atob(m[1].split(",")[1]));
+    if (errors.length) throw new Error(errors.join(" | "));
+    return !/<script/i.test(page) && srcs.join() === "lines 1,lines 4,lines 8" && (page.match(/<figcaption>/g) || []).length === 3 && ak.app.ui.film.render.frames === 8;
+  });
 }

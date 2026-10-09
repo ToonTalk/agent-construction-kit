@@ -65,6 +65,11 @@ one to a claude.ai chat and ask Claude to copy it, exactly as it is, into an HTM
 by the box you are typing in lets you talk instead, and the Helper can be asked aloud and answers aloud. Where
 the browser can't listen, the 🎤 explains the computer's own dictation (on Windows, the Windows key + H).
 
+**Films:** in Logo, `WAIT 15` keeps the picture so far as one frame of a film (WAIT counts in 60ths of a second),
+so `REPEAT 12 [CLEARSCREEN RIGHT 30 * REPCOUNT FORWARD 100 WAIT 15]` is a film of 12 frames. The stage plays it
+(▶ / ⏸ and a frame slider), the Renderer says how many frames it has, and the exported trace page shows its first,
+middle and last frames.
+
 Settings can hold more than one model. Then each AI agent can use the one that suits its job:
 Gemini Nano (free, in Chrome) where a small model is enough, and a stronger one for drawing and
 seeing pictures.

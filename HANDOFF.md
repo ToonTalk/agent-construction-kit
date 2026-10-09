@@ -2,17 +2,26 @@
 
 *Keep this short. Update it at the end of every session.*
 
-## State (2026-10-01)
+## State (2026-10-09)
 
-Agent Kit **1.12.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.12.0 follow reviews
-and the first real-model runs (see `SPEC.md` §14, entries of 2026-10-01). `SPEC.md` holds the spec with its change
+Agent Kit **1.13.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.13.0 follow reviews
+and the first real-model runs (see `SPEC.md` §14). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
 
 - **No pretend mode** for learners (1.0.3): a real model is needed. Gemini Nano, built into desktop
   Chrome, is a free choice. The scripted stand-ins (`connection: "pretend"`) remain only for tests.
   Planned, not built: replays of recorded real runs.
-- The app is the single file `index.html` (673 KB): the `ak-model` script is DOM-free, and
+- **Films** (1.13.0, the first step of the mini-Ani, a miniature of Ken's 1978 Ani built to test how expressive the
+  kit is): Logo's `WAIT 15` keeps the picture so far as a frame (60ths of a second); the turtle returns `film`
+  (240 frames, 100,000 ops at most; a closing frame if drawing follows the last WAIT); the Renderer adds `frames` to
+  its data and says “It is a film of N frames (S seconds)”; the stage's player (`app.ui.film`: ▶ / ⏸, slider,
+  “frame i of n”) survives repaints; at slow and normal speed the run waits for a film to end, faster they queue; the
+  exported trace page shows first, middle and last frames; vision models get the last frame; `LOGO_HELP` is
+  unchanged. The start box grows with its lines up to 12. Plan: 1.14.0 the mini-Ani with programs only (seven
+  library programs; see the ani-revival repo's `reports/chapter-x/PLAN.md`, Item 5, which corrects
+  `design-mini-ani.md`), 1.15.0 a second example with AI voices. Never write in `C:\Users\toont\ani-revival`.
+- The app is the single file `index.html` (687 KB): the `ak-model` script is DOM-free, and
   the `ak-ui` script is the interface. There is no build step.
 - **Drawings are Logo.** The Artist, the Designer and the drawing pad write Logo
   (`REPEAT 4 [FORWARD 50 RIGHT 90]`), and a small interpreter in the model layer runs it.
@@ -80,7 +89,9 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**520 PASS, 0 FAIL · fingerprint `7218999db7ed`** · model modules covered 19/19.
+**534 PASS, 0 FAIL · fingerprint `8b84a6b4a9c1`** · model modules covered 19/19.
+Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 4/4; `library.test` 143/150 (the 7 look for
+English words); `node tests/leftovers.mjs sv/index.html` 25 sentences, all from the scripted stand-ins.
 
 ## Acceptance criteria (§11)
 
@@ -96,7 +107,7 @@ folder is a copy without the §14 log.)
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 673 KB, under 1 MB (tested). |
+| 11 | 687 KB, under 1 MB (tested); artifact builds 687 KB and 703 KB, under 950 KB, scripts under 410 KB. |
 
 ## Open issues
 
@@ -117,11 +128,20 @@ folder is a copy without the §14 log.)
   is told to. The seven microworld designs are in `agent-kit-microworlds.md`.
 - In Fallback A, a heavy built-in call that never loops (for example `new Array(1e9).fill(0)`)
   can't be interrupted. The Worker path handles it.
+- **Films with live models:** no model has been asked to write a film yet (`LOGO_HELP` doesn't mention WAIT, on
+  purpose). A model that sees pictures sees only a film's last frame, and judges and Dot Counter read only the final
+  picture's data: nothing in the kit can watch a film except a person. The trace's “Change it and see it drawn”
+  preview, the drawing pad and “You be the Artist” show a film's last frame, not the film.
+- The model-only-when-reachable refinement (design §3) was not built: the mini-Ani's AI agents go in a separate
+  example, so it isn't needed. Ken may still want it for societies with switched-off AI agents.
 - Pretend-mode translation only knows the shipped pseudocode plus two variants. Anything else
   says it needs translation and keeps running the last good program, as §4.2 asks.
 
 ## Next steps
 
+0. **The mini-Ani** (Ken, 9 October: a test of expressiveness, no children involved, so it needn't wait for the
+   pilot): 1.14.0 programs only, 1.15.0 the AI voices as a second example, each with notes on what the kit expressed
+   easily, what needed new features, and what it couldn't express.
 0. **The “next changes” document is done up to C** (1.5.0). **D, accessible dialogs** (focus, Tab trap, inert
    background, aria-labelledby, focus restored), comes after the pilot.
 0. **Rewrite the guides after the first session with children** (Kay): they were brought up to date

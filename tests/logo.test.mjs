@@ -75,4 +75,30 @@ export default function (T, { modelWindow, same, MODEL_SRC }) {
       Logo.fromJS("for (let i = 0; i < 3; i++) { forward(i * 10); }") === null;
   });
   T.test("Logo: the highlighter knows every command", ["Logo"], () => ["FORWARD", "FD", "REPEAT", "REPCOUNT", "SETXY", "SETPENCOLOR", "DOT", "CIRCLE", "LABEL", "IFELSE"].every(n => Logo.NAMES.indexOf(n) >= 0));
+
+  // Films (1.13.0): WAIT keeps the picture so far as one frame.
+  const visible = ops => JSON.stringify(ops.filter(o => o.t !== "M"));
+  T.test("Logo films: WAIT keeps the picture so far as a frame, in 60ths of a second, and the picture is the last frame", ["Logo"], () => {
+    const r = run("REPEAT 12 [CLEARSCREEN RIGHT 30 * REPCOUNT FORWARD 100 WAIT 15]"), f = r.output.film;
+    const lens = f.map(x => x.ops.length), ends = f.map(x => [Math.round(x.ops[0].x2 - 256), Math.round(256 - x.ops[0].y2)]);
+    const clamp = run("FD 1 WAIT 0 FD 1 WAIT 1000").output.film.map(x => x.ms);
+    return r.ok && f.length === 12 && f.every(x => x.ms === 250) && lens.every(n => n === 1) && same(ends[0], [50, 87]) && same(ends[2], [100, 0]) && same(ends[11], [0, 100]) &&
+      visible(r.output.ops) === visible(f[11].ops) && same(clamp, [20, 5000]);
+  });
+  T.test("Logo films: drawing after the last WAIT is kept as a closing frame; one frame alone is just a picture", ["Logo"], () => {
+    const a = run("FORWARD 10 WAIT 30 RIGHT 90 FORWARD 10").output, b = run("FORWARD 10 WAIT 30 PENUP HOME").output, c = run("REPEAT 3 [CS FD 10 * REPCOUNT WAIT 15] CS").output;
+    return same(a.film.map(x => x.ops.length), [1, 2]) && same(a.film.map(x => x.ms), [500, 500]) && visible(a.ops) === visible(a.film[1].ops) &&
+      !b.film && b.segments === 1 && same(c.film.map(x => x.ops.length), [1, 1, 1, 0]);
+  });
+  T.test("Logo films: a program with no WAIT has no film, and its picture is what it was", ["Logo"], () => {
+    const r = run("REPEAT 4 [FORWARD 50 RIGHT 90] DOT 10 LABEL [hi]");
+    return r.ok && same(Object.keys(r.output), ["ops", "dots", "labels", "segments"]) && r.output.segments === 4 && r.output.ops.length === 6 && !r.note;
+  });
+  T.test("Logo films: a film stops at 240 frames or 100,000 lines, dots and labels, and says so; a runaway WAIT loop is still stopped", ["Logo"], () => {
+    const a = run("REPEAT 300 [DOT 5 WAIT 1]"), b = run("REPEAT 120 [REPEAT 25 [FORWARD 1] WAIT 1]"), c = run("REPEAT 100000000 [WAIT 1]");
+    return a.ok && a.output.film.length === 240 && a.output.filmCut === true && /cut short at 240 frames/.test(a.note) &&
+      b.ok && b.output.film.length === 88 && b.output.filmCut === true && b.output.segments === 3000 &&
+      !c.ok && /too many steps/.test(c.error) && !run("WAIT \"soon").ok;
+  });
+  T.test("Logo films: the prompt help that models get doesn't mention WAIT, so no microworld changes", ["Logo", "Prompts"], () => !/WAIT/.test(w.AK.Prompts.LOGO_HELP) && Logo.NAMES.indexOf("WAIT") >= 0);
 }

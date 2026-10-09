@@ -81,6 +81,44 @@ export default function (T, { modelWindow, same }) {
     const e = r.run.trace.find(x => x.kind === "activation" && x.agentId === "describer");
     return e.call.system.indexOf(Prompts.PREAMBLE) === 0 && e.call.messages.length === 1 && e.call.reply.length > 0 && !!e.call.request && e.call.pretend === true && e.call.messages[0].renderId === e.message.renderId;
   });
+  // Films (1.13.0)
+  const renderer = { id: "r", kind: "renderer", name: "Renderer", emoji: "🖼️", role: "draws" };
+  const FILM = "REPEAT 4 [CLEARSCREEN FORWARD 20 * REPCOUNT WAIT 6]";   // 4 frames of 100 ms
+  const shown = ops => JSON.stringify(ops.filter(o => o.t !== "M"));
+  T.test("films: the Renderer says how many frames, keeps the film, and a model that sees pictures gets its last frame", ["Engine", "Logo"], async () => {
+    const seen = [];
+    const eyes = { id: "fake", label: "Fake", async call(req) { seen.push(req.images); return { text: "ok", raw: "ok", data: {}, model: "fake", ms: 1 }; } };
+    const eye = { id: "eye", kind: "model", name: "Eye", emoji: "👁️", instructions: "Look.", outputFields: [], canSeeImages: true, history: "stateless", replyKind: "prose" };
+    const soc = society([renderer, eye], [rule("r1", "r", "eye", { send: "image" })]);
+    const api = Engine.createRun(soc, { adapter: eyes, runtime: Runtime, rasterize: shown });
+    api.start({ to: "r", text: FILM });
+    await api.play();
+    const e = acts(api.run)[0], mem = api.run.renders[e.render.renderId];
+    const still = await (async () => { const a = Engine.createRun(society([renderer], []), { adapter: eyes, runtime: Runtime }); a.start({ to: "r", text: "FORWARD 80" }); await a.play(); return acts(a.run)[0]; })();
+    return e.render.frames === 4 && e.render.seconds === 0.4 && e.response.data.frames === 4 && /It is a film of 4 frames \(0\.4 seconds\)\./.test(e.response.text) &&
+      mem.film.length === 4 && mem.image === shown(mem.film[3].ops) && seen[0][0] === shown(mem.film[3].ops) &&
+      still.render.frames === undefined && still.response.data.frames === undefined && !/film/.test(still.response.text);
+  });
+  T.test("films: at slow and normal speed the run waits for a film to end before the next delivery; faster, it doesn't", ["Engine"], async () => {
+    const soc = () => society([renderer, prog("b", wrap("return { say: 'seen' };"))], [rule("r1", "r", "b")]);
+    const time = async filmsWait => { const api = Engine.createRun(soc(), { adapter: pretend, runtime: Runtime, delayMs: 5, filmsWait }); api.start({ to: "r", text: FILM }); const t0 = Date.now(); await api.play(); return { ms: Date.now() - t0, done: api.run.status === "done" && acts(api.run).length === 2 }; };
+    const slow = await time(true), fast = await time(false);
+    return slow.done && fast.done && slow.ms >= 380 && fast.ms < 300;
+  });
+  T.test("Pause, then Run while the run is waiting between messages, doesn't deliver from two places at once", ["Engine"], async () => {
+    const api = Engine.createRun(society([prog("a", wrap("return { say: 'x' };")), prog("b", wrap("return { say: 'y' };"))], [rule("r1", "a", "b"), rule("r2", "b", "a")], { roundLimit: 10 }), { adapter: pretend, runtime: Runtime, delayMs: 1000 });
+    const pause = ms => new Promise(r => setTimeout(r, ms));
+    api.start({ to: "a", text: "go" });
+    const p1 = api.play();
+    await pause(150);
+    api.pause();
+    const p2 = api.play();
+    await pause(925);   // the first loop woke at 1000 ms; the second wakes at about 1150 ms
+    const n = acts(api.run).length;
+    api.stop();
+    await Promise.all([p1, p2]);
+    return n === 2;
+  });
   T.test("linked lines work both ways", ["Engine"], () => {
     const map = [{ pseudo: [1, 1], js: [2, 4] }, { pseudo: [2, 2], js: [5, 5] }];
     const a = Engine.linkedLines(map, "pseudo", 1), b = Engine.linkedLines(map, "js", 3);
