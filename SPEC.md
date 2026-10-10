@@ -494,6 +494,66 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Not run with a live model: everything here ran on the scripted stand-ins. A SHA-256 manifest of `ani-revival` taken now, compared with 1.14.0's: `original/` unchanged; the revival has become a git repository since (1,645 files under `.git`), and 16 files in app/, artifact/, reports/, site/, src/, test/, tools/ and package.json changed and 3 were added, by the team working there; this work only read `reports/chapter-x/design-mini-ani.md` and `PLAN.md`.
   - Sizes: `index.html` 848 KB, `sv/index.html` 865 KB; artifact builds 847 KB and 865 KB (limit 950 KB), scripts at most 562 KB (limit 800 KB).
   - Suite: 604 PASS, fingerprint `010e44edcd6d`.
+- 2026-10-10 — **Revision 1.15.1: what a regression review of 1.13.0–1.15.0 found.** Each finding was checked first;
+  all ten held. An earlier, unfinished attempt (kept in `git stash`, untested) was reused where it was sound.
+  - **Pause, then Run, in the middle of a delivery lost it** (pre-existing). A model's answer or a Worker program is
+    taken off the queue before it is awaited, so a second loop started by Run found the queue empty and ended the run;
+    the answer arrived after the end and its messages were never delivered. The 1.13.0 loop counter only covered the
+    wait between deliveries. Now the engine remembers the delivery going on: Run after Pause waits for it and goes on
+    from it (the paused loop stops when it ends), Step after Pause finishes it as the step, Pause, Stop and a change of
+    speed end the wait between deliveries at once (a change of speed waits only for what is left of the new wait), a
+    call still going after Pause keeps its abort signal so Stop still ends it, and a delivery that Stop interrupted is
+    delivered again first if Run has already carried on. Two tests fail on 1.15.0 and pass now.
+  - **Films:** the run waits for one film at most 30 seconds (`filmWaitMax`), not up to 240 × 5 s; frames that all show
+    nothing are no film (so nothing is waited for); a film cut at 240 frames (or 100,000 lines) gets the finished
+    picture as its last frame, the one models, judges and the stage see, and the Renderer says “so its last frame jumps
+    to the finished picture”.
+  - **The Choice Points' answer is one click away.** It says why first (“**Scene 1 of 4.** **Why Cinderella is like
+    that:** …”, then everyone's values, then how the arguments were settled), so even the trace entry's closed header
+    starts with the answer. A collector's “is waiting: n of 20” lines are left out once it waits for one more or runs
+    (in the trace and the exported page; a replay still shows each step); a collected message whose parts are only
+    data is folded under “▸ Show the 5 messages, in plain words” (each message on its own line, its data in plain
+    words), instead of empty “Cast:” lines; a program longer than 12 lines is folded under “▸ Show the program (25
+    lines)”. One fold state, `app.ui.more`.
+  - **The other starts have a focus and a why:** Taste's focus, and the Choice Points' “explain”, fall back to the first
+    one the Cast names when nobody in the story has the slot's name (“Its focus is Tom, the first one the Cast names,
+    because Cinderella isn't in this story.”; “Cinderella isn't in this story, so I explain Tom, the first one chosen.”,
+    said in the first choosing only). “I chose again for Wolf after” now uses the Cast's name, “the Wolf after”.
+  - **Words:** a word no expert knew is named once, the first time (the Choice Points remember what they named,
+    `memory.told`), so “helps (the Godmother)” no longer repeats in scenes 3 and 4; Relationships says “the
+    Stepmother, compared with Cinderella: faster, …” (it said “a bit same speed, a bit same liveliness than X”), and
+    the Choice Points' reasons say “same speed as X”, “faster than X”.
+  - **The programs-only Mini-Ani has no AI or You parts.** The Choice Points are two library types: `ani-choices`
+    (programs only: 25 lines of pseudocode, 312 of code, no `ai`, `person`, `you`) and `ani-choice-points` (with AI
+    voices), which a new `libExtend` makes from the first when the page loads by adding the line about AI agents and
+    You, 18 lines of code and changing 3, with the line map, slots and scenarios renumbered, so a fix to one is a fix
+    to both. The voices' type keeps the old id, so a 1.15.0 Mini-Ani with AI voices still weighs its AI lines; a
+    Mini-Ani saved earlier runs it too (it behaves the same with no voices) and shows its Choice Points as changed.
+    Library: 32 types, eight under the Mini-Ani's heading. The card has five questions (it had eight); the other three
+    are “More to try” in the guide.
+  - **The Helper with no model:** it said “no model is connected” to each opener. Now, with the connection set to none,
+    it says it is an AI and needs a model (with a ⚙️ Settings button) and lists the society's openers as questions to
+    think about, not buttons; with a model, the openers are buttons as before.
+  - **Imports:** questions and openers keep their `{slot}` braces and quotes (`cleanLine`; `cleanName` had removed
+    `{}`), on import and when edited; a society's link keeps its label only when it goes to `toontalk.github.io` or
+    `github.com` (exactly, with no port or user part); any other link shows its address as its label.
+    `examples/mini-ani.json` and `mini-ani-with-ai-voices.json` are exported again.
+  - The programs-only Mini-Ani's default run differs from 1.15.0's only in those words (why first, “helps” named once,
+    Relationships' wording): every choice, plan and film is the same; the pinned hash is now `a754d52e34a2`.
+  - Found on the way, not changed: the static check's name collection stops at a property called `of` (`scene.of`), so
+    a later name in the same `let` looks undeclared (the Choice Points declare `everyone` first).
+  - Swedish copy: patched with the same scripts and its own phrases (“jämfört med”, “samma fart som”, “Dess fokus är
+    Vargen, den första som Rollistan nämner, eftersom Askungen inte finns i den här berättelsen.”); TRANSLATING.md says
+    how to translate the voices' `libExtend` lines; `sv/GLOSSARY.md` has the new wording.
+  - Tests (13 new, and the library's six for the new type): Pause then Run, and Pause then Step, in the middle of a model's answer, with Stop still working;
+    the 30-second film cap, blank films and a change of speed; a cut film's last frame; the other starts' focus and
+    why; a word named once; “as”, not “than”; the two Choice Points types (the voices' line map links its new line to
+    the new code); the shipped example file keeps its braces; the Choice Points' answer one click away in the page;
+    the Helper with no model; links and braces on import.
+  - Sizes: `index.html` 859 KB, `sv/index.html` 877 KB; artifact builds 859 KB and 877 KB (limit 950 KB), scripts at
+    most 570 KB (limit 800 KB).
+  - Suite: 623 PASS, fingerprint `648e94c38847`. Swedish: “any language” 5/5, `library.test` 189/198 (the same 9 English
+    look-ups), leftovers 25 sentences, all the scripted stand-ins'.
 
 ---
 

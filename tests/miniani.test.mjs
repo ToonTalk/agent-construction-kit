@@ -36,7 +36,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
       agent(s, "personality").typeId === "ani-expert" && agent(s, "looks").typeId === "ani-expert" && progs.every(a => Library.LIB[a.typeId] && a.code.js === Library.LIB[a.typeId].js) &&
       agent(s, "choice-points").collect && agent(s, "choice-points").params.wait === 20 && s.roundAgent === "cast" &&
       m14.from === "renderer" && m14.to === "cast" && m14.when === "data" && m14.field === "pass" && m14.value === "false" &&
-      s.link.url === "https://toontalk.github.io/ani/" && s.questions.length >= 6 && s.intro.length < 400;
+      s.link.url === "https://toontalk.github.io/ani/" && s.questions.length === 5 && s.intro.length < 400 && agent(s, "choice-points").typeId === "ani-choices";
   });
   T.test("Mini-Ani: export and import restore every program from the library, and keep the Looks expert's knowledge and a filled-in empty line", ["Seeds", "Import"], () => {
     const s = Seeds.makeMiniAni();
@@ -58,9 +58,10 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const a = await ran(), b = await story(null, 77);
     return a.trace.length === b.trace.length && JSON.stringify(strip(a.trace)) === JSON.stringify(strip(b.trace));
   });
-  T.test("Mini-Ani: the card's question has an answer in scene 1: Cinderella is slow and small because she is shy", ["Engine"], async () => {
+  T.test("Mini-Ani: the card's question has an answer in scene 1, said first: Cinderella is slow and small because she is shy", ["Engine"], async () => {
     const say = at(await ran(), "choice-points", 1).response.text;
-    return /Cinderella is slow because of shy, graceful \(beautiful brings it\)/.test(say) && /small because of shy, shabby/.test(say) && /\*\*Why Cinderella is like that:\*\*/.test(say);
+    return /Cinderella is slow because of shy, graceful \(beautiful brings it\)/.test(say) && /small because of shy, shabby/.test(say) && say.indexOf("**Scene 1 of 4.** **Why Cinderella is like that:** Cinderella is slow because of shy") === 0 &&
+      say.indexOf("**Why") < say.indexOf("I chose everyone's values once") && say.indexOf("I chose everyone's values once") < say.indexOf("**Settled:**");
   });
   T.test("Mini-Ani: two passes, as in Ani: scene 1 chooses for the whole cast once; later scenes keep those values and choose again only for a stand-in, with the variety frozen", ["Engine"], async () => {
     const r = await ran();
@@ -154,6 +155,83 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const m = Array.from(pw.document.querySelectorAll(".modal-body")).pop();
     const heads = Array.from(m.querySelectorAll("h4")).map(h => h.textContent);
     return linked && card && ak.soc().title === "Mini-Ani" && run.status === "done" && acts(run, "renderer").length === 4 &&
-      heads.some(h => /Mini-Ani/.test(h)) && m.querySelectorAll('[data-add-type^="ani-"]').length === 7;
+      heads.some(h => /Mini-Ani/.test(h)) && m.querySelectorAll('[data-add-type^="ani-"]').length === 8;
+  });
+
+  // 1.15.1, after a review
+  const told = async i => { const s = Seeds.makeMiniAni(); const api = Engine.createRun(s, { runtime: Runtime, seed: 1 }); api.start({ to: s.starts[i].to, text: s.starts[i].value }); await api.play(); return api.run; };
+  T.test("Mini-Ani: the other two starts have a focus and a why of their own: the first one the Cast names, since Cinderella isn't in them", ["Engine"], async () => {
+    const j = await told(1), w = await told(2);
+    const taste = at(j, "taste", 1).response, c1 = at(j, "choice-points", 1).response.text, c3 = at(j, "choice-points", 3).response.text, w1 = at(w, "choice-points", 1).response.text;
+    return j.status === "done" && w.status === "done" && /Its focus is Tom, the first one the Cast names, because Cinderella isn't in this story\./.test(taste.text) && taste.data.taste.focus === "Tom" &&
+      c1.indexOf("**Scene 1 of 3.** **Why Tom is like that:** Cinderella isn't in this story, so I explain Tom, the first one chosen. Tom is slow because of shy") === 0 && /Tom first, as the film's focus/.test(c1) &&
+      c3.indexOf("**Scene 3 of 3.** **Why Tom after is like that:** Tom after is ") === 0 &&
+      w1.indexOf("**Scene 1 of 3.** **Why the Wolf is like that:** Cinderella isn't in this story, so I explain the Wolf, the first one chosen.") === 0 && /I chose again for the Wolf after, with/.test(at(w, "choice-points", 2).response.text);
+  });
+  T.test("Mini-Ani: a word no expert knew is named once, in scene 1, and not again in the scenes after", ["Engine"], async () => {
+    const r = await ran();
+    const named = [1, 2, 3, 4].map(n => /\*\*Words no expert knew:\*\* helps \(the Godmother\)\./.test(at(r, "choice-points", n).response.text));
+    return same(named, [true, false, false, false]) && same(at(r, "choice-points", 3).response.data.unknown, []) && /I don't know these words: helps \(the Godmother\)/.test(at(r, "relationships", 3).response.text);
+  });
+  T.test("Mini-Ani: a “same” comparison is “as”, not “than”, and Relationships says who is compared with whom", ["Engine"], async () => {
+    const rel = agent(Seeds.makeMiniAni(), "relationships"), cp = Library.LIB["ani-choices"];
+    const r = await Runtime.runProgram(rel.code.js, { from: "Cast", text: "", data: { choose: [{ name: "Ann", words: [] }, { name: "Bob", words: [] }], relations: [{ who: "Ann", verb: "likes", whom: "Bob" }], called: {} } }, { params: rel.params, seed: 1 });
+    const out = (await Runtime.runProgram(cp.js, { from: "x", text: "", data: {}, memory: { values: { Bob: { speed: 3 } }, nets: {}, counts: {} }, messages: [
+      { from: "Cast", text: "", data: { scene: 1, of: 1, title: "A scene.", cast: ["Ann", "Bob"], called: {}, choose: [{ name: "Ann", words: [] }], onStage: ["Ann", "Bob"], relations: [], friends: [], events: [] } },
+      { from: "Relationships", text: "", data: { suggestions: r.output.suggestions.filter(x => x.who === "Ann") } }] }, { params: Object.assign({}, cp.params, { explain: "Ann" }), seed: 1 })).output;
+    return /^- Ann likes Bob → Ann, compared with Bob: a bit same speed, a bit same liveliness; Bob: the other way round$/m.test(r.output.say) && !/than Bob/.test(r.output.say) &&
+      out.why.Ann.speed.because[0] === "same speed as Bob (likes)" && /fast because of same speed as Bob \(likes\)/.test(out.say);
+  });
+  T.test("Mini-Ani: the programs-only Choice Points has no AI or You parts; the voices' one is made from it, with its line about AI agents and You", ["Library", "Seeds"], () => {
+    const B = Library.LIB["ani-choices"], V = Library.LIB["ani-choice-points"];
+    const bl = B.pseudocode.split("\n"), vl = V.pseudocode.split("\n"), loop = V.js.split("\n").findIndex(l => /for \(const m of voices\)/.test(l)) + 1;
+    const cv = Seeds.makeMiniAniVoices().agents.find(a => a.id === "choice-points");
+    return agent(Seeds.makeMiniAni(), "choice-points").typeId === "ani-choices" && cv.typeId === "ani-choice-points" && cv.code.js === V.js &&
+      !/AI agent|\{You\}/.test(B.pseudocode) && !/voices|PERSON|params\.ai|params\.you/.test(B.js) && ["ai", "person", "you"].every(k => !(k in B.params) && k in V.params) &&
+      vl.length === bl.length + 1 && /from an AI agent \{2\}, or from \{You\} \{3\}/.test(vl[13]) && same(vl.slice(0, 13).concat(vl.slice(14)), bl) &&
+      V.js.split("\n").length === B.js.split("\n").length + 18 && loop > 0 && Engine.linkedLines(V.lineMap, "pseudo", 14).js.indexOf(loop) >= 0 && Engine.linkedLines(V.lineMap, "js", loop).pseudo.join() === "14" &&
+      V.scenarios.length === B.scenarios.length + 3 && V.slots.length === B.slots.length + 3 && B.slots.every((x, k) => V.slots[k].param === x.param && V.slots[k].line === (x.line < 14 ? x.line : x.line + 1)) &&
+      Seeds.makeMiniAni().questions.every(q => !/\bAI\b|\bYou\b/.test(q));
+  });
+  T.test("Mini-Ani: importing the shipped examples/mini-ani.json keeps the {slot} braces in the card's questions", ["Import", "Seeds"], () => {
+    const file = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "examples", "mini-ani.json"), "utf8");
+    const back = Society.importSociety(file).society;
+    return same(back.questions, Seeds.makeMiniAni().questions) && back.questions.some(q => q.indexOf("“more than {2} times as strong”") >= 0) && back.questions.some(q => q.indexOf("“{-} suggests {-}”") >= 0) &&
+      back.agents.filter(a => a.kind === "program").every(a => a.status === "ok") && JSON.parse(file).app === "Agent Kit " + w.AK.VERSION;
+  });
+  T.test("page: the Choice Points' answer is one click away: no waiting lines, its messages and its long program folded, and why first", ["Engine"], async () => {
+    const { w: pw } = await pageWindow();
+    const ak = pw.__ak;
+    ak.app.settings.connection = "none"; ak.app.settings.speed = "instant";
+    pw.document.querySelector('[data-act="new-society"]').click();
+    Array.from(pw.document.querySelectorAll(".modal-body")).pop().querySelector('[data-new="example"][data-id="miniani"]').click();
+    await new Promise(r => setTimeout(r, 30));
+    await ak.runNow();
+    const run = ak.app.runs[ak.soc().id].api.run, i = acts(run, "choice-points").find(e => e.round === 1).i;
+    const list = () => pw.document.querySelector("#traceList"), entry = () => list().querySelector('[data-act="trace-toggle"][data-i="' + i + '"]').parentNode;
+    const programs = Number(pw.document.querySelector('[data-act="trace-filter"][data-id="program"] .cnt').textContent);
+    const quiet = !/is waiting/.test(list().textContent) && run.trace.some(e => e.collecting) && programs === run.trace.filter(e => e.kind === "activation" && e.agentKind === "program" && !e.collecting).length;
+    const head = entry().querySelector(".sum").textContent;
+    entry().querySelector('[data-act="trace-toggle"]').click();
+    const folds = () => Array.from(entry().querySelectorAll('[data-act="more-toggle"]'));
+    const shut = folds().length === 2 && !entry().querySelector(".pseudo") && !entry().querySelector("ul.heard.got") && /Show the 5 messages, in plain words/.test(folds()[0].textContent) && /Show the program \(25 lines\)/.test(folds()[1].textContent);
+    const said = entry().querySelector(".said").textContent;
+    folds()[0].click(); folds()[1].click();
+    const got = entry().querySelectorAll("ul.heard.got li"), pseudo = entry().querySelector(".pseudo");
+    return quiet && /Why Cinderella is like that: Cinderella is slow because of shy/.test(head) && shut && said.indexOf("Scene 1 of 4. Why Cinderella is like that: Cinderella is slow") === 0 &&
+      got.length === 5 && /^Cast sent data:/.test(got[0].textContent) && !!pseudo && /wait for the scene and the experts' suggestions/.test(pseudo.textContent) && folds().every(b => b.getAttribute("aria-expanded") === "true");
+  });
+  T.test("page: with no model, the Helper says it needs one and offers the society's questions to think about, not buttons that can only fail", ["Seeds"], async () => {
+    const { w: pw } = await pageWindow();
+    const ak = pw.__ak;
+    ak.app.settings.connection = "none";
+    pw.document.querySelector('[data-act="new-society"]').click();
+    Array.from(pw.document.querySelectorAll(".modal-body")).pop().querySelector('[data-new="example"][data-id="miniani"]').click();
+    await new Promise(r => setTimeout(r, 30));
+    ak.app.ui.helperOpen = true; ak.renderAll();
+    const none = pw.document.querySelector(".drawer");
+    const offline = !none.querySelector('[data-act="helper-ask"]') && none.querySelectorAll("ul.hmsg-q li").length === 3 && !!none.querySelector('[data-act="settings"]') && /need a model/.test(none.textContent) && /Which agent decides how big Cinderella is\?/.test(none.textContent);
+    ak.app.settings.connection = "pretend"; ak.renderAll();
+    return offline && pw.document.querySelectorAll('.drawer [data-act="helper-ask"]').length === 3;
   });
 }

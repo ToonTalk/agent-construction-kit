@@ -51,13 +51,13 @@ export default function (T, { modelWindow, pageWindow, same }) {
       s.agents.filter(a => a.kind === "program").every(a => a.code.js === Library.LIB[a.typeId].js) && s.link.url === plainOne.link.url && s.intro.length < 420 &&
       !plainOne.agents.some(a => a.kind === "model") && plainOne.rules.every(r => /^m\d+$/.test(r.id));
   });
-  T.test("Mini-Ani with AI voices: the programs-only Mini-Ani says exactly what it said in 1.14.0 (every agent's words, data and Logo in the default run)", ["Engine"], async () => {
+  T.test("Mini-Ani with AI voices: the programs-only Mini-Ani says exactly what it said in 1.15.1 (every agent's words, data and Logo in the default run)", ["Engine"], async () => {
     const s = Seeds.makeMiniAni();
     const api = Engine.createRun(s, { runtime: Runtime, seed: 5 });
     api.start({ to: s.starts[0].to, text: s.starts[0].value });
     await api.play();
     const all = JSON.stringify(api.run.trace.filter(e => e.kind === "activation" && !e.collecting).map(e => [e.agentId, e.round, e.response && e.response.text, e.response && e.response.data, e.render && e.render.program, e.error || null]));
-    return createHash("sha256").update(all).digest("hex").slice(0, 12) === "113b57f29d36";   // recorded from 1.14.0
+    return createHash("sha256").update(all).digest("hex").slice(0, 12) === "a754d52e34a2";   // recorded from 1.15.1 (1.14.0 and 1.15.0 said 113b57f29d36: 1.15.1 says why first, names an unknown word once, and Relationships compares in other words)
   });
   T.test("Mini-Ani with AI voices: the AI Animator is asked only when someone's values are chosen (scenes 1, 3 and 4), and its lines are among the Choice Points' reasons", ["Engine"], async () => {
     const r = await ran();

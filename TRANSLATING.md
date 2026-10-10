@@ -51,7 +51,10 @@ Start from `sv/GLOSSARY.md` (the Swedish one): it lists everything that must be 
     You fire when the Cast's words contain “suggest values”, so they must use the Cast's own phrase; the Choice
     Points weigh a line from the agent named in their {You} slot as a person's, so it must be the human agent's name;
     the AI agents' instructions list Ani's words, copied from the Choice Points' and the experts' slots, so translate
-    them with the same words.
+    them with the same words. Its Choice Points (`ani-choice-points`) are made when the page loads from the
+    programs-only ones (`ani-choices`) by `libExtend`, which adds a line of pseudocode, 18 lines of code and changes 3:
+    translate those (and its note, about and three scenarios) with the same words as the programs-only Choice Points,
+    so the added lines fit between the translated ones.
   - **The learner's name** (“You”): the engine names the start's sender “You”; the Escalator program checks
     `input.from === "You"`, and the human agents in Joke Workshop and Tic-Tac-Toe are named “You”. All must match.
   - Vote and the Fool the Eyes Referee compare `input.from` with the Dot Counter's name (`params.truth`).

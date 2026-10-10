@@ -148,6 +148,8 @@ Toys / Clothes / Animals / Tools (shelves) → Leksaker / Kläder / Djur / Verkt
   bold → modig · grumpy → grinig · industrious → arbetsam · lazy → lat · brazen → fräck · forward → framfusig ·
   clumsy → klumpig · unfriendly → ovänlig · weak → svag · gorgeous → underbar · unkempt → ovårdad · ugly → ful.
 - Relationships: dominates → dominerar · obeys → lyder · rules → styr · likes → gillar · dislikes → ogillar · loves → älskar.
+  How they are said (1.15.1): “the Stepmother, compared with Cinderella: faster …” → “Styvmodern, jämfört med Askungen:
+  snabbare …”; in the Choice Points' reasons, “faster than X” → “snabbare än X” and “same speed as X” → “samma fart som X”.
 - Taste: energy → energi · flashiness → prålighet · variety → variation · obviousness → tydlighet · complexity →
   komplexitet; “the film's ” → “filmens ”.
 - Ways of showing (the Method Chooser and the Director compare them): keeps away → håller sig undan · chases off →

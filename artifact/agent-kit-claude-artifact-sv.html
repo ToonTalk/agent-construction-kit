@@ -353,7 +353,7 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 .guide ul,.guide ol{padding-left:20px}
 
 /* words on screen: introductions, Markdown, Logo, read-only pseudocode */
-.qcard .intro{font-size:13.5px;color:var(--ink-soft);margin:4px 0 8px}
+.qcard .intro{font-size:13.5px;color:var(--ink-soft);margin:4px 0 8px}.qcard .intro.link{overflow-wrap:anywhere}
 .stage .intro{font-size:13.5px;color:var(--ink-soft);margin:0 0 10px}
 .mobile-only{display:none}
 @media (max-width:820px){.mobile-only{display:block}}
@@ -402,6 +402,8 @@ button.achip:hover{border-color:var(--k);color:var(--ink)}
 .filters .cnt{font-weight:800;opacity:.65;margin-left:2px}
 .slot-note{margin-top:4px}
 .heard{background:#F3F6FA;border:1px solid var(--line);border-radius:9px;padding:6px 9px;font-size:13px;overflow-wrap:anywhere}
+ul.heard.got{margin:0;padding-left:26px}ul.heard.got li{margin:2px 0}
+.hmsg-q{margin:0;padding-left:22px;font-size:13px;color:var(--ink-soft)}.hmsg-q li{margin:3px 0}
 .challenge .who.tests{font-style:italic}
 textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-height:1.55}
 .play-as{margin-left:auto;font-weight:700}
@@ -433,7 +435,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.15.0";
+AK.VERSION = "1.15.1";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -468,6 +470,7 @@ const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g,
 const CONTROL_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
 function cleanText(s, max) { return String(s == null ? "" : s).replace(/\r\n?/g, "\n").replace(CONTROL_RE, "").slice(0, max || 4000); }
 function cleanName(s, max) { return cleanText(s, 400).replace(/[<>`"\\{}]/g, "").replace(/\s+/g, " ").trim().slice(0, max || 40); }
+function cleanLine(s, max) { return cleanText(s, 400).replace(/[<>`\\]/g, "").replace(/\s+/g, " ").trim().slice(0, max || 300); }   // like cleanName, but keeps { } and quotes: a question can name a slot
 function cleanId(s) { return String(s == null ? "" : s).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40); }
 const COLOR_RE = /^(#[0-9a-f]{3,8}|[a-z]{3,20}|(rgb|rgba|hsl|hsla)\([0-9.,%\s]{1,40}\))$/i;
 function cleanColor(s) { const c = String(s == null ? "" : s).trim().toLowerCase().slice(0, 60); return COLOR_RE.test(c) ? c : ""; }
@@ -537,7 +540,7 @@ const now = () => (typeof performance !== "undefined" && performance && performa
 const plural = (n, w) => { const p = String(w).split("|"); return n + " " + (p.length > 1 ? (n === 1 ? p[0] : p[1]) : p[0] + (n === 1 ? "" : "s")); };   // "agent|agenter" picks a form; a plain word gets an "s"
 const fmt = n => String(Math.round(n * 100) / 100);
 
-AK.util = { hash, mulberry32, clone, deepEqual, esc, cleanText, cleanName, cleanId, cleanColor, safeData, stripMd, extractProgram, parseJsonTolerant, withTimeout, sleep, now, plural };
+AK.util = { hash, mulberry32, clone, deepEqual, esc, cleanText, cleanName, cleanLine, cleanId, cleanColor, safeData, stripMd, extractProgram, parseJsonTolerant, withTimeout, sleep, now, plural };
 
 /* ===== SECTION: SAFE JS (tokenizer, static check, instrumenter) ===== */
 // Programmed agents are small JavaScript (drawings are Logo, which never becomes JavaScript). Before a program runs:
@@ -1029,7 +1032,8 @@ function makeH(seed, guard) {
 // The turtle: records drawing operations as plain data. Canvas 512 x 512, starts in the middle facing up.
 // It works in canvas units (x from the left, y down from the top, heading 0 = right); Logo converts.
 // WAIT makes a film: each WAIT keeps the picture so far as one frame, at most 240 frames and 100,000 lines, dots and
-// labels in all. A picture changed after the last WAIT is kept as a closing frame, so a film ends on its picture.
+// labels in all. A picture changed after the last WAIT is kept as a closing frame, and a film cut short gets the picture
+// as its last frame, so a film always ends on its picture. Frames that all show nothing are no film.
 function makeTurtle(guard) {
   let x = 256, y = 256, heading = -90, pen = true, color = "black", width = 2, segments = 0;
   const ops = [], dots = [], labels = [], film = [];
@@ -1095,8 +1099,9 @@ function makeTurtle(guard) {
   };
   return { api: api, result() {
     if (film.length && changed) keep(film[film.length - 1].ms);
+    if (filmCut && film.length) film[film.length - 1] = { ops: ops.filter(o => o.t !== "M"), ms: film[film.length - 1].ms };   // a film cut short still ends on the picture
     const out = { ops: ops, dots: dots, labels: labels, segments: segments };
-    if (film.length > 1) { out.film = film; if (filmCut) out.filmCut = true; }   // a single frame is just a picture
+    if (film.length > 1 && film.some(f => f.ops.length)) { out.film = film; if (filmCut) out.filmCut = true; }   // a single frame, or frames that show nothing, is just a picture
     return out;
   } };
 }
@@ -1583,7 +1588,7 @@ const Logo = (() => {
         const names = idle.length === 1 ? idle[0] : idle.slice(0, -1).join(", ") + " och " + idle[idle.length - 1];
         res.note = "Du lärde sköldpaddan " + names + " men bad den aldrig att rita " + (idle.length === 1 ? idle[0] : "dem") + ". Lägg till en rad där det står " + idle[0] + " efter END.";
       }
-      if (out.filmCut) res.note = (res.note ? res.note + " " : "") + "Filmen klipptes av efter " + plural(out.film.length, "bildruta|bildrutor") + ": en film kan ha högst 240 bildrutor, och sammanlagt 100 000 linjer, prickar och etiketter.";
+      if (out.filmCut) res.note = (res.note ? res.note + " " : "") + "Filmen klipptes av efter " + plural(out.film.length, "bildruta|bildrutor") + ", så dess sista bildruta hoppar till den färdiga bilden: en film kan ha högst 240 bildrutor, och sammanlagt 100 000 linjer, prickar och etiketter.";
       return res;
     } catch (e) {
       let msg = e instanceof RangeError ? "Programmet har för många nivåer inuti varandra för att kunna köras." : String((e && e.message) || e);
@@ -2803,6 +2808,27 @@ function libAgent(def) {
   def.js = def.code.join("\n");
   delete def.pseudo; delete def.code;
   LIB[def.typeId] = def;
+}
+// A library program made from another one (from) with a few more lines: addPseudo and addCode put lines after a line of
+// the other program (by its number there; 0 is before the first), and changeCode replaces some of its code lines. Its
+// line map, slots and scenarios come along, renumbered; lineMap, slots and scenarios add the new ones (lineMap and slots
+// in the new program's numbers), and params adds to its params.
+function libExtend(def) {
+  const L = LIB[def.from];
+  const grow = (lines, adds, changes) => {   // the new lines, and where each old line went
+    const out = [], moved = [0];
+    const put = n => { for (const a of adds || []) if (a[0] === n) out.push(...a[1]); };
+    put(0);
+    lines.forEach((l, i) => { out.push(changes && changes[i + 1] !== undefined ? changes[i + 1] : l); moved.push(out.length); put(i + 1); });
+    return { lines: out, moved };
+  };
+  const p = grow(L.pseudocode.split("\n"), def.addPseudo), j = grow(L.js.split("\n"), def.addCode, def.changeCode);
+  const pieces = (r, moved) => { const out = []; for (let k = r[0]; k <= r[1]; k++) { const n = moved[k], last = out[out.length - 1]; if (last && last[1] === n - 1) last[1] = n; else out.push([n, n]); } return out; };
+  const lineMap = [];
+  for (const e of L.lineMap) for (const a of pieces(e.pseudo, p.moved)) for (const b of pieces(e.js, j.moved)) lineMap.push({ pseudo: a, js: b });
+  libAgent({ typeId: def.typeId, name: L.name, emoji: L.emoji, gate: L.gate, collect: L.collect, group: L.group, note: def.note || L.note, about: def.about || L.about,
+    pseudo: p.lines, code: j.lines, lineMap: lineMap.concat(def.lineMap || []), params: Object.assign(clone(L.params), def.params),
+    slots: L.slots.map(s => Object.assign({}, s, { line: p.moved[s.line] })).concat(def.slots || []), scenarios: clone(L.scenarios).concat(def.scenarios || []) });
 }
 const RINGS_3X5 = "PENUP SETXY -80 40 SETHEADING 90\nREPEAT 3 [\n  REPEAT 5 [PENDOWN CIRCLE 7 PENUP FORWARD 40]\n  BACK 200 RIGHT 90 FORWARD 40 LEFT 90\n]";
 const B = "black", R = "red", U = "blue", GR = "green";
@@ -4164,7 +4190,7 @@ libAgent({
     "        suggestions.push({ who: c.name, of: first ? r.whom : r.who, word: verb, kind: \"comparison\", like: way.like, turn: first ? way.turn : !way.turn, says: own(way.like).says });",
     "      }",
     "    }",
-    "    said.push(\"- \" + call(r.who) + \" \" + verb + \" \" + call(r.whom) + (ways[0].like !== verb ? \" (\" + (ways[0].turn ? \"motsatsen till \" : \"som \") + ways[0].like + \")\" : \"\") + \" → \" + call(r.who) + \": \" + (ways[0].turn ? \"motsatsen till ”\" + own(ways[0].like).says + \"”\" : own(ways[0].like).says) + \" än \" + call(r.whom) + \"; \" + call(r.whom) + \": tvärtom\");",
+    "    said.push(\"- \" + call(r.who) + \" \" + verb + \" \" + call(r.whom) + (ways[0].like !== verb ? \" (\" + (ways[0].turn ? \"motsatsen till \" : \"som \") + ways[0].like + \")\" : \"\") + \" → \" + call(r.who) + \", jämfört med \" + call(r.whom) + \": \" + (ways[0].turn ? \"motsatsen till ”\" + own(ways[0].like).says + \"”\" : own(ways[0].like).says) + \"; \" + call(r.whom) + \": tvärtom\");",
     "  }",
     "  const missing = Object.keys(unknown).map(n => unknown[n].join(\", \") + \" (\" + call(n) + \")\").join(\"; \");",
     "  const say = (said.length ? said.join(\"\\n\") : \"Det finns inga jämförelser att göra för någon som väljs.\") + (missing ? \"\\n\\nJag känner inte till de här orden: \" + missing + \".\" : \"\");",
@@ -4187,7 +4213,7 @@ libAgent({
   pseudo: [
     "filmens smak, som Ken ställde in den för sin Askungen-film: energi {hög}, prålighet {låg}, variation {medel}",
     "tydlighet {hög} (låg ger en subtil film), komplexitet {låg} (låg visar en sak i taget)",
-    "filmens fokus är {Askungen}: Valpunkterna väljer först för fokus",
+    "filmens fokus är {Askungen} (eller den första som Rollistan nämner, om ingen i berättelsen heter så): Valpunkterna väljer först för fokus",
     "när någons värden väljs, föreslår energin sin nivå för {fart, livlighet, kurvor, ryckighet, mål}",
     "och prålighet sin nivå för dem, och för {storlek, ljusstyrka} också (Kens anteckning i glosug)",
     "skicka smaken vidare, till Valpunkterna och Regissören"
@@ -4202,14 +4228,15 @@ libAgent({
     "  const suggestions = [];",
     "  if (choosing && taste.energy && taste.energy !== \"-\") suggestions.push({ who: \"*\", word: \"energi\", kind: \"taste\", says: moving.map(t => taste.energy + \" \" + t).join(\", \") });",
     "  if (choosing && taste.flashiness && taste.flashiness !== \"-\") suggestions.push({ who: \"*\", word: \"prålighet\", kind: \"taste\", says: moving.concat(more).map(t => taste.flashiness + \" \" + t).join(\", \") });",
-    "  let say = \"Filmens smak: energi \" + taste.energy + \", prålighet \" + taste.flashiness + \", variation \" + taste.variety + \", tydlighet \" + taste.obviousness + \", komplexitet \" + taste.complexity + \". Dess fokus är \" + taste.focus + \".\";",
-    "  const cast = (input.data || {}).cast || [];",
-    "  if (cast.length && !cast.some(n => String(n).toLowerCase() === taste.focus.toLowerCase())) say += \" \" + taste.focus + \" finns inte i den här berättelsen, så ingen väljs först.\";",
+    "  const cast = (input.data || {}).cast || [], call = n => ((input.data || {}).called || {})[n] || n;",
+    "  const missing = cast.length && !cast.some(n => String(n).toLowerCase() === taste.focus.toLowerCase()) ? taste.focus : \"\";",
+    "  if (missing) taste.focus = String(cast[0]);",
+    "  let say = \"Filmens smak: energi \" + taste.energy + \", prålighet \" + taste.flashiness + \", variation \" + taste.variety + \", tydlighet \" + taste.obviousness + \", komplexitet \" + taste.complexity + \". Dess fokus är \" + call(taste.focus) + (missing ? \", den första som Rollistan nämner, eftersom \" + missing + \" inte finns i den här berättelsen\" : \"\") + \".\";",
     "  say += suggestions.length ? \"\\n\\nFör alla som väljs: \" + suggestions.map(s => s.word + \" föreslår \" + s.says).join(\"; \") + \".\" : \"\\n\\nIngen väljs, så smaken har inget att föreslå.\";",
     "  return { taste: taste, count: suggestions.length, suggestions: suggestions, say: say };",
     "}"
   ],
-  lineMap: [{ pseudo: [1, 1], js: [2, 2] }, { pseudo: [1, 1], js: [4, 4] }, { pseudo: [2, 2], js: [2, 2] }, { pseudo: [2, 2], js: [4, 4] }, { pseudo: [3, 3], js: [4, 4] }, { pseudo: [3, 3], js: [11, 12] }, { pseudo: [4, 4], js: [3, 3] }, { pseudo: [4, 4], js: [5, 8] }, { pseudo: [4, 4], js: [13, 13] }, { pseudo: [5, 5], js: [3, 3] }, { pseudo: [5, 5], js: [5, 5] }, { pseudo: [5, 5], js: [9, 9] }, { pseudo: [5, 5], js: [13, 13] }, { pseudo: [6, 6], js: [10, 10] }, { pseudo: [6, 6], js: [14, 15] }],
+  lineMap: [{ pseudo: [1, 1], js: [2, 2] }, { pseudo: [1, 1], js: [4, 4] }, { pseudo: [2, 2], js: [2, 2] }, { pseudo: [2, 2], js: [4, 4] }, { pseudo: [3, 3], js: [4, 4] }, { pseudo: [3, 3], js: [10, 13] }, { pseudo: [4, 4], js: [3, 3] }, { pseudo: [4, 4], js: [5, 8] }, { pseudo: [4, 4], js: [14, 14] }, { pseudo: [5, 5], js: [3, 3] }, { pseudo: [5, 5], js: [5, 5] }, { pseudo: [5, 5], js: [9, 9] }, { pseudo: [5, 5], js: [14, 14] }, { pseudo: [6, 6], js: [13, 13] }, { pseudo: [6, 6], js: [15, 16] }],
   params: { energy: "hög", flashiness: "låg", variety: "medel", obviousness: "hög", complexity: "låg", focus: "Askungen", energyFor: "fart, livlighet, kurvor, ryckighet, mål", flashFor: "storlek, ljusstyrka" },
   slots: [{ line: 1, text: "hög", param: "energy" }, { line: 1, text: "låg", param: "flashiness" }, { line: 1, text: "medel", param: "variety" }, { line: 2, text: "hög", param: "obviousness" }, { line: 2, text: "låg", param: "complexity" }, { line: 3, text: "Askungen", param: "focus" }, { line: 4, text: "fart, livlighet, kurvor, ryckighet, mål", param: "energyFor" }, { line: 5, text: "storlek, ljusstyrka", param: "flashFor" }],
   scenarios: [
@@ -4217,11 +4244,11 @@ libAgent({
     {"id":"s2","name":"energin föreslår sin nivå för varje sak den gäller","input":{"data":{"choose":[{"name":"Ann","words":[]}]}},"expect":{"count":2,"sayContains":"energi föreslår {=energy} fart"}},
     {"id":"s3","name":"prålighet föreslår sin nivå för storlek och ljusstyrka också","input":{"data":{"choose":[{"name":"Ann","words":[]}]}},"expect":{"sayContains":"{=flashiness} storlek, {=flashiness} ljusstyrka"}},
     {"id":"s4","name":"inga förslag när ingen väljs","input":{"data":{"choose":[]}},"expect":{"count":0,"suggestions":[]}},
-    {"id":"s5","name":"ett fokus som inte finns i berättelsen nämns","input":{"data":{"cast":["Ann","Bob"],"choose":[]}},"expect":{"sayContains":"{=focus} finns inte i den här berättelsen"}}
+    {"id":"s5","name":"ett fokus som inte finns i berättelsen nämns, och den första som Rollistan nämner blir fokus i stället","input":{"data":{"cast":["Ann","Bob"],"choose":[]}},"expect":{"taste":{"energy":"=energy","flashiness":"=flashiness","variety":"=variety","obviousness":"=obviousness","complexity":"=complexity","focus":"Ann"},"sayContains":"Dess fokus är Ann, den första som Rollistan nämner, eftersom {=focus} inte finns i den här berättelsen."}}
   ]
 });
 libAgent({
-  typeId: "ani-choice-points", name: "Valpunkterna", emoji: "⚖️", gate: false, collect: true, group: "Mini-Anis program, som tillsammans gör en berättelse till en film", note: "samlar · väger experternas förslag, avgör deras strider och säger varför",
+  typeId: "ani-choices", name: "Valpunkterna", emoji: "⚖️", gate: false, collect: true, group: "Mini-Anis program, som tillsammans gör en berättelse till en film", note: "samlar · väger experternas förslag, avgör deras strider och säger varför",
   about: "Väntar på scenen och experternas förslag, och väljer sedan varje figurs 13 värden, från hur snabb till hur ljus den är. Den lägger ihop förslagen, avgör varje strid öppet (mer än dubbelt så starkt vinner; lågt och högt möts på mitten), låter jämförelser vänta på den andras värde och säger varför varje värde vann.",
   pseudo: [
     "vänta på scenen och experternas förslag: upp till {20} meddelanden, eller tills ingen annan har något att säga",
@@ -4237,7 +4264,6 @@ libAgent({
     "ett förslag är ett ord med {lite} (svagare), {mycket} (starkare) eller {inte} (utesluter det) framför",
     "ett förslag räknar sin styrka (lite 1, vanlig 2, mycket 3) gånger var det kom ifrån:",
     "  figurens eget ord {3}, ett ord som betyder samma sak {2}, motsatsen till ett ord {1}, en jämförelse {4}, filmens smak {1}",
-    "  en rad som ”Askungen: lite långsam, stor” från en AI-agent {2}, eller från {Du} {3}; bara radens 4 första förslag räknas",
     "välj värden för alla som Rollistan säger väljs: filmens fokus först, sedan i Rollistans ordning",
     "för varje sak hos var och en: lägg ihop förslagen för varje värde",
     "  en jämförelse som \"större än X\" väntar på X:s värde, och utesluter sedan X:s värde och de lägre",
@@ -4249,7 +4275,7 @@ libAgent({
     "  om ingen föreslog något blir det medel; om allt är uteslutet behåller en jämförelse sin egen riktning",
     "en subtil film behåller bara var och ens {3} starkaste skillnader från medel",
     "kom ihåg värdena; en ersättare får variationen och jämförelserna som dess figur hade, och sedan blir dess värden figurens",
-    "säg allas värden, förklara {Askungen} utförligt, säg hur striderna avgjordes, och nämn varje ord som ingen expert kände till"
+    "förklara {Askungen} utförligt först (eller den första som väljs, om ingen i berättelsen heter så), säg sedan allas värden och hur striderna avgjordes, och nämn varje ord som ingen expert kände till, en gång"
   ],
   code: [
     "function run(input, params, h) {",
@@ -4291,20 +4317,19 @@ libAgent({
     "    const hit = vocab.get(p);",
     "    return hit ? { el: hit.el, v: hit.v, dir: hit.dir, s: s, not: not } : null;",
     "  };",
-    "  const weights = { own: +params.own || 0, same: +params.alike || 0, opposite: +params.opposite || 0, comparison: +params.comparison || 0, taste: +params.taste || 0, ai: +params.ai || 0, you: +params.you || 0 };",
+    "  const weights = { own: +params.own || 0, same: +params.alike || 0, opposite: +params.opposite || 0, comparison: +params.comparison || 0, taste: +params.taste || 0 };",
     "  const memory = input.memory || {};",
     "  for (const k of [\"values\", \"nets\", \"counts\", \"without\", \"variety\"]) {",
     "    memory[k] = memory[k] || {};",
     "  }",
     "  memory.looksFrom = memory.looksFrom || [];",
     "  let scene = null, taste = {};",
-    "  const raw = [], knew = {}, unknown = {}, voices = [];",
+    "  const raw = [], knew = {}, unknown = {};",
     "  for (const m of input.messages || []) {",
     "    h.tick();",
     "    const d = m.data || {};",
     "    if (Array.isArray(d.choose)) scene = d;",
     "    if (d.taste) taste = d.taste;",
-    "    if (!d.choose && !d.taste && !d.suggestions && m.text) voices.push(m);",
     "    for (const x of d.suggestions || []) {",
     "      h.tick();",
     "      raw.push({ by: m.from, x: x });",
@@ -4330,22 +4355,6 @@ libAgent({
     "  const beingChosen = new Set(choose.map(c => c.name));",
     "  const sugs = new Map(), bad = [], looksFrom = [];",
     "  let n = 0;",
-    "  const PERSON = low(params.person), unused = [];",
-    "  const isCalled = (name, t) => low(name) === t || low(call(name)) === t;",
-    "  for (const m of voices) {",
-    "    h.tick();",
-    "    for (const line of String(m.text).split(\"\\n\")) {",
-    "      h.tick();",
-    "      const at = line.indexOf(\":\"), t = h.words(line.slice(0, Math.max(at, 0))).join(\" \");",
-    "      const c = at > 0 ? choose.find(x => isCalled(x.name, t)) || choose.find(x => x.of && isCalled(x.of, t)) : null;",
-    "      const says = c ? line.slice(at + 1).split(\"(\")[0].split(\".\").join(\"\").split(\",\").filter(x => x.trim()) : [];",
-    "      if (c) raw.push({ by: m.from, x: { who: c.name, word: m.from, kind: low(m.from) === PERSON ? \"you\" : \"ai\", says: says.slice(0, 4).join(\",\") } });",
-    "      for (const extra of c ? says.slice(4) : line.trim() ? [line.trim()] : []) {",
-    "        h.tick();",
-    "        unused.push(\"“\" + extra.trim().slice(0, 50) + \"” (\" + m.from + \")\");",
-    "      }",
-    "    }",
-    "  }",
     "  for (const r of raw) {",
     "    h.tick();",
     "    const x = r.x;",
@@ -4361,7 +4370,7 @@ libAgent({
     "      const kind = p.dir !== undefined ? \"comparison\" : x.kind;",
     "      const turn = !!x.turn;",
     "      const v = p.v === undefined ? undefined : turn ? 4 - p.v : p.v, dir = p.dir === undefined ? undefined : turn ? -p.dir : p.dir;",
-    "      const said = p.dir !== undefined ? (dir === 0 ? low(params.same) + \" \" + names[p.el] : words[p.el][dir > 0 ? 3 : 2]) + \" än \" + call(x.of) + \" (\" + x.word + \")\"",
+    "      const said = p.dir !== undefined ? (dir === 0 ? low(params.same) + \" \" + names[p.el] + \" som \" : words[p.el][dir > 0 ? 3 : 2] + \" än \") + call(x.of) + \" (\" + x.word + \")\"",
     "        : kind === \"taste\" ? \"filmens \" + x.word",
     "        : x.word + (x.from ? \" (\" + x.from + \" för med sig det)\" : \"\") + (kind === \"same\" ? \" (som \" + x.like + \")\" : \"\") + (kind === \"opposite\" ? \" (motsatsen till \" + x.like + \")\" : \"\");",
     "      for (const who of targets) {",
@@ -4534,19 +4543,22 @@ libAgent({
     "    strengths[name] = beingChosen.has(name) ? { shape: nets[name].shape, detail: nets[name].detail } : beforeNets[name];",
     "    summary[name] = describe(vals);",
     "  }",
-    "  const lost = [];",
+    "  const lost = [], told = memory.told || [];",
     "  for (const who of Object.keys(unknown)) {",
     "    h.tick();",
     "    for (const w of unknown[who]) {",
     "      h.tick();",
-    "      if (lost.indexOf(w + \" (\" + call(who) + \")\") < 0 && (knew[who] || []).indexOf(w) < 0) lost.push(w + \" (\" + call(who) + \")\");",
+    "      if (lost.indexOf(w + \" (\" + call(who) + \")\") < 0 && told.indexOf(w + \" (\" + call(who) + \")\") < 0 && (knew[who] || []).indexOf(w) < 0) lost.push(w + \" (\" + call(who) + \")\");",
     "    }",
     "  }",
-    "  let say = \"**Scen \" + scene.scene + \" av \" + scene.of + \".** \";",
-    "  if (!choose.length) say += \"Ingens ord har ändrats, så alla behåller värdena som valdes förut:\\n\" + Object.keys(summary).map(nm => \"- **\" + call(nm) + \"**: \" + summary[nm]).join(\"\\n\");",
-    "  else say += (frozen ? \"Någons ord har ändrats, så jag valde igen för \" + joinAnd(choose.map(c => c.name)) + \", med den variation och de jämförelser som det första valet gav:\\n\" : \"Jag valde allas värden en gång, för hela filmen\" + (choose.some(c => low(c.name) === focus) ? \", \" + call(choose[0].name) + \" först, som filmens fokus\" : \"\") + \":\\n\") + choose.map(c => \"- **\" + call(c.name) + \"**: \" + describe(chosen[c.name])).join(\"\\n\");",
-    "  if (changed.length) say += \"\\n\\nDet här ändrades: \" + changed.join(\"; \") + \".\";",
-    "  const target = choose.filter(c => low(c.of || c.name) === low(params.explain)).pop();",
+    "  memory.told = told.concat(lost);",
+    "  let everyone = \"\", say = \"**Scen \" + scene.scene + \" av \" + scene.of + \".** \";",
+    "  if (!choose.length) everyone = \"Ingens ord har ändrats, så alla behåller värdena som valdes förut:\\n\" + Object.keys(summary).map(nm => \"- **\" + call(nm) + \"**: \" + summary[nm]).join(\"\\n\");",
+    "  else everyone = (frozen ? \"Någons ord har ändrats, så jag valde igen för \" + joinAnd(choose.map(c => call(c.name))) + \", med den variation och de jämförelser som det första valet gav:\\n\" : \"Jag valde allas värden en gång, för hela filmen\" + (choose.some(c => low(c.name) === focus) ? \", \" + call(choose[0].name) + \" först, som filmens fokus\" : \"\") + \":\\n\") + choose.map(c => \"- **\" + call(c.name) + \"**: \" + describe(chosen[c.name])).join(\"\\n\");",
+    "  if (changed.length) everyone += \"\\n\\nDet här ändrades: \" + changed.join(\"; \") + \".\";",
+    "  const named = choose.filter(c => low(c.of || c.name) === low(params.explain)).pop();",
+    "  const target = named || ((scene.cast || []).some(n => low(n) === low(params.explain)) ? null : choose[0]);",
+    "  const instead = target && !named && !frozen ? \" \" + params.explain + \" finns inte i den här berättelsen, så jag förklarar \" + call(target.name) + \", den första som valdes.\" : \"\";",
     "  const explained = [], FILM = \"filmens \", STRONG = \"mer än \" + ratio + \" gånger så starkt\";",
     "  let went = \"\", medium = \"\";",
     "  if (target) {",
@@ -4566,23 +4578,22 @@ libAgent({
     "  }",
     "  const parts = [[tally.more, STRONG], [tally.middle, \"möttes på mitten\"], [tally.stronger, \"starkare\"], [tally.first, \"sades först\"], [tally.alone, \"utan motstånd\"], [tally.nobody, \"inget föreslaget\"], [tally.self, \"en jämförelse behöll sin riktning\"]].filter(x => x[0] > 0);",
     "  const settled = \"**Avgjort:** \" + parts.map(x => x[0] + \" \" + x[1]).join(\", \") + \". \" + tally.waited + (tally.waited === 1 ? \" jämförelse\" : \" jämförelser\") + \" väntade på någon annans värde\" + (tally.without ? \"; \" + tally.without + \" gick utan, eftersom två val väntade på varandra (Anis ”dödliga omfamning”)\" : \"\") + \".\";",
-    "  const tail = (lost.length ? \"\\n\\n**Ord som ingen expert kände till:** \" + lost.join(\", \") + \".\" : \"\") + (bad.length ? \"\\n\\n**Jag kunde inte läsa:** \" + bad.join(\", \") + \".\" : \"\") +",
-    "    (unused.length ? \"\\n\\n**Inte använt** (bara rader om någon som väljs nu räknas, och bara deras 4 första förslag): \" + unused.slice(0, 6).join(\", \") + (unused.length > 6 ? \" …\" : \"\") + \".\" : \"\");",
-    "  const whyText = list => (target && (list.length || medium) ? \"\\n\\n**Varför \" + call(target.name) + \" är sådan:**\" + (list.length ? \" \" + call(target.name) + \" är \" + list.slice().sort((a, b) => a.i - b.i).map(x => x.text).join(\"; \") + \".\" : \"\") + medium + went : \"\");",
+    "  const tail = (lost.length ? \"\\n\\n**Ord som ingen expert kände till:** \" + lost.join(\", \") + \".\" : \"\") + (bad.length ? \"\\n\\n**Jag kunde inte läsa:** \" + bad.join(\", \") + \".\" : \"\");",
+    "  const whyText = list => (target && (list.length || medium) ? \"**Varför \" + call(target.name) + \" är sådan:**\" + instead + (list.length ? \" \" + call(target.name) + \" är \" + list.slice().sort((a, b) => a.i - b.i).map(x => x.text).join(\"; \") + \".\" : \"\") + medium + went : \"\");",
     "  let kept = explained.slice();",
-    "  if ((say + whyText(kept) + \"\\n\\n\" + settled + tail).length > 1960) medium = \"\";",
-    "  while (kept.length && (say + whyText(kept) + \"\\n\\n\" + settled + tail).length > 1960) {",
+    "  if ((say + whyText(kept) + \"\\n\\n\" + everyone + \"\\n\\n\" + settled + tail).length > 1960) medium = \"\";",
+    "  while (kept.length && (say + whyText(kept) + \"\\n\\n\" + everyone + \"\\n\\n\" + settled + tail).length > 1960) {",
     "    h.tick();",
     "    kept = kept.sort((a, b) => b.p - a.p).slice(0, -1);",
     "  }",
-    "  say += whyText(kept) + (kept.length < explained.length ? \" (Resten finns i mina data, under why.)\" : \"\") + (choose.length ? \"\\n\\n\" + settled : \"\") + tail;",
+    "  say += (whyText(kept) ? whyText(kept) + (kept.length < explained.length ? \" (Resten finns i mina data, under why.)\" : \"\") + \"\\n\\n\" : \"\") + everyone + (choose.length ? \"\\n\\n\" + settled : \"\") + tail;",
     "  return { count: choose.length, scene: scene.scene, of: scene.of, title: scene.title, cast: scene.cast, called: scene.called, onStage: scene.onStage, events: scene.events, relations: scene.relations, friends: scene.friends,",
     "    standIns: choose.filter(c => c.of).map(c => ({ name: c.name, of: c.of })), choices: choices, strengths: strengths, summary: summary, words: words, looksFrom: memory.looksFrom, taste: taste, tasteLevel: tasteLevel, why: why, unknown: lost, say: say, memory: memory };",
     "}"
   ],
-  lineMap: [{ pseudo: [1, 1], js: [46, 52] }, { pseudo: [1, 1], js: [54, 57] }, { pseudo: [1, 1], js: [66, 66] }, { pseudo: [2, 2], js: [2, 4] }, { pseudo: [2, 2], js: [8, 18] }, { pseudo: [2, 2], js: [21, 22] }, { pseudo: [3, 3], js: [8, 18] }, { pseudo: [3, 3], js: [21, 22] }, { pseudo: [4, 4], js: [8, 18] }, { pseudo: [4, 4], js: [21, 22] }, { pseudo: [5, 5], js: [8, 18] }, { pseudo: [5, 5], js: [21, 22] }, { pseudo: [6, 6], js: [8, 18] }, { pseudo: [6, 6], js: [21, 22] }, { pseudo: [7, 7], js: [8, 18] }, { pseudo: [7, 7], js: [21, 22] }, { pseudo: [8, 8], js: [8, 18] }, { pseudo: [8, 8], js: [21, 22] }, { pseudo: [9, 9], js: [8, 18] }, { pseudo: [9, 9], js: [21, 22] }, { pseudo: [10, 10], js: [7, 8] }, { pseudo: [10, 10], js: [19, 20] }, { pseudo: [10, 10], js: [22, 22] }, { pseudo: [11, 11], js: [23, 39] }, { pseudo: [11, 11], js: [102, 102] }, { pseudo: [11, 11], js: [184, 188] }, { pseudo: [12, 12], js: [40, 40] }, { pseudo: [12, 12], js: [107, 107] }, { pseudo: [12, 12], js: [118, 118] }, { pseudo: [13, 13], js: [40, 40] }, { pseudo: [13, 13], js: [107, 109] }, { pseudo: [13, 13], js: [111, 112] }, { pseudo: [13, 13], js: [118, 118] }, { pseudo: [14, 14], js: [40, 40] }, { pseudo: [14, 14], js: [47, 47] }, { pseudo: [14, 14], js: [53, 53] }, { pseudo: [14, 14], js: [79, 94] }, { pseudo: [14, 14], js: [119, 119] }, { pseudo: [14, 14], js: [316, 316] }, { pseudo: [15, 15], js: [67, 67] }, { pseudo: [15, 15], js: [74, 76] }, { pseudo: [15, 15], js: [115, 115] }, { pseudo: [15, 15], js: [143, 147] }, { pseudo: [15, 15], js: [150, 150] }, { pseudo: [16, 16], js: [45, 45] }, { pseudo: [16, 16], js: [77, 78] }, { pseudo: [16, 16], js: [95, 101] }, { pseudo: [16, 16], js: [113, 114] }, { pseudo: [16, 16], js: [116, 117] }, { pseudo: [16, 16], js: [119, 122] }, { pseudo: [16, 16], js: [148, 149] }, { pseudo: [16, 16], js: [157, 158] }, { pseudo: [16, 16], js: [160, 161] }, { pseudo: [16, 16], js: [189, 192] }, { pseudo: [16, 16], js: [241, 241] }, { pseudo: [16, 16], js: [269, 269] }, { pseudo: [17, 17], js: [110, 110] }, { pseudo: [17, 17], js: [129, 129] }, { pseudo: [17, 17], js: [151, 154] }, { pseudo: [17, 17], js: [162, 163] }, { pseudo: [17, 17], js: [168, 174] }, { pseudo: [17, 17], js: [176, 183] }, { pseudo: [17, 17], js: [240, 240] }, { pseudo: [18, 18], js: [135, 135] }, { pseudo: [18, 18], js: [151, 152] }, { pseudo: [18, 18], js: [155, 156] }, { pseudo: [18, 18], js: [164, 167] }, { pseudo: [18, 18], js: [193, 193] }, { pseudo: [18, 18], js: [238, 240] }, { pseudo: [18, 18], js: [266, 266] }, { pseudo: [18, 18], js: [301, 301] }, { pseudo: [18, 18], js: [311, 311] }, { pseudo: [19, 19], js: [69, 73] }, { pseudo: [19, 19], js: [125, 128] }, { pseudo: [19, 19], js: [136, 140] }, { pseudo: [19, 19], js: [194, 203] }, { pseudo: [20, 20], js: [204, 206] }, { pseudo: [20, 20], js: [219, 219] }, { pseudo: [21, 21], js: [142, 142] }, { pseudo: [21, 21], js: [207, 208] }, { pseudo: [21, 21], js: [217, 224] }, { pseudo: [22, 22], js: [207, 208] }, { pseudo: [22, 22], js: [225, 233] }, { pseudo: [23, 23], js: [159, 159] }, { pseudo: [23, 23], js: [175, 175] }, { pseudo: [23, 23], js: [208, 216] }, { pseudo: [24, 24], js: [69, 73] }, { pseudo: [24, 24], js: [242, 253] }, { pseudo: [25, 25], js: [41, 45] }, { pseudo: [25, 25], js: [123, 124] }, { pseudo: [25, 25], js: [130, 135] }, { pseudo: [25, 25], js: [194, 198] }, { pseudo: [25, 25], js: [234, 236] }, { pseudo: [25, 25], js: [254, 270] }, { pseudo: [25, 25], js: [275, 280] }, { pseudo: [25, 25], js: [282, 282] }, { pseudo: [25, 25], js: [294, 294] }, { pseudo: [25, 25], js: [325, 327] }, { pseudo: [26, 26], js: [5, 6] }, { pseudo: [26, 26], js: [58, 65] }, { pseudo: [26, 26], js: [68, 68] }, { pseudo: [26, 26], js: [103, 106] }, { pseudo: [26, 26], js: [141, 141] }, { pseudo: [26, 26], js: [237, 237] }, { pseudo: [26, 26], js: [271, 274] }, { pseudo: [26, 26], js: [281, 281] }, { pseudo: [26, 26], js: [283, 293] }, { pseudo: [26, 26], js: [295, 315] }, { pseudo: [26, 26], js: [317, 324] }],
-  params: { wait: 20, speed: "fart: långsam/snabb, långsammare/snabbare", liveliness: "livlighet: lugn/livlig, lugnare/livligare", curves: "kurvor: rak/kurvig, rakare/kurvigare", jerkiness: "ryckighet: jämn/ryckig, jämnare/ryckigare", purpose: "mål: planlös/målmedveten, mer planlös/mer målmedveten", friends: "vänner: vänskygg/vänsökande", strangers: "främlingar: främlingsskygg/främlingsvänlig", size: "storlek: liten/stor, mindre/större", shape: "form: rund/spetsig, rundare/spetsigare", detail: "detaljer: enkel/sirlig, enklare/sirligare", brightness: "ljusstyrka: mörk/ljus, mörkare/ljusare", warmth: "värme: kall/varm, kallare/varmare", height: "höjd: längre ner/högre upp, under/över", levels: "låg, medel, hög", same: "samma", abit: "lite", very: "mycket", not: "inte", own: 3, alike: 2, opposite: 1, comparison: 4, taste: 1, ai: 2, person: "Du", you: 3, ratio: 2, subtle: 3, explain: "Askungen" },
-  slots: [{ line: 1, text: "20", param: "wait" }, { line: 3, text: "fart: långsam/snabb, långsammare/snabbare", param: "speed" }, { line: 3, text: "livlighet: lugn/livlig, lugnare/livligare", param: "liveliness" }, { line: 4, text: "kurvor: rak/kurvig, rakare/kurvigare", param: "curves" }, { line: 4, text: "ryckighet: jämn/ryckig, jämnare/ryckigare", param: "jerkiness" }, { line: 5, text: "mål: planlös/målmedveten, mer planlös/mer målmedveten", param: "purpose" }, { line: 6, text: "vänner: vänskygg/vänsökande", param: "friends" }, { line: 6, text: "främlingar: främlingsskygg/främlingsvänlig", param: "strangers" }, { line: 7, text: "storlek: liten/stor, mindre/större", param: "size" }, { line: 7, text: "form: rund/spetsig, rundare/spetsigare", param: "shape" }, { line: 8, text: "detaljer: enkel/sirlig, enklare/sirligare", param: "detail" }, { line: 8, text: "ljusstyrka: mörk/ljus, mörkare/ljusare", param: "brightness" }, { line: 9, text: "värme: kall/varm, kallare/varmare", param: "warmth" }, { line: 9, text: "höjd: längre ner/högre upp, under/över", param: "height" }, { line: 10, text: "låg, medel, hög", param: "levels" }, { line: 10, text: "samma", param: "same" }, { line: 11, text: "lite", param: "abit" }, { line: 11, text: "mycket", param: "very" }, { line: 11, text: "inte", param: "not" }, { line: 13, text: "3", param: "own" }, { line: 13, text: "2", param: "alike" }, { line: 13, text: "1", param: "opposite" }, { line: 13, text: "4", param: "comparison" }, { line: 13, text: "1", param: "taste" }, { line: 14, text: "2", param: "ai" }, { line: 14, text: "Du", param: "person" }, { line: 14, text: "3", param: "you" }, { line: 21, text: "2", param: "ratio" }, { line: 24, text: "3", param: "subtle" }, { line: 26, text: "Askungen", param: "explain" }],
+  lineMap: [{ pseudo: [1, 1], js: [46, 56] }, { pseudo: [1, 1], js: [65, 65] }, { pseudo: [2, 2], js: [2, 4] }, { pseudo: [2, 2], js: [8, 18] }, { pseudo: [2, 2], js: [21, 22] }, { pseudo: [3, 3], js: [8, 18] }, { pseudo: [3, 3], js: [21, 22] }, { pseudo: [4, 4], js: [8, 18] }, { pseudo: [4, 4], js: [21, 22] }, { pseudo: [5, 5], js: [8, 18] }, { pseudo: [5, 5], js: [21, 22] }, { pseudo: [6, 6], js: [8, 18] }, { pseudo: [6, 6], js: [21, 22] }, { pseudo: [7, 7], js: [8, 18] }, { pseudo: [7, 7], js: [21, 22] }, { pseudo: [8, 8], js: [8, 18] }, { pseudo: [8, 8], js: [21, 22] }, { pseudo: [9, 9], js: [8, 18] }, { pseudo: [9, 9], js: [21, 22] }, { pseudo: [10, 10], js: [7, 8] }, { pseudo: [10, 10], js: [19, 20] }, { pseudo: [10, 10], js: [22, 22] }, { pseudo: [11, 11], js: [23, 39] }, { pseudo: [11, 11], js: [85, 85] }, { pseudo: [11, 11], js: [167, 171] }, { pseudo: [12, 12], js: [40, 40] }, { pseudo: [12, 12], js: [90, 90] }, { pseudo: [12, 12], js: [101, 101] }, { pseudo: [13, 13], js: [40, 40] }, { pseudo: [13, 13], js: [90, 92] }, { pseudo: [13, 13], js: [94, 95] }, { pseudo: [13, 13], js: [101, 101] }, { pseudo: [14, 14], js: [66, 66] }, { pseudo: [14, 14], js: [73, 75] }, { pseudo: [14, 14], js: [98, 98] }, { pseudo: [14, 14], js: [126, 130] }, { pseudo: [14, 14], js: [133, 133] }, { pseudo: [15, 15], js: [45, 45] }, { pseudo: [15, 15], js: [76, 84] }, { pseudo: [15, 15], js: [96, 97] }, { pseudo: [15, 15], js: [99, 100] }, { pseudo: [15, 15], js: [102, 105] }, { pseudo: [15, 15], js: [131, 132] }, { pseudo: [15, 15], js: [140, 141] }, { pseudo: [15, 15], js: [143, 144] }, { pseudo: [15, 15], js: [172, 175] }, { pseudo: [15, 15], js: [224, 224] }, { pseudo: [15, 15], js: [252, 252] }, { pseudo: [16, 16], js: [93, 93] }, { pseudo: [16, 16], js: [112, 112] }, { pseudo: [16, 16], js: [134, 137] }, { pseudo: [16, 16], js: [145, 146] }, { pseudo: [16, 16], js: [151, 157] }, { pseudo: [16, 16], js: [159, 166] }, { pseudo: [16, 16], js: [223, 223] }, { pseudo: [17, 17], js: [118, 118] }, { pseudo: [17, 17], js: [134, 135] }, { pseudo: [17, 17], js: [138, 139] }, { pseudo: [17, 17], js: [147, 150] }, { pseudo: [17, 17], js: [176, 176] }, { pseudo: [17, 17], js: [221, 223] }, { pseudo: [17, 17], js: [249, 249] }, { pseudo: [17, 17], js: [287, 287] }, { pseudo: [17, 17], js: [297, 297] }, { pseudo: [18, 18], js: [68, 72] }, { pseudo: [18, 18], js: [108, 111] }, { pseudo: [18, 18], js: [119, 123] }, { pseudo: [18, 18], js: [177, 186] }, { pseudo: [19, 19], js: [187, 189] }, { pseudo: [19, 19], js: [202, 202] }, { pseudo: [20, 20], js: [125, 125] }, { pseudo: [20, 20], js: [190, 191] }, { pseudo: [20, 20], js: [200, 207] }, { pseudo: [21, 21], js: [190, 191] }, { pseudo: [21, 21], js: [208, 216] }, { pseudo: [22, 22], js: [142, 142] }, { pseudo: [22, 22], js: [158, 158] }, { pseudo: [22, 22], js: [191, 199] }, { pseudo: [23, 23], js: [68, 72] }, { pseudo: [23, 23], js: [225, 236] }, { pseudo: [24, 24], js: [41, 45] }, { pseudo: [24, 24], js: [106, 107] }, { pseudo: [24, 24], js: [113, 118] }, { pseudo: [24, 24], js: [177, 181] }, { pseudo: [24, 24], js: [217, 219] }, { pseudo: [24, 24], js: [237, 253] }, { pseudo: [24, 24], js: [258, 263] }, { pseudo: [24, 24], js: [265, 265] }, { pseudo: [24, 24], js: [274, 274] }, { pseudo: [24, 24], js: [278, 278] }, { pseudo: [24, 24], js: [310, 312] }, { pseudo: [25, 25], js: [5, 6] }, { pseudo: [25, 25], js: [57, 64] }, { pseudo: [25, 25], js: [67, 67] }, { pseudo: [25, 25], js: [86, 89] }, { pseudo: [25, 25], js: [124, 124] }, { pseudo: [25, 25], js: [220, 220] }, { pseudo: [25, 25], js: [254, 257] }, { pseudo: [25, 25], js: [264, 264] }, { pseudo: [25, 25], js: [266, 277] }, { pseudo: [25, 25], js: [279, 309] }],
+  params: { wait: 20, speed: "fart: långsam/snabb, långsammare/snabbare", liveliness: "livlighet: lugn/livlig, lugnare/livligare", curves: "kurvor: rak/kurvig, rakare/kurvigare", jerkiness: "ryckighet: jämn/ryckig, jämnare/ryckigare", purpose: "mål: planlös/målmedveten, mer planlös/mer målmedveten", friends: "vänner: vänskygg/vänsökande", strangers: "främlingar: främlingsskygg/främlingsvänlig", size: "storlek: liten/stor, mindre/större", shape: "form: rund/spetsig, rundare/spetsigare", detail: "detaljer: enkel/sirlig, enklare/sirligare", brightness: "ljusstyrka: mörk/ljus, mörkare/ljusare", warmth: "värme: kall/varm, kallare/varmare", height: "höjd: längre ner/högre upp, under/över", levels: "låg, medel, hög", same: "samma", abit: "lite", very: "mycket", not: "inte", own: 3, alike: 2, opposite: 1, comparison: 4, taste: 1, ratio: 2, subtle: 3, explain: "Askungen" },
+  slots: [{ line: 1, text: "20", param: "wait" }, { line: 3, text: "fart: långsam/snabb, långsammare/snabbare", param: "speed" }, { line: 3, text: "livlighet: lugn/livlig, lugnare/livligare", param: "liveliness" }, { line: 4, text: "kurvor: rak/kurvig, rakare/kurvigare", param: "curves" }, { line: 4, text: "ryckighet: jämn/ryckig, jämnare/ryckigare", param: "jerkiness" }, { line: 5, text: "mål: planlös/målmedveten, mer planlös/mer målmedveten", param: "purpose" }, { line: 6, text: "vänner: vänskygg/vänsökande", param: "friends" }, { line: 6, text: "främlingar: främlingsskygg/främlingsvänlig", param: "strangers" }, { line: 7, text: "storlek: liten/stor, mindre/större", param: "size" }, { line: 7, text: "form: rund/spetsig, rundare/spetsigare", param: "shape" }, { line: 8, text: "detaljer: enkel/sirlig, enklare/sirligare", param: "detail" }, { line: 8, text: "ljusstyrka: mörk/ljus, mörkare/ljusare", param: "brightness" }, { line: 9, text: "värme: kall/varm, kallare/varmare", param: "warmth" }, { line: 9, text: "höjd: längre ner/högre upp, under/över", param: "height" }, { line: 10, text: "låg, medel, hög", param: "levels" }, { line: 10, text: "samma", param: "same" }, { line: 11, text: "lite", param: "abit" }, { line: 11, text: "mycket", param: "very" }, { line: 11, text: "inte", param: "not" }, { line: 13, text: "3", param: "own" }, { line: 13, text: "2", param: "alike" }, { line: 13, text: "1", param: "opposite" }, { line: 13, text: "4", param: "comparison" }, { line: 13, text: "1", param: "taste" }, { line: 20, text: "2", param: "ratio" }, { line: 23, text: "3", param: "subtle" }, { line: 25, text: "Askungen", param: "explain" }],
   scenarios: [
     {"id":"s1","name":"blyg, graciös och filmens prålighet gör Askungen långsam, och slår flitigs ”inte långsam” med mer än {=ratio} gånger","input":{"messages":[{"from":"Rollistan","text":"","data":{"scene":1,"of":1,"title":"En scen.","cast":["Askungen"],"called":{},"choose":[{"name":"Askungen","words":[]}],"onStage":["Askungen"],"relations":[],"friends":[],"events":[]}},{"from":"Personlighet","text":"","data":{"suggestions":[{"kind":"own","from":"","who":"Askungen","word":"blyg","says":"lite långsam, mycket främlingsskygg, lite vänsökande"},{"kind":"own","from":"","who":"Askungen","word":"flitig","says":"inte långsam, mycket livlig, målmedveten"},{"kind":"own","from":"vacker","who":"Askungen","word":"graciös","says":"långsam, kurvig, jämn"}]}},{"from":"Smak","text":"","data":{"taste":{"energy":"hög","flashiness":"låg","variety":"medel","obviousness":"hög","complexity":"låg","focus":"Askungen"},"suggestions":[{"who":"*","word":"energi","kind":"taste","says":"hög fart, hög livlighet, hög kurvor, hög ryckighet, hög mål"},{"who":"*","word":"prålighet","kind":"taste","says":"låg fart, låg livlighet, låg kurvor, låg ryckighet, låg mål, låg storlek, låg ljusstyrka"}]}}]},"expect":{"sayContains":"Askungen är långsam på grund av blyg, graciös (vacker för med sig det) och filmens prålighet, mot “inte långsam” (flitig)","count":1}},
     {"id":"s2","name":"ingen expert kände till ”zzz”, så det föreslår inget, och det nämns","input":{"messages":[{"from":"Rollistan","text":"","data":{"scene":1,"of":1,"title":"En scen.","cast":["Ann"],"called":{},"choose":[{"name":"Ann","words":[]}],"onStage":["Ann"],"relations":[],"friends":[],"events":[]}},{"from":"Personlighet","text":"","data":{"suggestions":[],"knew":{"Ann":[]},"unknown":{"Ann":["zzz"]}}},{"from":"Utseende","text":"","data":{"suggestions":[],"knew":{"Ann":[]},"unknown":{"Ann":["zzz"]}}}]},"expect":{"count":1,"unknown":["zzz (Ann)"]}},
@@ -4592,6 +4603,52 @@ libAgent({
     {"id":"s6","name":"allt uteslutet: ”större än” någon stor behåller sin egen riktning","input":{"memory":{"values":{"Bob":{"size":3}},"nets":{},"counts":{}},"messages":[{"from":"Rollistan","text":"","data":{"scene":1,"of":1,"title":"En scen.","cast":["=explain"],"called":{},"choose":[{"name":"=explain","words":[]}],"onStage":["=explain"],"relations":[],"friends":[],"events":[]}},{"from":"Relationer","text":"","data":{"suggestions":[{"who":"=explain","of":"Bob","word":"dominerar","kind":"comparison","like":"dominerar","turn":false,"says":"större"}]}},{"from":"Smak","text":"","data":{"taste":{"energy":"-","flashiness":"-","variety":"-","obviousness":"hög","complexity":"låg","focus":"Askungen"},"suggestions":[]}}]},"expect":{"sayContains":"allt var uteslutet, så jämförelsen behöll sin egen riktning"}},
     {"id":"s7","name":"en subtil film behåller bara {=subtle} skillnader","input":{"messages":[{"from":"Rollistan","text":"","data":{"scene":1,"of":1,"title":"En scen.","cast":["=explain"],"called":{},"choose":[{"name":"=explain","words":[]}],"onStage":["=explain"],"relations":[],"friends":[],"events":[]}},{"from":"Personlighet","text":"","data":{"suggestions":[{"kind":"own","from":"","who":"=explain","word":"vild","says":"långsam, livlig, kurvig, ryckig, målmedveten, liten, spetsig"}]}},{"from":"Smak","text":"","data":{"taste":{"energy":"-","flashiness":"-","variety":"-","obviousness":"låg","complexity":"låg","focus":"Askungen"},"suggestions":[]}}]},"expect":{"sayContains":"en subtil film behåller bara {=subtle} skillnader"}},
     {"id":"s8","name":"ingen scen från Rollistan, så inget att välja","input":{"messages":[{"from":"Personlighet","text":"","data":{"suggestions":[{"kind":"own","from":"","who":"Ann","word":"blyg","says":"lite långsam"}]}}]},"expect":{"count":0}},
+    {"id":"s12","name":"{=explain} finns inte i berättelsen, så den första som väljs förklaras i stället","input":{"messages":[{"from":"Rollistan","text":"","data":{"scene":1,"of":1,"title":"En scen.","cast":["Ann","Bob"],"called":{},"choose":[{"name":"Ann","words":[]},{"name":"Bob","words":[]}],"onStage":["Ann","Bob"],"relations":[],"friends":[],"events":[]}},{"from":"Personlighet","text":"","data":{"suggestions":[{"kind":"own","from":"","who":"Ann","word":"lat","says":"långsam"}]}},{"from":"Smak","text":"","data":{"taste":{"energy":"-","flashiness":"-","variety":"-","obviousness":"hög","complexity":"låg","focus":"Ann"},"suggestions":[]}}]},"expect":{"sayContains":"{=explain} finns inte i den här berättelsen, så jag förklarar Ann, den första som valdes."}},
+    {"id":"s13","name":"ett ord som ingen expert kände till nämns en gång, och inte igen i en senare scen","input":{"memory":{"told":["zzz (Ann)"]},"messages":[{"from":"Rollistan","text":"","data":{"scene":2,"of":2,"title":"En scen.","cast":["Ann"],"called":{},"choose":[{"name":"Ann","words":[]}],"onStage":["Ann"],"relations":[],"friends":[],"events":[]}},{"from":"Personlighet","text":"","data":{"suggestions":[],"knew":{"Ann":[]},"unknown":{"Ann":["zzz","qqq"]}}}]},"expect":{"count":1,"unknown":["qqq (Ann)"]}}
+  ]
+});
+// The Choice Points of the Mini-Ani with AI voices: the same program, which also weighs lines like “Cinderella: a bit
+// slow, big” from AI agents and from You. It is made from the programs-only one, so that one carries no parts it has no
+// use for, and a fix to one is a fix to both.
+libExtend({
+  typeId: "ani-choice-points", from: "ani-choices", note: "samlar · väger experternas förslag och rader från AI-agenter och Du, avgör deras strider och säger varför",
+  about: "Väntar på scenen och experternas förslag, och väljer sedan varje figurs 13 värden, från hur snabb till hur ljus den är. Den lägger ihop förslagen, avgör varje strid öppet (mer än dubbelt så starkt vinner; lågt och högt möts på mitten), låter jämförelser vänta på den andras värde och säger varför varje värde vann. Den väger också rader från AI-agenter och Du, som ”Askungen: lite långsam, stor”.",
+  addPseudo: [[13, ["  en rad som ”Askungen: lite långsam, stor” från en AI-agent {2}, eller från {Du} {3}; bara radens 4 första förslag räknas"]]],
+  addCode: [
+    [52, [
+      "    if (!d.choose && !d.taste && !d.suggestions && m.text) voices.push(m);"
+    ]],
+    [77, [
+      "  const PERSON = low(params.person), unused = [];",
+      "  const isCalled = (name, t) => low(name) === t || low(call(name)) === t;",
+      "  for (const m of voices) {",
+      "    h.tick();",
+      "    for (const line of String(m.text).split(\"\\n\")) {",
+      "      h.tick();",
+      "      const at = line.indexOf(\":\"), t = h.words(line.slice(0, Math.max(at, 0))).join(\" \");",
+      "      const c = at > 0 ? choose.find(x => isCalled(x.name, t)) || choose.find(x => x.of && isCalled(x.of, t)) : null;",
+      "      const says = c ? line.slice(at + 1).split(\"(\")[0].split(\".\").join(\"\").split(\",\").filter(x => x.trim()) : [];",
+      "      if (c) raw.push({ by: m.from, x: { who: c.name, word: m.from, kind: low(m.from) === PERSON ? \"you\" : \"ai\", says: says.slice(0, 4).join(\",\") } });",
+      "      for (const extra of c ? says.slice(4) : line.trim() ? [line.trim()] : []) {",
+      "        h.tick();",
+      "        unused.push(\"“\" + extra.trim().slice(0, 50) + \"” (\" + m.from + \")\");",
+      "      }",
+      "    }",
+      "  }"
+    ]],
+    [301, [
+      "    (unused.length ? \"\\n\\n**Inte använt** (bara rader om någon som väljs nu räknas, och bara deras 4 första förslag): \" + unused.slice(0, 6).join(\", \") + (unused.length > 6 ? \" …\" : \"\") + \".\" : \"\");"
+    ]]
+  ],
+  changeCode: {
+    40: "  const weights = { own: +params.own || 0, same: +params.alike || 0, opposite: +params.opposite || 0, comparison: +params.comparison || 0, taste: +params.taste || 0, ai: +params.ai || 0, you: +params.you || 0 };",
+    47: "  const raw = [], knew = {}, unknown = {}, voices = [];",
+    301: "  const tail = (lost.length ? \"\\n\\n**Ord som ingen expert kände till:** \" + lost.join(\", \") + \".\" : \"\") + (bad.length ? \"\\n\\n**Jag kunde inte läsa:** \" + bad.join(\", \") + \".\" : \"\") +"
+  },
+  lineMap: [{ pseudo: [14, 14], js: [40, 40] }, { pseudo: [14, 14], js: [47, 47] }, { pseudo: [14, 14], js: [53, 53] }, { pseudo: [14, 14], js: [79, 94] }, { pseudo: [14, 14], js: [119, 119] }, { pseudo: [14, 14], js: [319, 319] }],
+  params: { ai: 2, person: "Du", you: 3 },
+  slots: [{ line: 14, text: "2", param: "ai" }, { line: 14, text: "Du", param: "person" }, { line: 14, text: "3", param: "you" }],
+  scenarios: [
     {"id":"s9","name":"en AI-agents rad vägs som vilken röst som helst, och ett ord jag inte känner till nämns","input":{"messages":[{"from":"Rollistan","text":"","data":{"scene":1,"of":1,"title":"En scen.","cast":["=explain"],"called":{},"choose":[{"name":"=explain","words":[]}],"onStage":["=explain"],"relations":[],"friends":[],"events":[]}},{"from":"AI-animatören","text":"{=explain}: mycket snabb, glittrig","data":{}},{"from":"Smak","text":"","data":{"taste":{"energy":"-","flashiness":"-","variety":"-","obviousness":"hög","complexity":"låg","focus":"Askungen"},"suggestions":[]}}]},"expect":{"sayContains":"**Jag kunde inte läsa:** “glittrig” (AI-animatören)"}},
     {"id":"s10","name":"en rad från {=person} räknas {=you}: ”mycket snabb” röstar ner blygs ”lite långsam”","input":{"messages":[{"from":"Rollistan","text":"","data":{"scene":1,"of":1,"title":"En scen.","cast":["=explain"],"called":{},"choose":[{"name":"=explain","words":[]}],"onStage":["=explain"],"relations":[],"friends":[],"events":[]}},{"from":"Personlighet","text":"","data":{"suggestions":[{"kind":"own","from":"","who":"=explain","word":"blyg","says":"lite långsam"}]}},{"from":"=person","text":"- **{=explain}**: mycket snabb","data":{}},{"from":"Smak","text":"","data":{"taste":{"energy":"-","flashiness":"-","variety":"-","obviousness":"hög","complexity":"låg","focus":"Askungen"},"suggestions":[]}}]},"expect":{"sayContains":"{=explain} är snabb på grund av {=person}"}},
     {"id":"s11","name":"bara rader om någon som väljs räknas, och bara deras 4 första förslag","input":{"messages":[{"from":"Rollistan","text":"","data":{"scene":1,"of":1,"title":"En scen.","cast":["=explain"],"called":{},"choose":[{"name":"=explain","words":[]}],"onStage":["=explain"],"relations":[],"friends":[],"events":[]}},{"from":"AI-animatören","text":"Varsågod:\n{=explain}: långsam, liten, mörk, varm, sirlig\nBob: snabb","data":{}},{"from":"Smak","text":"","data":{"taste":{"energy":"-","flashiness":"-","variety":"-","obviousness":"hög","complexity":"låg","focus":"Askungen"},"suggestions":[]}}]},"expect":{"sayContains":"4 första förslag): “Varsågod:” (AI-animatören), “sirlig” (AI-animatören), “Bob: snabb” (AI-animatören)."}}
@@ -5739,13 +5796,10 @@ function makeMiniAni() {
     intro: "1978 gjorde Ken Kahns program Ani tecknade filmer av berättelser. Här spelar små program dess delar: experter föreslår hur varje figur rör sig och ser ut, Valpunkterna avgör deras strider och säger varför, en Metodväljare planerar varje scen, och en Regissör skriver den som en film i Logo. Den behöver ingen AI-modell.",
     link: { url: "https://toontalk.github.io/ani/", label: "Se Anis egen Askungen-film från 1978" },
     questions: [
-      "Varför är Askungen liten och långsam? Hitta vem som föreslog det, i Valpunkternas svar för scen 1.",
+      "Varför är Askungen liten och långsam? Öppna Valpunkternas svar för scen 1 i loggen: det säger först varför.",
       "Ändra Valpunkternas ”mer än {2} gånger så starkt” till 1, och sedan till 100. Blir figurerna mer lika, eller mindre?",
       "Ingen expert känner till ”hjälper” (Valpunkterna säger det). Fyll i den tomma raden hos Relationer, ”{-} föreslår {-}”, och säg vad det föreslår att hjälpa någon. Vad ändras?",
-      "Låt blyg föreslå ”mycket snabb”. Kan Styvmodern fortfarande stå vakt i scen 2? Vem säger varför inte?",
       "Slå på ”Som Ani 1978”. Vad tillför Utseende-experten filmen?",
-      "Låt en ändring ta 0 bildrutor hos Metodväljaren. Vilket ser mest ut som magi?",
-      "Gör filmen subtil (tydlighet låg, hos Smak). Hur många saker visar fortfarande vem som är blyg?",
       "Vem gjorde den här filmen: experterna, Valpunkterna, Regissören eller de som skrev deras kunskap?"
     ],
     openers: ["Vilken agent bestämmer hur stor Askungen är?", "Vad händer när två experter inte håller med varandra?", "Hur skulle filmen bli utan Utseende-experten?"],
@@ -5765,7 +5819,7 @@ function makeMiniAni() {
       looks,
       programAgent("relationships", "ani-relations"),
       programAgent("taste", "ani-taste"),
-      programAgent("choice-points", "ani-choice-points"),
+      programAgent("choice-points", "ani-choices"),
       programAgent("methods", "ani-methods"),
       programAgent("director", "ani-director"),
       { id: "renderer", kind: "renderer", name: "Ritaren", emoji: "🖼️", role: "kör Regissörens Logo och spelar varje scens film" }
@@ -5822,7 +5876,7 @@ function makeMiniAniVoices() {
     model("animator", "AI-animatören", "✏️", "föreslår hur figurerna rör sig och ser ut, med Anis ord, som en expert till", ANIMATOR_INSTRUCTIONS, "animator"),
     { id: "person", kind: "model", human: true, name: "Du", emoji: "🙋", role: "föreslår också, när ”Du föreslår också” är på", outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose", pretend: "generic",
       instructions: "En rad för varje figur som väljs, som ”Askungen: mycket snabb, stor”, med högst 4 av Anis ord: långsam/snabb, lugn/livlig, rak/kurvig, jämn/ryckig, planlös/målmedveten, liten/stor, rund/spetsig, enkel/sirlig, mörk/ljus, kall/varm, längre ner/högre upp, vänskygg/vänsökande, främlingsskygg/främlingsvänlig. Sätt ”lite”, ”mycket” eller ”inte” framför ett ord om du vill. Valpunkterna väger din rad tillsammans med experternas förslag." }
-  ], s.agents.slice(5), [model("narrator", "Berättarrösten", "🎙️", "samlar Metodväljarens planer och berättar den färdiga filmen", NARRATOR_INSTRUCTIONS, "generic", { collect: true, wait: 20 })]);
+  ], [programAgent("choice-points", "ani-choice-points")], s.agents.slice(6), [model("narrator", "Berättarrösten", "🎙️", "samlar Metodväljarens planer och berättar den färdiga filmen", NARRATOR_INSTRUCTIONS, "generic", { collect: true, wait: 20 })]);
   s.rules = s.rules.concat([
     r("v1", "cast", "animator", choosing), r("v2", "animator", "choice-points"),
     r("v3", "cast", "person", Object.assign({ enabled: false }, choosing)), r("v4", "person", "choice-points", { enabled: false }),
@@ -6159,11 +6213,14 @@ function sanitizeAgent(a, ids) {
   }
   return out;
 }
+// A file chooses its link's words, so only a link to one of these sites keeps them; any other link shows its address,
+// so it can't pretend to go somewhere else.
+const LINK_SITES = ["toontalk.github.io", "github.com"];
 function sanitizeSociety(raw) {
   if (!raw || typeof raw !== "object") throw new Error("Den här filen innehåller inget samhälle.");
   const d = raw.kind === "agent-kit-export" ? raw.society : raw;
   if (!d || typeof d !== "object" || !Array.isArray(d.agents)) throw new Error("Det här ser inte ut som ett samhälle från Agent Kit.");
-  const soc = { kind: "agent-kit-society", schema: 1, id: cleanId(d.id) || "imported", title: cleanName(d.title, 60) || "Importerat samhälle", question: cleanName(d.question, 200), intro: cleanText(d.intro, 600).replace(/\s+/g, " ").trim(), questions: arr(d.questions, 10).map(q => cleanName(q, 300)).filter(Boolean), openers: arr(d.openers, 6).map(q => cleanName(q, 300)).filter(Boolean), roundLimit: clampInt(d.roundLimit, 1, 50, 4), agents: [], rules: [] };
+  const soc = { kind: "agent-kit-society", schema: 1, id: cleanId(d.id) || "imported", title: cleanName(d.title, 60) || "Importerat samhälle", question: cleanName(d.question, 200), intro: cleanText(d.intro, 600).replace(/\s+/g, " ").trim(), questions: arr(d.questions, 10).map(q => cleanLine(q, 300)).filter(Boolean), openers: arr(d.openers, 6).map(q => cleanLine(q, 300)).filter(Boolean), roundLimit: clampInt(d.roundLimit, 1, 50, 4), agents: [], rules: [] };
   const ids = new Set();
   for (const a of d.agents.slice(0, 40)) { const s = sanitizeAgent(a, ids); if (s) { soc.agents.push(s); ids.add(s.id); } }
   if (!soc.agents.length) throw new Error("Det här samhället har inga agenter.");
@@ -6172,7 +6229,10 @@ function sanitizeSociety(raw) {
   soc.rules = arr(d.rules, 100).map(r => sanitizeRule(r, ids, used)).filter(Boolean);
   soc.starts = arr(d.starts, 4).map(s => (s && typeof s === "object" && ids.has(s.to)) ? { id: cleanId(s.id) || "start", label: cleanName(s.label, 40) || "Start", kind: ["text", "program", "challenge"].indexOf(s.kind) >= 0 ? s.kind : "text", to: s.to, value: cleanText(s.value, 20000), examples: arr(s.examples, 12).map(x => cleanName(x, 80)).filter(Boolean) } : null).filter(Boolean);
   if (d.playTemplate) soc.playTemplate = cleanText(d.playTemplate, 4000);
-  if (d.link && typeof d.link === "object" && /^https:\/\/[^\s"'<>\\]{1,300}$/.test(String(d.link.url || ""))) soc.link = { url: String(d.link.url), label: cleanName(d.link.label, 80) || String(d.link.url) };   // shown with the introduction
+  if (d.link && typeof d.link === "object" && /^https:\/\/[^\s"'<>\\]{1,300}$/.test(String(d.link.url || ""))) {   // shown with the introduction
+    const url = String(d.link.url), site = (url.match(/^https:\/\/([a-z0-9.-]+)(?=[\/?#]|$)/i) || [])[1] || "";
+    soc.link = { url, label: LINK_SITES.indexOf(site.toLowerCase()) >= 0 ? cleanName(d.link.label, 80) || url : url };
+  }
   if (d.random && typeof d.random === "object" && ids.has(d.random.agent)) soc.random = { agent: d.random.agent, param: String(d.random.param || "secret").replace(/[^A-Za-z_]/g, "").slice(0, 30) || "secret", count: clampInt(d.random.count, 1, 8, 1), lo: clampInt(d.random.lo, 0, 1000, 1), hi: Math.max(clampInt(d.random.lo, 0, 1000, 1), clampInt(d.random.hi, 0, 1000, 100)), on: d.random.on !== false };
   if (!soc.starts.length) soc.starts = [{ id: "sentence", label: "Start", kind: "text", to: soc.roundAgent, value: "" }];
   if (Array.isArray(d.challenges)) {
@@ -6512,7 +6572,8 @@ function createRun(society, deps) {
   run.maxDeliveries = run.roundLimit * 25 + 50;
   run.parked = [];   // messages kept back by Stop or the round limit; carryOn() delivers them
   const listeners = [];
-  let abort = null, plays = 0;
+  let abort = null, plays = 0, busy = null, stops = 0, wake = null;   // busy: the delivery going on now; wake: ends the pause after one
+  const freshSignal = () => { if (!abort || abort.signal.aborted) abort = typeof AbortController === "function" ? new AbortController() : null; };   // a call still going after Pause keeps its signal, so Stop can end it
   const emit = e => { for (const fn of listeners) { try { fn(e, run); } catch (err) { /* a listener's problem is not the run's */ } } };
   const addTrace = e => { e.i = run.trace.length; e.t = Math.round(now() - run.t0); run.trace.push(e); emit(e); return e; };
   const byId = id => agentById(soc, id);
@@ -6696,6 +6757,7 @@ function createRun(society, deps) {
       return false;
     }
     emit({ kind: "working", agentId: agent.id, agentName: agent.name, round: run.round });
+    const stopsBefore = stops;
     let response = null;
     try {
       if (agent.kind === "model") response = await activateModel(agent, msg, entry);
@@ -6707,7 +6769,7 @@ function createRun(society, deps) {
       entry.errorKind = e.kind || "";
       if (e.trace) entry.call = Object.assign(entry.call || {}, e.trace);
     }
-    if (run.status === "stopped") { entry.error = entry.error || "Stoppad."; entry.stopped = true; run.parked.unshift(Object.assign(msg, { again: true })); addTrace(entry); return false; }
+    if (run.status === "stopped" || stops !== stopsBefore) { entry.error = entry.error || "Stoppad."; entry.stopped = true; (run.status === "stopped" ? run.parked : run.queue).unshift(Object.assign(msg, { again: true })); addTrace(entry); return false; }   // stopped while it worked: it is delivered again (first, if Run has already carried on)
     entry.response = response;
     if (response) {
       if (response.renderId) entry.response = Object.assign({}, response);
@@ -6717,11 +6779,26 @@ function createRun(society, deps) {
     return true;
   }
   // After each delivery the run waits for the speed's delay. At slow and normal speed (deps.filmsWait) it also waits
-  // until a film just made has played to its end, so the next delivery can't cut it off.
+  // until a film just made has played to its end, so the next delivery can't cut it off: but not more than 30 seconds
+  // (deps.filmWaitMax), so a film of long WAITs plays on while the run goes on.
   function pauseAfter() {
     const e = run.trace[run.trace.length - 1];
     const r = deps.filmsWait && e && e.kind === "activation" && e.render ? run.renders[e.render.renderId] : null;
-    return Math.max(deps.delayMs || 0, r && r.film ? filmMs(r.film) : 0);
+    return Math.max(deps.delayMs || 0, r && r.film ? Math.min(filmMs(r.film), deps.filmWaitMax || 30000) : 0);
+  }
+  // That pause. Pause, Stop and a change of speed end it early; after a change of speed the run waits only for what is
+  // left of the new pause.
+  async function rest(me) {
+    const t0 = now();
+    for (let ms = pauseAfter(); run.status === "running" && me === plays && now() - t0 < ms; ms = pauseAfter()) {
+      await new Promise(done => { const t = setTimeout(() => { wake = null; done(); }, ms - (now() - t0)); wake = () => { clearTimeout(t); wake = null; done(); }; });
+    }
+  }
+  // One delivery, remembered while it goes on (a model's answer, a program in a Worker), so Run or Step pressed after
+  // Pause can wait for it: a second delivery beside it would find nothing queued, end the run and lose that answer.
+  async function deliver() {
+    const mine = busy = stepOnce();
+    try { return await mine; } finally { if (busy === mine) busy = null; }
   }
   const api = {
     run, start,
@@ -6742,30 +6819,37 @@ function createRun(society, deps) {
     async play() {
       if (run.status === "running" || run.status === "done" || run.status === "stopped" || run.status === "idle" || run.status === "waiting") return;
       run.status = "running";
-      abort = typeof AbortController === "function" ? new AbortController() : null;
+      freshSignal();
       emit({ kind: "status" });
       const me = ++plays;   // Pause, then Run while this loop waits, starts another loop: this one then stops
+      if (busy) {   // Run after Pause while a delivery is still going: this loop goes on from it, after its pause
+        await busy;
+        await rest(me);
+      }
       while (run.status === "running" && me === plays) {
-        const more = await stepOnce();
-        if (!more) break;
-        const ms = pauseAfter();
-        if (run.status === "running" && ms) await sleep(ms);
+        const more = await deliver();
+        if (!more || me !== plays) break;
+        await rest(me);
       }
       emit({ kind: "status" });
     },
-    pause() { if (run.status === "running") { run.status = "paused"; emit({ kind: "status" }); } },
+    pause() { if (run.status === "running") { run.status = "paused"; if (wake) wake(); emit({ kind: "status" }); } },
     async step() {
       if (run.status !== "ready" && run.status !== "paused") return false;
       run.status = "stepping";
+      freshSignal();
       emit({ kind: "status" });
-      const more = await stepOnce();
+      plays++;   // a loop paused in the middle of a delivery stops when it ends
+      const more = busy ? await busy : await deliver();   // Step after Pause while a delivery is still going: finishing it is the step
       if (run.status === "stepping") run.status = more ? "paused" : run.status;
       emit({ kind: "status" });
       return more;
     },
     stop() {
       if (run.status === "done" || run.status === "stopped") return;
+      stops++;
       if (abort) abort.abort();
+      if (wake) wake();
       if (run.waiting) { run.parked.push(Object.assign(run.waiting.entry.message, { again: true })); run.waiting = null; }
       run.parked = run.parked.concat(run.queue.splice(0));
       finish("stopped", "Stoppad av dig.");
@@ -6787,7 +6871,7 @@ function createRun(society, deps) {
       return true;
     },
     render(id) { return run.renders[id] || null; },
-    setDelay(ms, filmsWait) { deps.delayMs = ms; if (filmsWait !== undefined) deps.filmsWait = !!filmsWait; }
+    setDelay(ms, filmsWait) { deps.delayMs = ms; if (filmsWait !== undefined) deps.filmsWait = !!filmsWait; if (wake) wake(); }
   };
   return api;
 }
@@ -7133,7 +7217,7 @@ const app = {
   runs: {}, traces: {}, prevStrips: {}, log: {}, helperChat: {}, used: {},
   banners: [], saveError: "", loadError: "", replaced: [],
   adapter: null, adapterKey: "",
-  ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), tech: new Set(), expandedW: new Set(), editingRules: new Set(), editingRound: false, sendWarn: null, bench: {}, replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
+  ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), tech: new Set(), more: new Set(), expandedW: new Set(), editingRules: new Set(), editingRound: false, sendWarn: null, bench: {}, replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
 };
 const soc = () => app.societies[app.activeId];
 const nameOf = (s, id) => (id === "*" ? "vem som helst" : id === "you" ? "Du" : ((Society.agentById(s, id) || { name: id }).name));
@@ -7210,7 +7294,7 @@ const touch = id => { if (id) app.used[id] = Date.now(); };
 // Open a society: it becomes the one shown, from the top of the page.
 function showSociety(id) {
   app.activeId = id; touch(id);
-  app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set();
+  app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); app.ui.more = new Set();
   save(); renderAll();
   try { window.scrollTo(0, 0); } catch (e) { /* no scrolling here */ }
 }
@@ -7660,7 +7744,7 @@ function beginRun(override) {
   app.runs[s.id] = rec;
   app.ui.replay = null;
   app.ui.expanded = new Set();
-  app.ui.tech = new Set();
+  app.ui.tech = new Set(); app.ui.more = new Set();
   app.ui.logoEdit = null;
   filmStop();
   api.on((e, run) => onRunEvent(rec, e, run));
@@ -7772,7 +7856,7 @@ function renderLeft() {
   if (layout) layout.classList.toggle("inside-open", showInside);
 }
 // With more than one model set up, the card also asks children to choose which mind does which job.
-const linkHTML = s => (s.link && /^https:\/\//.test(s.link.url) ? '<p class="intro"><a href="' + esc(s.link.url) + '" target="_blank" rel="noopener">' + esc(s.link.label) + ' ↗</a></p>' : "");
+const linkHTML = s => (s.link && /^https:\/\//.test(s.link.url) ? '<p class="intro link"><a href="' + esc(s.link.url) + '" target="_blank" rel="noopener">' + esc(s.link.label) + ' ↗</a></p>' : "");
 const questionsFor = s => (s.questions || []).concat(modelRefs().length > 1 && s.agents.filter(a => a.kind === "model" && !a.human).length > 1 ? ["Vilken agent behöver den starkaste modellen? Ge den till en agent i taget, i raden Modeller på scenen, och jämför."] : []);
 function modelAdviceHTML(s) {
   const adv = isMicroworld(s.id) && Seeds.MODEL_ADVICE[s.id];
@@ -8224,7 +8308,10 @@ function paintLogoEdit() {
 function responseHTML(e, s, run) {
   const resp = e.response;
   let h = "";
-  if (e.program && e.program.pseudocode) h += '<div class="tsec"><h4>Dess program</h4>' + pseudoStaticHTML(e.program.pseudocode, e.program.slots) + SLOT_NOTE + '</div>';
+  if (e.program && e.program.pseudocode) {   // a program longer than 12 lines is folded, so its answer isn't far below
+    const n = lineCount(e.program.pseudocode), open = n <= 12 || app.ui.more.has("program:" + e.i);
+    h += '<div class="tsec"><h4>Dess program</h4>' + (open ? pseudoStaticHTML(e.program.pseudocode, e.program.slots) + SLOT_NOTE : "") + (n > 12 ? '<button class="btn tiny ghost" data-act="more-toggle" data-key="program:' + e.i + '" aria-expanded="' + open + '">' + (open ? "▾ Göm programmet" : "▸ Visa programmet (" + n + " rader)") + '</button>' : "") + '</div>';
+  }
   if (!resp) return h;
   const a = Society.agentById(s, e.agentId);
   const text = String(resp.text || "").trim();
@@ -8278,12 +8365,19 @@ function techHTML(e, s, run, trace) {
   if (e.response) h += '<div class="tsec"><h4>Svaret, exakt</h4>' + (e.response.text ? '<pre class="box">' + esc(e.response.text) + '</pre>' : '<p class="small muted">(inga ord)</p>') + (e.response.data && Object.keys(e.response.data).length ? '<h4>Dess data (JSON)</h4>' + jsonBox(e.response.data) : "") + '</div>';
   return h;
 }
+// What a collecting agent got, when some of it is only data: folded, so its answer isn't far below; open, each message
+// on a line of its own, its words or its data in plain words.
+function collectedHTML(m, i) {
+  const open = app.ui.more.has("got:" + i);
+  return '<button class="btn tiny ghost" data-act="more-toggle" data-key="got:' + i + '" aria-expanded="' + open + '">' + (open ? "▾ Göm meddelandena" : "▸ Visa meddelandena (" + m.messages.length + "), med vanliga ord") + '</button>' + (!open ? "" : '<ul class="heard got">' + m.messages.map(x => { const w = x.text ? "" : Words.paraphrase(x.data || {}); return '<li><b>' + esc(x.from) + (x.text ? ':</b> ' + shortHTML(x.text, 160, "Vad " + x.from + " sa") : w ? '</b> <span class="muted">skickade data:</span> ' + shortHTML(w, 160, "Vad " + x.from + " skickade") : '</b> <span class="muted">skickade ingenting</span>') + '</li>'; }).join("") + '</ul>');
+}
 // What the agent was given, so its response can be read against it.
 function incomingHTML(e, s, run, trace) {
   const m = e.message;
   if (!m) return "";
   let body = "";
-  if (m.text) body += e.agentKind === "renderer" ? '<div class="heard small">ett Logo-program (' + plural(lineCount(m.text), "rad|rader") + ')</div>' : '<div class="heard">' + clipMdHTML(m.text, 600, "Vad " + (e.agentName || "den") + " fick") + '</div>';
+  if (m.collected && (m.messages || []).some(x => !x.text)) body += collectedHTML(m, e.i);
+  else if (m.text) body += e.agentKind === "renderer" ? '<div class="heard small">ett Logo-program (' + plural(lineCount(m.text), "rad|rader") + ')</div>' : '<div class="heard">' + clipMdHTML(m.text, 600, "Vad " + (e.agentName || "den") + " fick") + '</div>';
   const ids = m.renderIds || (m.renderId ? [m.renderId] : []);
   if (ids.length) body += '<div class="pics">' + ids.map((id, k) => { const r = findRender(trace, id); return r ? imgTag(r, "thumb", ids.length > 1 ? "bild " + (k + 1) + (r.by ? ", ritad från " + r.by + "s program" : "") : "bilden den fick", run) : ""; }).join("") + '</div>';
   if (m.data && Object.keys(m.data).length && Society.sendParts(m.send).data) { const w = Words.paraphrase(m.data); if (w) body += '<div class="heard small">Data, med vanliga ord: ' + wordsHTML(w, m.data) + '</div>'; }
@@ -8336,6 +8430,17 @@ function familyTreeHTML(lin, run) {
     (n.children.length && depth < 40 ? '<ul>' + n.children.map(c => node(c, depth + 1)).join("") + '</ul>' : "") + '</li>';
   return '<p class="hint">Varje bild sitter under den som den kom från. ★ visar en bild som valdes och skickades vidare. Klicka på en bild för att se den i full storlek.</p><ul class="ftree">' + lin.roots.map(n => node(n, 0)).join("") + '</ul>';
 }
+// A collector's “is waiting: 3 of 20” is news only until it waits for one more or runs: then that line is left out.
+function waitedOut(trace) {
+  const later = new Set(), out = new Set();
+  for (let k = (trace || []).length - 1; k >= 0; k--) {
+    const e = trace[k];
+    if (e.kind !== "activation") continue;
+    if (e.collecting && later.has(e.agentId)) out.add(e.i);
+    later.add(e.agentId);
+  }
+  return out;
+}
 function traceFilterOK(e, f) {
   if (f === "all") return true;
   if (f === "problems") return !!(e.error || e.parseError || e.kind === "error" || (e.render && e.render.error));
@@ -8380,11 +8485,11 @@ function renderTrace() {
   if (tab === "workshop") h += workshopHTML(s);
   else if (tab === "tree") h += familyTreeHTML(lin, run);
   else {
-    const f = app.ui.traceFilter;
-    h += '<div class="trace-head"><div class="filters">' + [["all", "Alla", "Varje meddelande"], ["model", "AI-agenter", "Vad agenterna som drivs av en AI-modell fick och sa"], ["program", "Programmerade agenter", "Vad agenterna som är skrivna i pseudokod fick och sa"], ["renderer", "Bilder", "Ritarens teckningar"], ["problems", "Problem", "Fel, saknad data och teckningar som inte gick att köra"]].map(x => { const n = trace.filter(e => traceFilterOK(e, x[0])).length; return '<button class="seg' + (f === x[0] ? " on" : "") + '" data-act="trace-filter" data-id="' + x[0] + '" title="' + esc(x[2]) + '">' + x[1] + (x[0] === "all" ? "" : ' <span class="cnt">' + n + '</span>') + '</button>'; }).join("") + '</div><span class="grow"></span><button class="btn tiny" data-act="export-trace"' + (trace.length ? "" : " disabled") + '>⬇ Som webbsida</button></div>';
+    const f = app.ui.traceFilter, hidden = waitedOut(trace), listed = trace.filter(e => !hidden.has(e.i));
+    h += '<div class="trace-head"><div class="filters">' + [["all", "Alla", "Varje meddelande"], ["model", "AI-agenter", "Vad agenterna som drivs av en AI-modell fick och sa"], ["program", "Programmerade agenter", "Vad agenterna som är skrivna i pseudokod fick och sa"], ["renderer", "Bilder", "Ritarens teckningar"], ["problems", "Problem", "Fel, saknad data och teckningar som inte gick att köra"]].map(x => { const n = listed.filter(e => traceFilterOK(e, x[0])).length; return '<button class="seg' + (f === x[0] ? " on" : "") + '" data-act="trace-filter" data-id="' + x[0] + '" title="' + esc(x[2]) + '">' + x[1] + (x[0] === "all" ? "" : ' <span class="cnt">' + n + '</span>') + '</button>'; }).join("") + '</div><span class="grow"></span><button class="btn tiny" data-act="export-trace"' + (trace.length ? "" : " disabled") + '>⬇ Som webbsida</button></div>';
     h += replayHTML(run, trace);
     const view = viewState(s, run, trace);
-    const shown = trace.filter(e => traceFilterOK(e, f));
+    const shown = trace.filter(e => traceFilterOK(e, f) && (!hidden.has(e.i) || e.i === view.currentI));   // a replay shows every step
     h += '<div class="trace-list" id="traceList">' + (shown.length ? shown.map(e => traceEntryHTML(e, s, run, trace, view.currentI)).join("") : '<p class="muted small">' + (trace.length ? "Inget passar det här filtret." : "Inget här än. Varje meddelande mellan agenter syns här, och varje modellanrop kan öppnas och visar exakt vad som skickades och vad som kom tillbaka.") + '</p>') + '</div>';
   }
   const editing = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.bind === "logo-edit" ? document.activeElement.selectionStart : null;
@@ -8871,7 +8976,9 @@ function renderHelper() {
   const s = soc();
   const chat = app.helperChat[s.id] || [];
   host.innerHTML = '<div class="drawer" role="dialog" aria-label="Hjälparen"><div class="dh" title="Dra här för att flytta Hjälparen; dra i hörnet längst ner för att ändra storlek; dubbelklicka här för att flytta tillbaka den"><span class="grip" aria-hidden="true">⠿</span><h3>🤔 Hjälparen</h3><button class="btn tiny ghost" data-act="helper-clear">Rensa</button><button class="icon-btn" data-act="helper" aria-label="Stäng">✕</button></div><div class="log" id="helperLog">' +
-    '<div class="hmsg ai">Jag kan läsa ditt samhälle, den senaste körningen och dina scenarier, men jag kan inte ändra något. Oftast ställer jag frågor. Här är några att börja med:</div><div class="chips">' + (s.openers || []).map(q => '<button data-act="helper-ask" data-text="' + esc(q) + '">' + esc(q) + '</button>').join("") + '</div>' +
+    (app.settings.connection === "none"   // the Helper is an AI: with no model it can't answer, so its questions are for thinking about
+      ? '<div class="hmsg ai">Jag är en AI, så jag behöver en modell innan jag kan svara. Välj en i ⚙️ Inställningar. Tills dess kommer här några frågor att fundera på:</div><ul class="hmsg-q">' + (s.openers || []).map(q => '<li>' + esc(q) + '</li>').join("") + '</ul><div class="row"><button class="btn tiny" data-act="settings">⚙️ Inställningar</button></div>'
+      : '<div class="hmsg ai">Jag kan läsa ditt samhälle, den senaste körningen och dina scenarier, men jag kan inte ändra något. Oftast ställer jag frågor. Här är några att börja med:</div><div class="chips">' + (s.openers || []).map(q => '<button data-act="helper-ask" data-text="' + esc(q) + '">' + esc(q) + '</button>').join("") + '</div>') +
     chat.map(m => m.who === "you" ? '<div class="hmsg you">' + esc(m.text) + '</div>' : '<div class="hmsg ai">' + md(m.text) + '</div>').join("") + (app.ui.helperBusy ? '<div class="hmsg ai">…</div>' : "") +
     '</div><div class="ask"><textarea class="field" id="helperInput" placeholder="Fråga Hjälparen…" rows="2" aria-label="Din fråga"></textarea><button class="btn mic" data-act="helper-mic" title="Fråga genom att prata: svaret läses upp för dig" aria-label="Fråga genom att prata">🎤</button><button class="btn primary" data-act="helper-send"' + (app.ui.helperBusy ? " disabled" : "") + '>Fråga</button></div></div>';
   const log = $("#helperLog");
@@ -8979,7 +9086,7 @@ const GUIDES = {
     "<li><b>Lura ögonen: “Kan en teckning lura den som tittar?”</b> Skojaren ritar stenar för att lura Ögonen; Domaren räknar poängen. <i>Kraftfull idé:</i> en motståndare hittar svagheter som ett vänligt test aldrig skulle hitta.</li>" +
     "<li><b>Skämtverkstaden: “Blir skämt roligare med kritiker?”</b> Skämtaren skriver, två Kritiker skickar kommentarer, och eleven betygsätter varje version. <i>Kraftfull idé:</i> vems omdöme som räknas, och om kritiker gör arbetet bättre eller bara försiktigare.</li>" +
     "<li><b>Liten hjälpare, stor hjälpare: “När behöver du den stora?”</b> En billig modell försöker först; Rulltrappan lämnar över jobbet till en stark modell när den misslyckas. Den behöver två modeller. <i>Kraftfull idé:</i> kostnad mot förmåga.</li></ol>" +
-    "<p><b>Exempel att börja från</b> (“＋ Nytt samhälle”): <b>Evolution</b>, där tre Mutatorer ändrar en teckning, Kritikern ger poäng åt föräldern och varianterna tillsammans, och Väljaren behåller vinnaren; loggens Släktträd visar vilken bild som kom från vilken. <i>Kraftfull idé:</i> en enkel kritiker och en väljare, ordnade i en slinga, styr en modell dit den inte skulle hamna på egen hand. Det behöver en modell som ser bilder bra, och gör ungefär 4 modellanrop per omgång. <b>Två svar</b>, efter artikeln <i>Contemplative Artificial Intelligence</i> (Laukkonen med flera, 2025): samma fråga går till en Vanlig agent och till en Eftertänksam agent som ombeds stanna upp vid fyra principer först. <i>Kraftfull idé:</i> instruktionerna är den enda skillnaden, så eleverna kan ändra en princip och se vad den gör; och klok är inte samma sak som försiktig. Vilken modell som helst; 2 eller 3 anrop per körning. <b>Tre i rad</b>: en elev spelar X mot Motståndaren, en AI-agent, och programmet Tre i rad-domaren håller ordning på brädet. <i>Kraftfull idé:</i> modellen föreslår och programmet bestämmer; en regel som är skriven som ett program gäller hur säker modellen än låter. Vilken modell som helst (svagare modeller gör fler otillåtna drag, och det är poängen); ungefär 5 anrop per parti, eller 9 med Två AI:er. <b>Byteshandel med studentskagg</b>, från Ken Kahns experiment: tre AI-handlare, som var och en börjar med en ingrediens, turas om att byta, och programmet Kassaboken sköter bokföringen. <i>Kraftfull idé:</i> agenter kan prata sig fram till en affär, men det krävs ett program för att föra böckerna; när en enda chattbot spelade alla tre handlarna gick grammen inte längre ihop. Prova en annan modell för varje handlare. Ungefär 2 anrop per byte, högst 20 omgångar. <b>Konstnären och kritikern</b>, Ken Kahns samhälle: Konstnären ritar, Kritikern, som vet vad som efterfrågades, ger varje bild poäng och föreslår en ändring, och Poängräknaren håller koll på poängen. <i>Kraftfull idé:</i> om feedback hjälper beror på vem som ger den och vad den vet; och en kritiker som bedömer arbete som gjorts efter dess egna råd är kanske ingen rättvis domare. Behöver en modell som ser bilder bra; 2 anrop per omgång. <b>Mini-Ani</b>, Ken Kahns program Ani från 1978 i miniatyr (<a href=\"https://toontalk.github.io/ani/\" target=\"_blank\" rel=\"noopener\">Anis egen film från 1978</a>): Rollistan läser en berättelse; Personlighet, Utseende, Relationer och Smak föreslår hur varje figur rör sig och ser ut; Valpunkterna avgör deras strider öppet och säger varför; Metodväljaren planerar varje scen, och Regissören skriver den som en film i Logo. <i>Kraftfull idé:</i> smak går att bygga: små experter grälar öppet, filmen ändras när man lägger till kunskap, och varje val kan säga varför. Den behöver ingen modell, så en körning gör inga anrop. <b>Mini-Ani med AI-röster</b> lägger till AI-agenter där det behövs ord: en AI-animatör vars rader med Anis ord Valpunkterna väger som en experts, en Läsare som gör om en berättelse med egna ord till Rollistans meningar, och Berättarrösten som berättar den färdiga filmen; du kan vara med som en expert till. <i>Kraftfull idé:</i> språket kan gå till modeller medan vägningen stannar hos program som man kan läsa. Vilken modell som helst som skriver korta rader; 4 eller 5 anrop per körning.</p>" +
+    "<p><b>Exempel att börja från</b> (“＋ Nytt samhälle”): <b>Evolution</b>, där tre Mutatorer ändrar en teckning, Kritikern ger poäng åt föräldern och varianterna tillsammans, och Väljaren behåller vinnaren; loggens Släktträd visar vilken bild som kom från vilken. <i>Kraftfull idé:</i> en enkel kritiker och en väljare, ordnade i en slinga, styr en modell dit den inte skulle hamna på egen hand. Det behöver en modell som ser bilder bra, och gör ungefär 4 modellanrop per omgång. <b>Två svar</b>, efter artikeln <i>Contemplative Artificial Intelligence</i> (Laukkonen med flera, 2025): samma fråga går till en Vanlig agent och till en Eftertänksam agent som ombeds stanna upp vid fyra principer först. <i>Kraftfull idé:</i> instruktionerna är den enda skillnaden, så eleverna kan ändra en princip och se vad den gör; och klok är inte samma sak som försiktig. Vilken modell som helst; 2 eller 3 anrop per körning. <b>Tre i rad</b>: en elev spelar X mot Motståndaren, en AI-agent, och programmet Tre i rad-domaren håller ordning på brädet. <i>Kraftfull idé:</i> modellen föreslår och programmet bestämmer; en regel som är skriven som ett program gäller hur säker modellen än låter. Vilken modell som helst (svagare modeller gör fler otillåtna drag, och det är poängen); ungefär 5 anrop per parti, eller 9 med Två AI:er. <b>Byteshandel med studentskagg</b>, från Ken Kahns experiment: tre AI-handlare, som var och en börjar med en ingrediens, turas om att byta, och programmet Kassaboken sköter bokföringen. <i>Kraftfull idé:</i> agenter kan prata sig fram till en affär, men det krävs ett program för att föra böckerna; när en enda chattbot spelade alla tre handlarna gick grammen inte längre ihop. Prova en annan modell för varje handlare. Ungefär 2 anrop per byte, högst 20 omgångar. <b>Konstnären och kritikern</b>, Ken Kahns samhälle: Konstnären ritar, Kritikern, som vet vad som efterfrågades, ger varje bild poäng och föreslår en ändring, och Poängräknaren håller koll på poängen. <i>Kraftfull idé:</i> om feedback hjälper beror på vem som ger den och vad den vet; och en kritiker som bedömer arbete som gjorts efter dess egna råd är kanske ingen rättvis domare. Behöver en modell som ser bilder bra; 2 anrop per omgång. <b>Mini-Ani</b>, Ken Kahns program Ani från 1978 i miniatyr (<a href=\"https://toontalk.github.io/ani/\" target=\"_blank\" rel=\"noopener\">Anis egen film från 1978</a>): Rollistan läser en berättelse; Personlighet, Utseende, Relationer och Smak föreslår hur varje figur rör sig och ser ut; Valpunkterna avgör deras strider öppet och säger varför; Metodväljaren planerar varje scen, och Regissören skriver den som en film i Logo. <i>Kraftfull idé:</i> smak går att bygga: små experter grälar öppet, filmen ändras när man lägger till kunskap, och varje val kan säga varför. Den behöver ingen modell, så en körning gör inga anrop. <i>Mer att prova:</i> låt blyg föreslå ”mycket snabb” (kan Styvmodern fortfarande stå vakt i scen 2, och vem säger varför inte?); låt en ändring ta 0 bildrutor hos Metodväljaren (vilket ser mest ut som magi?); gör filmen subtil, med tydlighet låg hos Smak (hur många saker visar fortfarande vem som är blyg?). <b>Mini-Ani med AI-röster</b> lägger till AI-agenter där det behövs ord: en AI-animatör vars rader med Anis ord Valpunkterna väger som en experts, en Läsare som gör om en berättelse med egna ord till Rollistans meningar, och Berättarrösten som berättar den färdiga filmen; du kan vara med som en expert till. <i>Kraftfull idé:</i> språket kan gå till modeller medan vägningen stannar hos program som man kan läsa. Vilken modell som helst som skriver korta rader; 4 eller 5 anrop per körning.</p>" +
     "<h3>Vilken modell, och hur många anrop</h3><p>Det är oftast valet av modell som gör att lektioner kör fast, så här är vad vi har sett. Anrop betyder modellanrop under en körning med standardantalet omgångar; varje AI-agents knapp räknar dem efter en körning.</p>" +
     "<table class='guide-table'><tr><th>Mikrovärld</th><th>Modell</th><th>Varför</th><th>Anrop per körning</th></tr>" +
     row("Berättelsekedjan", "vilken som helst, även Gemini Nano", "bara text; lärdomen ligger i vad varje skribent ser", "13") +
@@ -9054,8 +9161,9 @@ function exportSocietyFlow() {
   $("#doExport", m.body).onclick = () => { const withTrace = $("#withTrace", m.body).checked; m.close(); offerFile("agent-kit-" + s.id + ".json", Society.exportSociety(s, withTrace ? slimTrace(trace) : null), "application/json"); };
 }
 async function traceDocument(s, trace, run) {
-  const parts = [];
+  const parts = [], hidden = waitedOut(trace);
   for (const e of trace) {
+    if (hidden.has(e.i)) continue;
     if (e.kind === "run-start") parts.push('<p class="slim">▶ Start: Du → ' + esc([e.toName].concat(e.also || []).join(", ")) + ': “' + esc(e.text) + '” · ' + esc(e.adapter) + '</p>');
     else if (e.kind === "ending" || e.kind === "note") parts.push('<p class="slim">' + (e.kind === "ending" ? "⏳ " : "⏹ ") + esc(e.text) + '</p>');
     else if (e.kind === "run-end") parts.push('<p class="slim">■ ' + esc(e.text) + '</p>');
@@ -9100,7 +9208,7 @@ const ACTIONS = {
     const trace = r ? r.api.run.trace : (app.traces[s.id] || []);
     if (trace.length) app.prevStrips[s.id] = { start: r ? r.startText : traceStartText(trace), rounds: stripOf(trace, s) };
     delete app.runs[s.id]; delete app.traces[s.id];
-    app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); app.ui.logoEdit = null; filmStop();
+    app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); app.ui.more = new Set(); app.ui.logoEdit = null; filmStop();
     save(); renderAll();
     toast("Allt börjar om. ▶ Kör startar från början.");
   },
@@ -9118,7 +9226,7 @@ const ACTIONS = {
       const old = (s.challenges || []).find(c => c.id === s.challenge);
       app.prevStrips[s.id] = { start: r0 ? r0.startText : traceStartText(tr0), rounds: stripOf(tr0, s), label: old ? old.title : "" };
       delete app.runs[s.id]; delete app.traces[s.id];
-      app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); app.ui.logoEdit = null;
+      app.ui.replay = null; app.ui.expanded = new Set(); app.ui.tech = new Set(); app.ui.more = new Set(); app.ui.logoEdit = null;
     }
     const judgeType = () => { const c = (s.challenges || []).find(x => x.id === s.challenge); const j = c && Society.agentById(s, c.judge); return j ? j.typeId : ""; };
     const was = judgeType();
@@ -9158,6 +9266,7 @@ const ACTIONS = {
   "trace-filter"(t) { app.ui.traceFilter = t.dataset.id; renderTrace(); },
   "trace-toggle"(t) { const i = +t.dataset.i; if (app.ui.expanded.has(i)) app.ui.expanded.delete(i); else app.ui.expanded.add(i); renderTrace(); },
   "tech-toggle"(t) { const i = +t.dataset.i; if (app.ui.tech.has(i)) app.ui.tech.delete(i); else app.ui.tech.add(i); renderTrace(); },
+  "more-toggle"(t) { const k = t.dataset.key; if (app.ui.more.has(k)) app.ui.more.delete(k); else app.ui.more.add(k); renderTrace(); },
   "add-agent"() { openAddAgent(); },
   "logo-edit"(t) {
     const s = soc(), i = +t.dataset.i;
@@ -9655,7 +9764,7 @@ async function handleBind(t, evt) {
       if (f === "title") { const n = util.cleanName(v, 60); if (n) s.title = n; }
       else if (f === "question") s.question = util.cleanName(v, 200);
       else if (f === "intro") s.intro = util.cleanText(v, 600);
-      else if (f === "questions") s.questions = String(v).split("\n").map(q => util.cleanName(q, 300)).filter(Boolean).slice(0, 10);
+      else if (f === "questions") s.questions = String(v).split("\n").map(q => util.cleanLine(q, 300)).filter(Boolean).slice(0, 10);
       save();
       if (change) { renderWorlds(); renderLeft(); renderStage(); }
       return;

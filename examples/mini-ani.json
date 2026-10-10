@@ -1,8 +1,8 @@
 {
   "kind": "agent-kit-export",
   "schema": 1,
-  "app": "Agent Kit 1.15.0",
-  "exportedAt": "2026-10-09T22:31:59.087Z",
+  "app": "Agent Kit 1.15.1",
+  "exportedAt": "2026-10-10T05:36:10.809Z",
   "society": {
     "kind": "agent-kit-society",
     "schema": 1,
@@ -15,13 +15,10 @@
       "label": "Watch Ani's own 1978 Cinderella film"
     },
     "questions": [
-      "Why is Cinderella small and slow? Find who suggested it, in the Choice Points' answer for scene 1.",
+      "Why is Cinderella small and slow? Open the Choice Points' answer for scene 1 in the trace: it says why first.",
       "Change the Choice Points' “more than {2} times as strong” to 1, then to 100. Do the characters look more alike, or less?",
       "No expert knows “helps” (the Choice Points say so). Fill Relationships' empty line, “{-} suggests {-}”, to say what helping suggests. What changes?",
-      "Make shy suggest “very fast”. Can the Stepmother still stand guard in scene 2? Who says why not?",
       "Switch on “Like Ani in 1978”. What does the Looks expert add to the film?",
-      "In the Method Chooser, make a change take 0 frames. Which looks more like magic?",
-      "Make the film subtle (obviousness low, in Taste). How many things still show who is shy?",
       "Who made this film: the experts, the Choice Points, the Director, or the people who wrote their knowledge?"
     ],
     "openers": [
@@ -3195,7 +3192,7 @@
         ],
         "code": {
           "pseudocode": "for each way two characters get on, when one of them is being chosen:\n{dominates} suggests {faster, livelier, above, bigger} than the other one\n{likes} suggests {a bit same speed, a bit same liveliness}\n{-} suggests {-}\nthese mean the same: {rules=dominates, loves=likes}\nthese mean the opposite, so the comparisons are turned around: {obeys=dominates, dislikes=likes}\nthe first one gets the comparison, and the second one gets it turned around\nname the words I don't know",
-          "js": "function run(input, params, h) {\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const d = input.data || {};\n  const call = n => (d.called || {})[n] || n;\n  const lines = [];\n  for (let i = 1; i <= 3; i++) {\n    h.tick();\n    const word = low(params[\"r\" + i]), says = String(params[\"c\" + i] == null ? \"\" : params[\"c\" + i]).trim();\n    if (word && word !== \"-\" && says && says !== \"-\") lines.push({ word: word, says: says });\n  }\n  const own = w => lines.find(l => l.word === w);\n  const pairs = text => String(text == null ? \"\" : text).split(\",\").map(p => p.split(\"=\").map(low)).filter(p => p.length === 2 && own(p[1]));\n  const same = pairs(params.same), opposite = pairs(params.opposite);\n  const choose = d.choose || [];\n  const suggestions = [], unknown = {}, said = [];\n  for (const r of d.relations || []) {\n    h.tick();\n    const mine = choose.filter(c => (c.of || c.name) === r.who || (c.of || c.name) === r.whom);\n    if (!mine.length) continue;\n    const verb = low(r.verb);\n    const ways = (own(verb) ? [{ like: verb, turn: false }] : [])\n      .concat(same.filter(p => p[0] === verb).map(p => ({ like: p[1], turn: false })))\n      .concat(opposite.filter(p => p[0] === verb).map(p => ({ like: p[1], turn: true })));\n    if (!ways.length) {\n      unknown[r.who] = (unknown[r.who] || []).concat([verb]);\n      continue;\n    }\n    for (const c of mine) {\n      h.tick();\n      const first = (c.of || c.name) === r.who;\n      for (const way of ways) {\n        h.tick();\n        suggestions.push({ who: c.name, of: first ? r.whom : r.who, word: verb, kind: \"comparison\", like: way.like, turn: first ? way.turn : !way.turn, says: own(way.like).says });\n      }\n    }\n    said.push(\"- \" + call(r.who) + \" \" + verb + \" \" + call(r.whom) + (ways[0].like !== verb ? \" (\" + (ways[0].turn ? \"the opposite of \" : \"like \") + ways[0].like + \")\" : \"\") + \" → \" + call(r.who) + \": \" + (ways[0].turn ? \"the opposite of “\" + own(ways[0].like).says + \"”\" : own(ways[0].like).says) + \" than \" + call(r.whom) + \"; \" + call(r.whom) + \": the other way round\");\n  }\n  const missing = Object.keys(unknown).map(n => unknown[n].join(\", \") + \" (\" + call(n) + \")\").join(\"; \");\n  const say = (said.length ? said.join(\"\\n\") : \"There are no comparisons to make for anyone being chosen.\") + (missing ? \"\\n\\nI don't know these words: \" + missing + \".\" : \"\");\n  return { count: suggestions.length, suggestions: suggestions, unknown: unknown, say: say };\n}",
+          "js": "function run(input, params, h) {\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const d = input.data || {};\n  const call = n => (d.called || {})[n] || n;\n  const lines = [];\n  for (let i = 1; i <= 3; i++) {\n    h.tick();\n    const word = low(params[\"r\" + i]), says = String(params[\"c\" + i] == null ? \"\" : params[\"c\" + i]).trim();\n    if (word && word !== \"-\" && says && says !== \"-\") lines.push({ word: word, says: says });\n  }\n  const own = w => lines.find(l => l.word === w);\n  const pairs = text => String(text == null ? \"\" : text).split(\",\").map(p => p.split(\"=\").map(low)).filter(p => p.length === 2 && own(p[1]));\n  const same = pairs(params.same), opposite = pairs(params.opposite);\n  const choose = d.choose || [];\n  const suggestions = [], unknown = {}, said = [];\n  for (const r of d.relations || []) {\n    h.tick();\n    const mine = choose.filter(c => (c.of || c.name) === r.who || (c.of || c.name) === r.whom);\n    if (!mine.length) continue;\n    const verb = low(r.verb);\n    const ways = (own(verb) ? [{ like: verb, turn: false }] : [])\n      .concat(same.filter(p => p[0] === verb).map(p => ({ like: p[1], turn: false })))\n      .concat(opposite.filter(p => p[0] === verb).map(p => ({ like: p[1], turn: true })));\n    if (!ways.length) {\n      unknown[r.who] = (unknown[r.who] || []).concat([verb]);\n      continue;\n    }\n    for (const c of mine) {\n      h.tick();\n      const first = (c.of || c.name) === r.who;\n      for (const way of ways) {\n        h.tick();\n        suggestions.push({ who: c.name, of: first ? r.whom : r.who, word: verb, kind: \"comparison\", like: way.like, turn: first ? way.turn : !way.turn, says: own(way.like).says });\n      }\n    }\n    said.push(\"- \" + call(r.who) + \" \" + verb + \" \" + call(r.whom) + (ways[0].like !== verb ? \" (\" + (ways[0].turn ? \"the opposite of \" : \"like \") + ways[0].like + \")\" : \"\") + \" → \" + call(r.who) + \", compared with \" + call(r.whom) + \": \" + (ways[0].turn ? \"the opposite of “\" + own(ways[0].like).says + \"”\" : own(ways[0].like).says) + \"; \" + call(r.whom) + \": the other way round\");\n  }\n  const missing = Object.keys(unknown).map(n => unknown[n].join(\", \") + \" (\" + call(n) + \")\").join(\"; \");\n  const say = (said.length ? said.join(\"\\n\") : \"There are no comparisons to make for anyone being chosen.\") + (missing ? \"\\n\\nI don't know these words: \" + missing + \".\" : \"\");\n  return { count: suggestions.length, suggestions: suggestions, unknown: unknown, say: say };\n}",
           "lineMap": [
             {
               "pseudo": [
@@ -3388,7 +3385,7 @@
               ]
             }
           ],
-          "hash": "858e8b6025223cbf"
+          "hash": "c5b53b38dfcd90d7"
         },
         "lastGood": null,
         "status": "ok",
@@ -3405,7 +3402,7 @@
         "note": "the film's taste: energy, flashiness, variety, and its focus",
         "gate": false,
         "collect": false,
-        "pseudocode": "the film's taste, as Ken set it for his Cinderella film: energy {high}, flashiness {low}, variety {medium}\nobviousness {high} (low makes a subtle film), complexity {low} (low shows one thing at a time)\nthe film's focus is {Cinderella}: the Choice Points choose for the focus first\nwhen someone's values are being chosen, energy suggests its level for {speed, liveliness, curves, jerkiness, purpose}\nand flashiness suggests its level for those, and for {size, brightness} too (Ken's note in glosug)\nsend the taste on, for the Choice Points and the Director",
+        "pseudocode": "the film's taste, as Ken set it for his Cinderella film: energy {high}, flashiness {low}, variety {medium}\nobviousness {high} (low makes a subtle film), complexity {low} (low shows one thing at a time)\nthe film's focus is {Cinderella} (or the first one the Cast names, if nobody in the story is called that): the Choice Points choose for the focus first\nwhen someone's values are being chosen, energy suggests its level for {speed, liveliness, curves, jerkiness, purpose}\nand flashiness suggests its level for those, and for {size, brightness} too (Ken's note in glosug)\nsend the taste on, for the Choice Points and the Director",
         "params": {
           "energy": "high",
           "flashiness": "low",
@@ -3533,7 +3530,7 @@
           },
           {
             "id": "s5",
-            "name": "a focus who isn't in the story is named",
+            "name": "a focus who isn't in the story is named, and the first one the Cast names is the focus instead",
             "input": {
               "data": {
                 "cast": [
@@ -3544,13 +3541,21 @@
               }
             },
             "expect": {
-              "sayContains": "{=focus} isn't in this story"
+              "taste": {
+                "energy": "=energy",
+                "flashiness": "=flashiness",
+                "variety": "=variety",
+                "obviousness": "=obviousness",
+                "complexity": "=complexity",
+                "focus": "Ann"
+              },
+              "sayContains": "Its focus is Ann, the first one the Cast names, because {=focus} isn't in this story."
             }
           }
         ],
         "code": {
-          "pseudocode": "the film's taste, as Ken set it for his Cinderella film: energy {high}, flashiness {low}, variety {medium}\nobviousness {high} (low makes a subtle film), complexity {low} (low shows one thing at a time)\nthe film's focus is {Cinderella}: the Choice Points choose for the focus first\nwhen someone's values are being chosen, energy suggests its level for {speed, liveliness, curves, jerkiness, purpose}\nand flashiness suggests its level for those, and for {size, brightness} too (Ken's note in glosug)\nsend the taste on, for the Choice Points and the Director",
-          "js": "function run(input, params, h) {\n  const word = v => String(v == null ? \"\" : v).trim();\n  const things = text => String(text == null ? \"\" : text).split(\",\").map(t => t.trim()).filter(t => t && t !== \"-\");\n  const taste = { energy: word(params.energy), flashiness: word(params.flashiness), variety: word(params.variety), obviousness: word(params.obviousness), complexity: word(params.complexity), focus: word(params.focus) };\n  const moving = things(params.energyFor), more = things(params.flashFor);\n  const choosing = ((input.data || {}).choose || []).length > 0;\n  const suggestions = [];\n  if (choosing && taste.energy && taste.energy !== \"-\") suggestions.push({ who: \"*\", word: \"energy\", kind: \"taste\", says: moving.map(t => taste.energy + \" \" + t).join(\", \") });\n  if (choosing && taste.flashiness && taste.flashiness !== \"-\") suggestions.push({ who: \"*\", word: \"flashiness\", kind: \"taste\", says: moving.concat(more).map(t => taste.flashiness + \" \" + t).join(\", \") });\n  let say = \"The film's taste: energy \" + taste.energy + \", flashiness \" + taste.flashiness + \", variety \" + taste.variety + \", obviousness \" + taste.obviousness + \", complexity \" + taste.complexity + \". Its focus is \" + taste.focus + \".\";\n  const cast = (input.data || {}).cast || [];\n  if (cast.length && !cast.some(n => String(n).toLowerCase() === taste.focus.toLowerCase())) say += \" \" + taste.focus + \" isn't in this story, so nobody is chosen first.\";\n  say += suggestions.length ? \"\\n\\nFor everyone being chosen: \" + suggestions.map(s => s.word + \" suggests \" + s.says).join(\"; \") + \".\" : \"\\n\\nNobody is being chosen, so the taste has nothing to suggest.\";\n  return { taste: taste, count: suggestions.length, suggestions: suggestions, say: say };\n}",
+          "pseudocode": "the film's taste, as Ken set it for his Cinderella film: energy {high}, flashiness {low}, variety {medium}\nobviousness {high} (low makes a subtle film), complexity {low} (low shows one thing at a time)\nthe film's focus is {Cinderella} (or the first one the Cast names, if nobody in the story is called that): the Choice Points choose for the focus first\nwhen someone's values are being chosen, energy suggests its level for {speed, liveliness, curves, jerkiness, purpose}\nand flashiness suggests its level for those, and for {size, brightness} too (Ken's note in glosug)\nsend the taste on, for the Choice Points and the Director",
+          "js": "function run(input, params, h) {\n  const word = v => String(v == null ? \"\" : v).trim();\n  const things = text => String(text == null ? \"\" : text).split(\",\").map(t => t.trim()).filter(t => t && t !== \"-\");\n  const taste = { energy: word(params.energy), flashiness: word(params.flashiness), variety: word(params.variety), obviousness: word(params.obviousness), complexity: word(params.complexity), focus: word(params.focus) };\n  const moving = things(params.energyFor), more = things(params.flashFor);\n  const choosing = ((input.data || {}).choose || []).length > 0;\n  const suggestions = [];\n  if (choosing && taste.energy && taste.energy !== \"-\") suggestions.push({ who: \"*\", word: \"energy\", kind: \"taste\", says: moving.map(t => taste.energy + \" \" + t).join(\", \") });\n  if (choosing && taste.flashiness && taste.flashiness !== \"-\") suggestions.push({ who: \"*\", word: \"flashiness\", kind: \"taste\", says: moving.concat(more).map(t => taste.flashiness + \" \" + t).join(\", \") });\n  const cast = (input.data || {}).cast || [], call = n => ((input.data || {}).called || {})[n] || n;\n  const missing = cast.length && !cast.some(n => String(n).toLowerCase() === taste.focus.toLowerCase()) ? taste.focus : \"\";\n  if (missing) taste.focus = String(cast[0]);\n  let say = \"The film's taste: energy \" + taste.energy + \", flashiness \" + taste.flashiness + \", variety \" + taste.variety + \", obviousness \" + taste.obviousness + \", complexity \" + taste.complexity + \". Its focus is \" + call(taste.focus) + (missing ? \", the first one the Cast names, because \" + missing + \" isn't in this story\" : \"\") + \".\";\n  say += suggestions.length ? \"\\n\\nFor everyone being chosen: \" + suggestions.map(s => s.word + \" suggests \" + s.says).join(\"; \") + \".\" : \"\\n\\nNobody is being chosen, so the taste has nothing to suggest.\";\n  return { taste: taste, count: suggestions.length, suggestions: suggestions, say: say };\n}",
           "lineMap": [
             {
               "pseudo": [
@@ -3608,8 +3613,8 @@
                 3
               ],
               "js": [
-                11,
-                12
+                10,
+                13
               ]
             },
             {
@@ -3638,8 +3643,8 @@
                 4
               ],
               "js": [
-                13,
-                13
+                14,
+                14
               ]
             },
             {
@@ -3678,6 +3683,16 @@
                 5
               ],
               "js": [
+                14,
+                14
+              ]
+            },
+            {
+              "pseudo": [
+                6,
+                6
+              ],
+              "js": [
                 13,
                 13
               ]
@@ -3688,22 +3703,12 @@
                 6
               ],
               "js": [
-                10,
-                10
-              ]
-            },
-            {
-              "pseudo": [
-                6,
-                6
-              ],
-              "js": [
-                14,
-                15
+                15,
+                16
               ]
             }
           ],
-          "hash": "e8bf1da8578e7007"
+          "hash": "9ff75c1909c75fb2"
         },
         "lastGood": null,
         "status": "ok",
@@ -3713,14 +3718,14 @@
       {
         "id": "choice-points",
         "kind": "program",
-        "typeId": "ani-choice-points",
+        "typeId": "ani-choices",
         "name": "Choice Points",
         "emoji": "⚖️",
         "role": "collects · weighs the experts' suggestions, settles their arguments, and says why",
         "note": "collects · weighs the experts' suggestions, settles their arguments, and says why",
         "gate": false,
         "collect": true,
-        "pseudocode": "wait for the scene and the experts' suggestions: up to {20} messages, or until nobody else has anything to say\nthe things it chooses, each low, medium or high, with the words for them and for comparing:\n  {speed: slow/fast, slower/faster} · {liveliness: calm/lively, calmer/livelier}\n  {curves: straight/curvy, straighter/curvier} · {jerkiness: steady/jerky, steadier/jerkier}\n  {purpose: aimless/purposeful, more aimless/more purposeful}\n  {friends: wary of friends/drawn to friends} · {strangers: wary of strangers/drawn to strangers}\n  {size: small/big, smaller/bigger} · {shape: smooth/pointed, smoother/pointier}\n  {detail: simple/fancy, simpler/fancier} · {brightness: dim/bright, dimmer/brighter}\n  {warmth: cool/warm, cooler/warmer} · {height: lower down/higher up, below/above}\nthe levels are {low, medium, high}, so \"medium speed\" is the middle one; \"{same} speed\" means someone else's speed\na suggestion is a word with {a bit} (weaker), {very} (stronger) or {not} (rules it out) before it\na suggestion counts its strength (a bit 1, plain 2, very 3) times where it came from:\n  the character's own word {3}, a word meaning the same {2}, the opposite of a word {1}, a comparison {4}, the film's taste {1}\n  a line like “Cinderella: a bit slow, big” from an AI agent {2}, or from {You} {3}; only its first 4 suggestions count\nchoose values for everyone the Cast says is being chosen: the film's focus first, then in the Cast's order\nfor each thing about each one, add up the suggestions for each value\n  a comparison like \"bigger than X\" waits for X's value, then rules out X's value and below\n  if two choices wait for each other, the first goes without its comparison\n  the film's variety adds a weak suggestion: low variety the value used most so far, high the least, medium the middle one\n  a value is ruled out if what is against it is at least as strong as what is for it\n  if one value is more than {2} times as strong as the next, it wins\n  if not, low and high meet in the middle, unless the middle is ruled out; then the stronger wins, or the one said first\n  if nobody suggested anything, it is medium; if everything is ruled out, a comparison keeps its own direction\na subtle film keeps only each one's {3} strongest differences from medium\nremember the values; a stand-in gets the variety and comparisons its character had, and then its values become the character's\nsay everyone's values, explain {Cinderella} in full, say how the arguments were settled, and name any word no expert knew",
+        "pseudocode": "wait for the scene and the experts' suggestions: up to {20} messages, or until nobody else has anything to say\nthe things it chooses, each low, medium or high, with the words for them and for comparing:\n  {speed: slow/fast, slower/faster} · {liveliness: calm/lively, calmer/livelier}\n  {curves: straight/curvy, straighter/curvier} · {jerkiness: steady/jerky, steadier/jerkier}\n  {purpose: aimless/purposeful, more aimless/more purposeful}\n  {friends: wary of friends/drawn to friends} · {strangers: wary of strangers/drawn to strangers}\n  {size: small/big, smaller/bigger} · {shape: smooth/pointed, smoother/pointier}\n  {detail: simple/fancy, simpler/fancier} · {brightness: dim/bright, dimmer/brighter}\n  {warmth: cool/warm, cooler/warmer} · {height: lower down/higher up, below/above}\nthe levels are {low, medium, high}, so \"medium speed\" is the middle one; \"{same} speed\" means someone else's speed\na suggestion is a word with {a bit} (weaker), {very} (stronger) or {not} (rules it out) before it\na suggestion counts its strength (a bit 1, plain 2, very 3) times where it came from:\n  the character's own word {3}, a word meaning the same {2}, the opposite of a word {1}, a comparison {4}, the film's taste {1}\nchoose values for everyone the Cast says is being chosen: the film's focus first, then in the Cast's order\nfor each thing about each one, add up the suggestions for each value\n  a comparison like \"bigger than X\" waits for X's value, then rules out X's value and below\n  if two choices wait for each other, the first goes without its comparison\n  the film's variety adds a weak suggestion: low variety the value used most so far, high the least, medium the middle one\n  a value is ruled out if what is against it is at least as strong as what is for it\n  if one value is more than {2} times as strong as the next, it wins\n  if not, low and high meet in the middle, unless the middle is ruled out; then the stronger wins, or the one said first\n  if nobody suggested anything, it is medium; if everything is ruled out, a comparison keeps its own direction\na subtle film keeps only each one's {3} strongest differences from medium\nremember the values; a stand-in gets the variety and comparisons its character had, and then its values become the character's\nexplain {Cinderella} in full first (or the first one chosen, if nobody in the story is called that), then say everyone's values and how the arguments were settled, and name each word no expert knew, once",
         "params": {
           "wait": 20,
           "speed": "speed: slow/fast, slower/faster",
@@ -3746,9 +3751,6 @@
           "opposite": 1,
           "comparison": 4,
           "taste": 1,
-          "ai": 2,
-          "person": "You",
-          "you": 3,
           "ratio": 2,
           "subtle": 3,
           "explain": "Cinderella"
@@ -3875,32 +3877,17 @@
             "param": "taste"
           },
           {
-            "line": 14,
-            "text": "2",
-            "param": "ai"
-          },
-          {
-            "line": 14,
-            "text": "You",
-            "param": "person"
-          },
-          {
-            "line": 14,
-            "text": "3",
-            "param": "you"
-          },
-          {
-            "line": 21,
+            "line": 20,
             "text": "2",
             "param": "ratio"
           },
           {
-            "line": 24,
+            "line": 23,
             "text": "3",
             "param": "subtle"
           },
           {
-            "line": 26,
+            "line": 25,
             "text": "Cinderella",
             "param": "explain"
           }
@@ -4513,8 +4500,8 @@
             }
           },
           {
-            "id": "s9",
-            "name": "an AI agent's line is weighed like any voice's, and a word I don't know is named",
+            "id": "s12",
+            "name": "{=explain} isn't in the story, so the first one chosen is explained instead",
             "input": {
               "messages": [
                 {
@@ -4525,77 +4512,25 @@
                     "of": 1,
                     "title": "A scene.",
                     "cast": [
-                      "=explain"
+                      "Ann",
+                      "Bob"
                     ],
                     "called": {
                       "Stepmother": "the Stepmother"
                     },
                     "choose": [
                       {
-                        "name": "=explain",
+                        "name": "Ann",
                         "words": []
-                      }
-                    ],
-                    "onStage": [
-                      "=explain"
-                    ],
-                    "relations": [],
-                    "friends": [],
-                    "events": []
-                  }
-                },
-                {
-                  "from": "AI Animator",
-                  "text": "{=explain}: very fast, sparkly",
-                  "data": {}
-                },
-                {
-                  "from": "Taste",
-                  "text": "",
-                  "data": {
-                    "taste": {
-                      "energy": "-",
-                      "flashiness": "-",
-                      "variety": "-",
-                      "obviousness": "high",
-                      "complexity": "low",
-                      "focus": "Cinderella"
-                    },
-                    "suggestions": []
-                  }
-                }
-              ]
-            },
-            "expect": {
-              "sayContains": "**I couldn't read:** “sparkly” (AI Animator)"
-            }
-          },
-          {
-            "id": "s10",
-            "name": "a line from {=person} counts {=you}: “very fast” outvotes shy's “a bit slow”",
-            "input": {
-              "messages": [
-                {
-                  "from": "Cast",
-                  "text": "",
-                  "data": {
-                    "scene": 1,
-                    "of": 1,
-                    "title": "A scene.",
-                    "cast": [
-                      "=explain"
-                    ],
-                    "called": {
-                      "Stepmother": "the Stepmother"
-                    },
-                    "choose": [
+                      },
                       {
-                        "name": "=explain",
+                        "name": "Bob",
                         "words": []
                       }
                     ],
                     "onStage": [
-                      "=explain"
+                      "Ann",
+                      "Bob"
                     ],
                     "relations": [],
                     "friends": [],
@@ -4610,17 +4545,12 @@
                       {
                         "kind": "own",
                         "from": "",
-                        "who": "=explain",
-                        "word": "shy",
-                        "says": "a bit slow"
+                        "who": "Ann",
+                        "word": "lazy",
+                        "says": "slow"
                       }
                     ]
                   }
-                },
-                {
-                  "from": "=person",
-                  "text": "- **{=explain}**: very fast",
-                  "data": {}
                 },
                 {
                   "from": "Taste",
@@ -4632,7 +4562,7 @@
                       "variety": "-",
                       "obviousness": "high",
                       "complexity": "low",
-                      "focus": "Cinderella"
+                      "focus": "Ann"
                     },
                     "suggestions": []
                   }
@@ -4640,35 +4570,40 @@
               ]
             },
             "expect": {
-              "sayContains": "{=explain} is fast because of {=person}"
+              "sayContains": "{=explain} isn't in this story, so I explain Ann, the first one chosen."
             }
           },
           {
-            "id": "s11",
-            "name": "only lines about someone being chosen count, and only their first 4 suggestions",
+            "id": "s13",
+            "name": "a word no expert knew is named once, and not again in a later scene",
             "input": {
+              "memory": {
+                "told": [
+                  "zzz (Ann)"
+                ]
+              },
               "messages": [
                 {
                   "from": "Cast",
                   "text": "",
                   "data": {
-                    "scene": 1,
-                    "of": 1,
+                    "scene": 2,
+                    "of": 2,
                     "title": "A scene.",
                     "cast": [
-                      "=explain"
+                      "Ann"
                     ],
                     "called": {
                       "Stepmother": "the Stepmother"
                     },
                     "choose": [
                       {
-                        "name": "=explain",
+                        "name": "Ann",
                         "words": []
                       }
                     ],
                     "onStage": [
-                      "=explain"
+                      "Ann"
                     ],
                     "relations": [],
                     "friends": [],
@@ -4676,35 +4611,34 @@
                   }
                 },
                 {
-                  "from": "AI Animator",
-                  "text": "Here you are:\n{=explain}: slow, small, dim, warm, fancy\nBob: fast",
-                  "data": {}
-                },
-                {
-                  "from": "Taste",
+                  "from": "Personality",
                   "text": "",
                   "data": {
-                    "taste": {
-                      "energy": "-",
-                      "flashiness": "-",
-                      "variety": "-",
-                      "obviousness": "high",
-                      "complexity": "low",
-                      "focus": "Cinderella"
+                    "suggestions": [],
+                    "knew": {
+                      "Ann": []
                     },
-                    "suggestions": []
+                    "unknown": {
+                      "Ann": [
+                        "zzz",
+                        "qqq"
+                      ]
+                    }
                   }
                 }
               ]
             },
             "expect": {
-              "sayContains": "first 4 suggestions): “Here you are:” (AI Animator), “fancy” (AI Animator), “Bob: fast” (AI Animator)."
+              "count": 1,
+              "unknown": [
+                "qqq (Ann)"
+              ]
             }
           }
         ],
         "code": {
-          "pseudocode": "wait for the scene and the experts' suggestions: up to {20} messages, or until nobody else has anything to say\nthe things it chooses, each low, medium or high, with the words for them and for comparing:\n  {speed: slow/fast, slower/faster} · {liveliness: calm/lively, calmer/livelier}\n  {curves: straight/curvy, straighter/curvier} · {jerkiness: steady/jerky, steadier/jerkier}\n  {purpose: aimless/purposeful, more aimless/more purposeful}\n  {friends: wary of friends/drawn to friends} · {strangers: wary of strangers/drawn to strangers}\n  {size: small/big, smaller/bigger} · {shape: smooth/pointed, smoother/pointier}\n  {detail: simple/fancy, simpler/fancier} · {brightness: dim/bright, dimmer/brighter}\n  {warmth: cool/warm, cooler/warmer} · {height: lower down/higher up, below/above}\nthe levels are {low, medium, high}, so \"medium speed\" is the middle one; \"{same} speed\" means someone else's speed\na suggestion is a word with {a bit} (weaker), {very} (stronger) or {not} (rules it out) before it\na suggestion counts its strength (a bit 1, plain 2, very 3) times where it came from:\n  the character's own word {3}, a word meaning the same {2}, the opposite of a word {1}, a comparison {4}, the film's taste {1}\n  a line like “Cinderella: a bit slow, big” from an AI agent {2}, or from {You} {3}; only its first 4 suggestions count\nchoose values for everyone the Cast says is being chosen: the film's focus first, then in the Cast's order\nfor each thing about each one, add up the suggestions for each value\n  a comparison like \"bigger than X\" waits for X's value, then rules out X's value and below\n  if two choices wait for each other, the first goes without its comparison\n  the film's variety adds a weak suggestion: low variety the value used most so far, high the least, medium the middle one\n  a value is ruled out if what is against it is at least as strong as what is for it\n  if one value is more than {2} times as strong as the next, it wins\n  if not, low and high meet in the middle, unless the middle is ruled out; then the stronger wins, or the one said first\n  if nobody suggested anything, it is medium; if everything is ruled out, a comparison keeps its own direction\na subtle film keeps only each one's {3} strongest differences from medium\nremember the values; a stand-in gets the variety and comparisons its character had, and then its values become the character's\nsay everyone's values, explain {Cinderella} in full, say how the arguments were settled, and name any word no expert knew",
-          "js": "function run(input, params, h) {\n  const IDS = [\"speed\", \"liveliness\", \"curves\", \"jerkiness\", \"purpose\", \"friends\", \"strangers\", \"size\", \"shape\", \"detail\", \"brightness\", \"warmth\", \"height\"];\n  const LOOKS = [\"size\", \"shape\", \"detail\", \"brightness\", \"warmth\"];\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);\n  const joinAnd = list => (list.length < 2 ? list.join(\"\") : list.slice(0, -1).join(\", \") + \" and \" + list[list.length - 1]);\n  const levels = String(params.levels).split(\",\").map(low);\n  const vocab = new Map(), names = {}, words = {};\n  for (const id of IDS) {\n    h.tick();\n    const text = String(params[id] == null ? \"\" : params[id]), at = text.indexOf(\":\");\n    const parts = text.slice(at + 1).split(\",\").map(p => p.split(\"/\").map(low));\n    names[id] = at > 0 ? low(text.slice(0, at)) : id;\n    words[id] = [(parts[0] || [])[0] || \"\", (parts[0] || [])[1] || \"\", (parts[1] || [])[0] || \"\", (parts[1] || [])[1] || \"\"];\n    if (words[id][0]) vocab.set(words[id][0], { el: id, v: 1 });\n    if (words[id][1]) vocab.set(words[id][1], { el: id, v: 3 });\n    if (words[id][2]) vocab.set(words[id][2], { el: id, dir: -1 });\n    if (words[id][3]) vocab.set(words[id][3], { el: id, dir: 1 });\n    levels.forEach((l, i) => vocab.set(l + \" \" + names[id], { el: id, v: i + 1 }));\n    vocab.set(low(params.same) + \" \" + names[id], { el: id, dir: 0 });\n  }\n  const valueWord = (id, v) => (v === 1 && words[id][0] ? words[id][0] : v === 3 && words[id][1] ? words[id][1] : (levels[v - 1] || \"medium\") + \" \" + names[id]);\n  const ABIT = low(params.abit), VERY = low(params.very), NOT = low(params.not);\n  const read = phrase => {\n    let p = low(phrase), s = 2, not = false;\n    if (ABIT && p.indexOf(ABIT + \" \") === 0) {\n      s = 1;\n      p = p.slice(ABIT.length + 1).trim();\n    } else if (VERY && p.indexOf(VERY + \" \") === 0) {\n      s = 3;\n      p = p.slice(VERY.length + 1).trim();\n    }\n    if (NOT && p.indexOf(NOT + \" \") === 0) {\n      not = true;\n      p = p.slice(NOT.length + 1).trim();\n    }\n    const hit = vocab.get(p);\n    return hit ? { el: hit.el, v: hit.v, dir: hit.dir, s: s, not: not } : null;\n  };\n  const weights = { own: +params.own || 0, same: +params.alike || 0, opposite: +params.opposite || 0, comparison: +params.comparison || 0, taste: +params.taste || 0, ai: +params.ai || 0, you: +params.you || 0 };\n  const memory = input.memory || {};\n  for (const k of [\"values\", \"nets\", \"counts\", \"without\", \"variety\"]) {\n    memory[k] = memory[k] || {};\n  }\n  memory.looksFrom = memory.looksFrom || [];\n  let scene = null, taste = {};\n  const raw = [], knew = {}, unknown = {}, voices = [];\n  for (const m of input.messages || []) {\n    h.tick();\n    const d = m.data || {};\n    if (Array.isArray(d.choose)) scene = d;\n    if (d.taste) taste = d.taste;\n    if (!d.choose && !d.taste && !d.suggestions && m.text) voices.push(m);\n    for (const x of d.suggestions || []) {\n      h.tick();\n      raw.push({ by: m.from, x: x });\n    }\n    for (const who of Object.keys(d.knew || {})) {\n      h.tick();\n      knew[who] = (knew[who] || []).concat(d.knew[who]);\n    }\n    for (const who of Object.keys(d.unknown || {})) {\n      h.tick();\n      unknown[who] = (unknown[who] || []).concat(d.unknown[who]);\n    }\n  }\n  if (!scene) return { count: 0, say: \"I didn't get the scene from the Cast, so there is nothing to choose.\", memory: memory };\n  const call = n => (scene.called || {})[n] || n;\n  const tasteLevel = {};\n  for (const k of Object.keys(taste)) {\n    h.tick();\n    tasteLevel[k] = levels.indexOf(low(taste[k])) + 1;\n  }\n  const focus = low(taste.focus);\n  const choose = (scene.choose || []).filter(c => low(c.of || c.name) === focus).concat((scene.choose || []).filter(c => low(c.of || c.name) !== focus));\n  const beingChosen = new Set(choose.map(c => c.name));\n  const sugs = new Map(), bad = [], looksFrom = [];\n  let n = 0;\n  const PERSON = low(params.person), unused = [];\n  const isCalled = (name, t) => low(name) === t || low(call(name)) === t;\n  for (const m of voices) {\n    h.tick();\n    for (const line of String(m.text).split(\"\\n\")) {\n      h.tick();\n      const at = line.indexOf(\":\"), t = h.words(line.slice(0, Math.max(at, 0))).join(\" \");\n      const c = at > 0 ? choose.find(x => isCalled(x.name, t)) || choose.find(x => x.of && isCalled(x.of, t)) : null;\n      const says = c ? line.slice(at + 1).split(\"(\")[0].split(\".\").join(\"\").split(\",\").filter(x => x.trim()) : [];\n      if (c) raw.push({ by: m.from, x: { who: c.name, word: m.from, kind: low(m.from) === PERSON ? \"you\" : \"ai\", says: says.slice(0, 4).join(\",\") } });\n      for (const extra of c ? says.slice(4) : line.trim() ? [line.trim()] : []) {\n        h.tick();\n        unused.push(\"“\" + extra.trim().slice(0, 50) + \"” (\" + m.from + \")\");\n      }\n    }\n  }\n  for (const r of raw) {\n    h.tick();\n    const x = r.x;\n    const targets = x.who === \"*\" ? choose.map(c => c.name) : [x.who];\n    for (const phrase of String(x.says || \"\").split(\",\")) {\n      h.tick();\n      if (!phrase.trim()) continue;\n      const p = read(phrase);\n      if (!p || (p.dir !== undefined && !x.of)) {\n        if (bad.indexOf(\"“\" + phrase.trim() + \"” (\" + r.by + \")\") < 0) bad.push(\"“\" + phrase.trim() + \"” (\" + r.by + \")\");\n        continue;\n      }\n      const kind = p.dir !== undefined ? \"comparison\" : x.kind;\n      const turn = !!x.turn;\n      const v = p.v === undefined ? undefined : turn ? 4 - p.v : p.v, dir = p.dir === undefined ? undefined : turn ? -p.dir : p.dir;\n      const said = p.dir !== undefined ? (dir === 0 ? low(params.same) + \" \" + names[p.el] : words[p.el][dir > 0 ? 3 : 2]) + \" than \" + call(x.of) + \" (\" + x.word + \")\"\n        : kind === \"taste\" ? \"the film's \" + x.word\n        : x.word + (x.from ? \" (\" + x.from + \" brings it)\" : \"\") + (kind === \"same\" ? \" (like \" + x.like + \")\" : \"\") + (kind === \"opposite\" ? \" (the opposite of \" + x.like + \")\" : \"\");\n      for (const who of targets) {\n        h.tick();\n        if (!beingChosen.has(who)) continue;\n        const key = who + \"/\" + p.el;\n        if (!sugs.has(key)) sugs.set(key, []);\n        sugs.get(key).push({ n: n++, v: v, dir: dir, of: x.of, not: p.not, w: p.s * (weights[kind] || 0), src: p.not ? \"“\" + NOT + \" \" + valueWord(p.el, v) + \"” (\" + said + \")\" : said });\n        if (LOOKS.indexOf(p.el) >= 0 && kind !== \"taste\" && kind !== \"comparison\" && looksFrom.indexOf(r.by) < 0) looksFrom.push(r.by);\n      }\n    }\n  }\n  const frozen = Object.keys(memory.values || {}).length > 0;\n  const counts = {}, chosen = {}, nets = {}, why = {};\n  for (const id of IDS) {\n    h.tick();\n    counts[id] = ((memory.counts || {})[id] || [0, 0, 0]).slice();\n  }\n  const valueFor = (who, el) => (chosen[who] && chosen[who][el] !== undefined ? chosen[who][el] : beingChosen.has(who) ? undefined : ((memory.values || {})[who] || {})[el]);\n  const ofName = {};\n  for (const c of choose) {\n    h.tick();\n    ofName[c.name] = c.of || c.name;\n  }\n  const stillWithout = (who, el) => frozen && ((memory.without || {})[ofName[who]] || []).indexOf(el) >= 0;\n  const variety = el => {\n    const c = counts[el], lv = tasteLevel.variety || 0;\n    const most = [1, 2, 3].sort((a, b) => c[b - 1] - c[a - 1]), least = [1, 2, 3].sort((a, b) => c[a - 1] - c[b - 1]);\n    return lv === 1 ? most[0] : lv === 3 ? least[0] : lv === 2 ? most[1] : 0;\n  };\n  const tally = { more: 0, middle: 0, stronger: 0, first: 0, alone: 0, nobody: 0, self: 0, waited: 0, without: 0 };\n  const ratio = +params.ratio || 2;\n  for (const c of choose) {\n    chosen[c.name] = {};\n    nets[c.name] = {};\n    why[c.name] = {};\n  }\n  for (const el of IDS) {\n    h.tick();\n    const left = choose.map(c => c.name);\n    while (left.length) {\n      h.tick();\n      const waits = who => (sugs.get(who + \"/\" + el) || []).filter(s => s.dir !== undefined && valueFor(s.of, el) === undefined && beingChosen.has(s.of));\n      let k = left.findIndex(who => waits(who).length === 0);\n      const embrace = k < 0;\n      if (embrace) k = 0;\n      const who = left.splice(k, 1)[0];\n      const pro = [0, 0, 0], con = [0, 0, 0], first = [1e9, 1e9, 1e9], forV = [[], [], []], against = [[], [], []], without = [];\n      let pull = 0;\n      for (const s of sugs.get(who + \"/\" + el) || []) {\n        h.tick();\n        if (s.dir !== undefined) {\n          const x = valueFor(s.of, el);\n          if (x === undefined || stillWithout(who, el)) {\n            without.push(s.src);\n            continue;\n          }\n          if (beingChosen.has(s.of)) tally.waited++;\n          if (s.dir === 0) {\n            pro[x - 1] += s.w;\n            forV[x - 1].push(s.src);\n            first[x - 1] = Math.min(first[x - 1], s.n);\n            continue;\n          }\n          pull += s.dir * s.w;\n          for (let v = 1; v <= 3; v++) {\n            if (s.dir > 0 ? v <= x : v >= x) {\n              con[v - 1] += s.w;\n              against[v - 1].push(\"“\" + s.src.split(\" (\")[0] + \"” (\" + s.src.split(\" (\").slice(1).join(\" (\"));\n            }\n          }\n          continue;\n        }\n        if (s.not) {\n          con[s.v - 1] += s.w;\n          against[s.v - 1].push(s.src);\n          continue;\n        }\n        pro[s.v - 1] += s.w;\n        forV[s.v - 1].push(s.src);\n        first[s.v - 1] = Math.min(first[s.v - 1], s.n);\n      }\n      if (without.length) tally.without++;\n      const vv = frozen && ((memory.variety || {})[ofName[who]] || {})[el] !== undefined ? memory.variety[ofName[who]][el] : variety(el);\n      if (!frozen) {\n        memory.variety[who] = memory.variety[who] || {};\n        memory.variety[who][el] = vv;\n      }\n      if (vv && weights.taste) {\n        pro[vv - 1] += weights.taste;\n        forV[vv - 1].push(\"the film's variety\");\n        first[vv - 1] = Math.min(first[vv - 1], n + 1);\n      }\n      const net = [0, 1, 2].map(i => pro[i] - con[i]);\n      const out = [0, 1, 2].map(i => con[i] > 0 && con[i] >= pro[i]);\n      const standing = [1, 2, 3].filter(v => !out[v - 1]);\n      const backed = standing.filter(v => pro[v - 1] > 0).sort((a, b) => net[b - 1] - net[a - 1] || first[a - 1] - first[b - 1]);\n      let v = 2, how = \"\";\n      if (!standing.length) {\n        v = pull > 0 ? 3 : pull < 0 ? 1 : [1, 2, 3].sort((a, b) => net[b - 1] - net[a - 1])[0];\n        how = pull ? \"everything was ruled out, so the comparison kept its own direction\" : \"everything was ruled out, so the least ruled out won\";\n        tally.self++;\n      } else if (!backed.length) {\n        v = standing.indexOf(2) >= 0 ? 2 : standing[0];\n        how = \"nobody suggested anything that wasn't ruled out\";\n        tally.nobody++;\n      } else if (backed.length === 1) {\n        v = backed[0];\n        how = [1, 2, 3].some(x => x !== v && pro[x - 1] > 0) ? \"everything else was ruled out\" : \"nobody suggested anything else\";\n        tally.alone++;\n      } else if (net[backed[0] - 1] > ratio * net[backed[1] - 1]) {\n        v = backed[0];\n        how = \"more than \" + ratio + \" times as strong\";\n        tally.more++;\n      } else if (backed[0] + backed[1] === 4 && !out[1]) {\n        v = 2;\n        how = valueWord(el, 1) + \" and \" + valueWord(el, 3) + \" met in the middle\";\n        tally.middle++;\n      } else {\n        v = backed[0];\n        how = net[backed[0] - 1] > net[backed[1] - 1] ? \"stronger\" : \"said first\";\n        tally[net[backed[0] - 1] > net[backed[1] - 1] ? \"stronger\" : \"first\"]++;\n      }\n      chosen[who][el] = v;\n      nets[who][el] = net;\n      if (!frozen) counts[el][v - 1]++;\n      why[who][el] = { value: valueWord(el, v), how: how, because: forV[v - 1], against: against[v - 1] };\n      if (without.length) why[who][el].without = without;\n      if (embrace && without.length) why[who][el].embrace = true;\n    }\n  }\n  if (tasteLevel.obviousness === 1) {\n    for (const c of choose) {\n      h.tick();\n      const ranked = IDS.filter(el => chosen[c.name][el] !== 2).sort((a, b) => Math.max(nets[c.name][b][0], nets[c.name][b][1], nets[c.name][b][2]) - Math.max(nets[c.name][a][0], nets[c.name][a][1], nets[c.name][a][2]));\n      for (const el of ranked.slice(+params.subtle || 0)) {\n        h.tick();\n        chosen[c.name][el] = 2;\n        why[c.name][el].value = valueWord(el, 2);\n        why[c.name][el].how = \"a subtle film keeps only \" + (+params.subtle || 0) + \" differences\";\n      }\n    }\n  }\n  const before = {}, beforeNets = {};\n  for (const name of (scene.onStage || []).concat(choose.map(c => c.of || c.name))) {\n    before[name] = (memory.values || {})[name];\n    beforeNets[name] = (memory.nets || {})[name];\n  }\n  const changed = [];\n  for (const c of choose) {\n    h.tick();\n    const old = (memory.values || {})[c.of || \"\"];\n    if (c.of && old) changed.push(call(c.of) + \": \" + IDS.filter(el => old[el] !== chosen[c.name][el]).map(el => valueWord(el, old[el]) + \" → \" + valueWord(el, chosen[c.name][el])).join(\", \"));\n    memory.values[c.of || c.name] = chosen[c.name];\n    memory.nets[c.of || c.name] = { shape: nets[c.name].shape, detail: nets[c.name].detail };\n    if (!frozen) memory.without[c.of || c.name] = IDS.filter(el => why[c.name][el].without);\n  }\n  memory.counts = counts;\n  memory.looksFrom = memory.looksFrom.concat(looksFrom.filter(x => memory.looksFrom.indexOf(x) < 0));\n  const choices = {}, strengths = {}, summary = {};\n  const describe = vals => {\n    const shown = IDS.filter(el => vals[el] !== 2).map(el => valueWord(el, vals[el])), mid = IDS.filter(el => vals[el] === 2).map(el => names[el]);\n    return (shown.join(\", \") || levels[1] + \" in everything\") + (shown.length && mid.length ? \" (\" + levels[1] + \": \" + mid.join(\", \") + \")\" : \"\");\n  };\n  for (const name of (scene.onStage || []).concat(choose.filter(c => c.of).map(c => c.name))) {\n    h.tick();\n    const vals = beingChosen.has(name) ? chosen[name] : before[name];\n    if (!vals) continue;\n    choices[name] = vals;\n    strengths[name] = beingChosen.has(name) ? { shape: nets[name].shape, detail: nets[name].detail } : beforeNets[name];\n    summary[name] = describe(vals);\n  }\n  const lost = [];\n  for (const who of Object.keys(unknown)) {\n    h.tick();\n    for (const w of unknown[who]) {\n      h.tick();\n      if (lost.indexOf(w + \" (\" + call(who) + \")\") < 0 && (knew[who] || []).indexOf(w) < 0) lost.push(w + \" (\" + call(who) + \")\");\n    }\n  }\n  let say = \"**Scene \" + scene.scene + \" of \" + scene.of + \".** \";\n  if (!choose.length) say += \"Nobody's words changed, so everyone keeps the values chosen before:\\n\" + Object.keys(summary).map(nm => \"- **\" + call(nm) + \"**: \" + summary[nm]).join(\"\\n\");\n  else say += (frozen ? \"Someone's words changed, so I chose again for \" + joinAnd(choose.map(c => c.name)) + \", with the variety and comparisons the first choosing gave them:\\n\" : \"I chose everyone's values once, for the whole film\" + (choose.some(c => low(c.name) === focus) ? \", \" + call(choose[0].name) + \" first, as the film's focus\" : \"\") + \":\\n\") + choose.map(c => \"- **\" + call(c.name) + \"**: \" + describe(chosen[c.name])).join(\"\\n\");\n  if (changed.length) say += \"\\n\\nWhat changed: \" + changed.join(\"; \") + \".\";\n  const target = choose.filter(c => low(c.of || c.name) === low(params.explain)).pop();\n  const explained = [], FILM = \"the film's \", STRONG = \"more than \" + ratio + \" times as strong\";\n  let went = \"\", medium = \"\";\n  if (target) {\n    const w = why[target.name], gone = [], mid = [];\n    IDS.forEach((el, i) => {\n      if (w[el].without) gone.push(names[el]);\n      if (chosen[target.name][el] === 2) {\n        mid.push(names[el] + \" (\" + w[el].how + \")\");\n        return;\n      }\n      const film = w[el].because.filter(x => x.indexOf(FILM) === 0).map(x => x.slice(FILM.length)), own = w[el].because.filter(x => x.indexOf(FILM) !== 0);\n      const p = Math.max(nets[target.name][el][0], nets[target.name][el][1], nets[target.name][el][2]);\n      explained.push({ i: i, p: p, text: w[el].value + \" because of \" + joinAnd(own.concat(film.length ? [FILM + joinAnd(film)] : [])) + (w[el].against.length ? \", against \" + joinAnd(w[el].against) : \"\") + (w[el].how === STRONG ? \"\" : \" (\" + w[el].how + \")\") });\n    });\n    if (mid.length) medium = \" \" + cap(levels[1]) + \": \" + mid.join(\"; \") + \".\";\n    if (gone.length) went = \" \" + (frozen ? \"As in the first choosing, \" + joinAnd(gone) : cap(call(target.name)) + \" was chosen first, so \" + joinAnd(gone)) + \" went without a comparison.\";\n  }\n  const parts = [[tally.more, STRONG], [tally.middle, \"met in the middle\"], [tally.stronger, \"stronger\"], [tally.first, \"said first\"], [tally.alone, \"unopposed\"], [tally.nobody, \"nothing suggested\"], [tally.self, \"kept a comparison's own direction\"]].filter(x => x[0] > 0);\n  const settled = \"**Settled:** \" + parts.map(x => x[0] + \" \" + x[1]).join(\", \") + \". \" + tally.waited + (tally.waited === 1 ? \" comparison\" : \" comparisons\") + \" waited for another's value\" + (tally.without ? \"; \" + tally.without + \" went without, because two choices waited for each other (Ani's “deadly embrace”)\" : \"\") + \".\";\n  const tail = (lost.length ? \"\\n\\n**Words no expert knew:** \" + lost.join(\", \") + \".\" : \"\") + (bad.length ? \"\\n\\n**I couldn't read:** \" + bad.join(\", \") + \".\" : \"\") +\n    (unused.length ? \"\\n\\n**Not used** (only lines about someone being chosen now count, and only their first 4 suggestions): \" + unused.slice(0, 6).join(\", \") + (unused.length > 6 ? \" …\" : \"\") + \".\" : \"\");\n  const whyText = list => (target && (list.length || medium) ? \"\\n\\n**Why \" + call(target.name) + \" is like that:**\" + (list.length ? \" \" + call(target.name) + \" is \" + list.slice().sort((a, b) => a.i - b.i).map(x => x.text).join(\"; \") + \".\" : \"\") + medium + went : \"\");\n  let kept = explained.slice();\n  if ((say + whyText(kept) + \"\\n\\n\" + settled + tail).length > 1960) medium = \"\";\n  while (kept.length && (say + whyText(kept) + \"\\n\\n\" + settled + tail).length > 1960) {\n    h.tick();\n    kept = kept.sort((a, b) => b.p - a.p).slice(0, -1);\n  }\n  say += whyText(kept) + (kept.length < explained.length ? \" (The rest is in my data, under why.)\" : \"\") + (choose.length ? \"\\n\\n\" + settled : \"\") + tail;\n  return { count: choose.length, scene: scene.scene, of: scene.of, title: scene.title, cast: scene.cast, called: scene.called, onStage: scene.onStage, events: scene.events, relations: scene.relations, friends: scene.friends,\n    standIns: choose.filter(c => c.of).map(c => ({ name: c.name, of: c.of })), choices: choices, strengths: strengths, summary: summary, words: words, looksFrom: memory.looksFrom, taste: taste, tasteLevel: tasteLevel, why: why, unknown: lost, say: say, memory: memory };\n}",
+          "pseudocode": "wait for the scene and the experts' suggestions: up to {20} messages, or until nobody else has anything to say\nthe things it chooses, each low, medium or high, with the words for them and for comparing:\n  {speed: slow/fast, slower/faster} · {liveliness: calm/lively, calmer/livelier}\n  {curves: straight/curvy, straighter/curvier} · {jerkiness: steady/jerky, steadier/jerkier}\n  {purpose: aimless/purposeful, more aimless/more purposeful}\n  {friends: wary of friends/drawn to friends} · {strangers: wary of strangers/drawn to strangers}\n  {size: small/big, smaller/bigger} · {shape: smooth/pointed, smoother/pointier}\n  {detail: simple/fancy, simpler/fancier} · {brightness: dim/bright, dimmer/brighter}\n  {warmth: cool/warm, cooler/warmer} · {height: lower down/higher up, below/above}\nthe levels are {low, medium, high}, so \"medium speed\" is the middle one; \"{same} speed\" means someone else's speed\na suggestion is a word with {a bit} (weaker), {very} (stronger) or {not} (rules it out) before it\na suggestion counts its strength (a bit 1, plain 2, very 3) times where it came from:\n  the character's own word {3}, a word meaning the same {2}, the opposite of a word {1}, a comparison {4}, the film's taste {1}\nchoose values for everyone the Cast says is being chosen: the film's focus first, then in the Cast's order\nfor each thing about each one, add up the suggestions for each value\n  a comparison like \"bigger than X\" waits for X's value, then rules out X's value and below\n  if two choices wait for each other, the first goes without its comparison\n  the film's variety adds a weak suggestion: low variety the value used most so far, high the least, medium the middle one\n  a value is ruled out if what is against it is at least as strong as what is for it\n  if one value is more than {2} times as strong as the next, it wins\n  if not, low and high meet in the middle, unless the middle is ruled out; then the stronger wins, or the one said first\n  if nobody suggested anything, it is medium; if everything is ruled out, a comparison keeps its own direction\na subtle film keeps only each one's {3} strongest differences from medium\nremember the values; a stand-in gets the variety and comparisons its character had, and then its values become the character's\nexplain {Cinderella} in full first (or the first one chosen, if nobody in the story is called that), then say everyone's values and how the arguments were settled, and name each word no expert knew, once",
+          "js": "function run(input, params, h) {\n  const IDS = [\"speed\", \"liveliness\", \"curves\", \"jerkiness\", \"purpose\", \"friends\", \"strangers\", \"size\", \"shape\", \"detail\", \"brightness\", \"warmth\", \"height\"];\n  const LOOKS = [\"size\", \"shape\", \"detail\", \"brightness\", \"warmth\"];\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);\n  const joinAnd = list => (list.length < 2 ? list.join(\"\") : list.slice(0, -1).join(\", \") + \" and \" + list[list.length - 1]);\n  const levels = String(params.levels).split(\",\").map(low);\n  const vocab = new Map(), names = {}, words = {};\n  for (const id of IDS) {\n    h.tick();\n    const text = String(params[id] == null ? \"\" : params[id]), at = text.indexOf(\":\");\n    const parts = text.slice(at + 1).split(\",\").map(p => p.split(\"/\").map(low));\n    names[id] = at > 0 ? low(text.slice(0, at)) : id;\n    words[id] = [(parts[0] || [])[0] || \"\", (parts[0] || [])[1] || \"\", (parts[1] || [])[0] || \"\", (parts[1] || [])[1] || \"\"];\n    if (words[id][0]) vocab.set(words[id][0], { el: id, v: 1 });\n    if (words[id][1]) vocab.set(words[id][1], { el: id, v: 3 });\n    if (words[id][2]) vocab.set(words[id][2], { el: id, dir: -1 });\n    if (words[id][3]) vocab.set(words[id][3], { el: id, dir: 1 });\n    levels.forEach((l, i) => vocab.set(l + \" \" + names[id], { el: id, v: i + 1 }));\n    vocab.set(low(params.same) + \" \" + names[id], { el: id, dir: 0 });\n  }\n  const valueWord = (id, v) => (v === 1 && words[id][0] ? words[id][0] : v === 3 && words[id][1] ? words[id][1] : (levels[v - 1] || \"medium\") + \" \" + names[id]);\n  const ABIT = low(params.abit), VERY = low(params.very), NOT = low(params.not);\n  const read = phrase => {\n    let p = low(phrase), s = 2, not = false;\n    if (ABIT && p.indexOf(ABIT + \" \") === 0) {\n      s = 1;\n      p = p.slice(ABIT.length + 1).trim();\n    } else if (VERY && p.indexOf(VERY + \" \") === 0) {\n      s = 3;\n      p = p.slice(VERY.length + 1).trim();\n    }\n    if (NOT && p.indexOf(NOT + \" \") === 0) {\n      not = true;\n      p = p.slice(NOT.length + 1).trim();\n    }\n    const hit = vocab.get(p);\n    return hit ? { el: hit.el, v: hit.v, dir: hit.dir, s: s, not: not } : null;\n  };\n  const weights = { own: +params.own || 0, same: +params.alike || 0, opposite: +params.opposite || 0, comparison: +params.comparison || 0, taste: +params.taste || 0 };\n  const memory = input.memory || {};\n  for (const k of [\"values\", \"nets\", \"counts\", \"without\", \"variety\"]) {\n    memory[k] = memory[k] || {};\n  }\n  memory.looksFrom = memory.looksFrom || [];\n  let scene = null, taste = {};\n  const raw = [], knew = {}, unknown = {};\n  for (const m of input.messages || []) {\n    h.tick();\n    const d = m.data || {};\n    if (Array.isArray(d.choose)) scene = d;\n    if (d.taste) taste = d.taste;\n    for (const x of d.suggestions || []) {\n      h.tick();\n      raw.push({ by: m.from, x: x });\n    }\n    for (const who of Object.keys(d.knew || {})) {\n      h.tick();\n      knew[who] = (knew[who] || []).concat(d.knew[who]);\n    }\n    for (const who of Object.keys(d.unknown || {})) {\n      h.tick();\n      unknown[who] = (unknown[who] || []).concat(d.unknown[who]);\n    }\n  }\n  if (!scene) return { count: 0, say: \"I didn't get the scene from the Cast, so there is nothing to choose.\", memory: memory };\n  const call = n => (scene.called || {})[n] || n;\n  const tasteLevel = {};\n  for (const k of Object.keys(taste)) {\n    h.tick();\n    tasteLevel[k] = levels.indexOf(low(taste[k])) + 1;\n  }\n  const focus = low(taste.focus);\n  const choose = (scene.choose || []).filter(c => low(c.of || c.name) === focus).concat((scene.choose || []).filter(c => low(c.of || c.name) !== focus));\n  const beingChosen = new Set(choose.map(c => c.name));\n  const sugs = new Map(), bad = [], looksFrom = [];\n  let n = 0;\n  for (const r of raw) {\n    h.tick();\n    const x = r.x;\n    const targets = x.who === \"*\" ? choose.map(c => c.name) : [x.who];\n    for (const phrase of String(x.says || \"\").split(\",\")) {\n      h.tick();\n      if (!phrase.trim()) continue;\n      const p = read(phrase);\n      if (!p || (p.dir !== undefined && !x.of)) {\n        if (bad.indexOf(\"“\" + phrase.trim() + \"” (\" + r.by + \")\") < 0) bad.push(\"“\" + phrase.trim() + \"” (\" + r.by + \")\");\n        continue;\n      }\n      const kind = p.dir !== undefined ? \"comparison\" : x.kind;\n      const turn = !!x.turn;\n      const v = p.v === undefined ? undefined : turn ? 4 - p.v : p.v, dir = p.dir === undefined ? undefined : turn ? -p.dir : p.dir;\n      const said = p.dir !== undefined ? (dir === 0 ? low(params.same) + \" \" + names[p.el] + \" as \" : words[p.el][dir > 0 ? 3 : 2] + \" than \") + call(x.of) + \" (\" + x.word + \")\"\n        : kind === \"taste\" ? \"the film's \" + x.word\n        : x.word + (x.from ? \" (\" + x.from + \" brings it)\" : \"\") + (kind === \"same\" ? \" (like \" + x.like + \")\" : \"\") + (kind === \"opposite\" ? \" (the opposite of \" + x.like + \")\" : \"\");\n      for (const who of targets) {\n        h.tick();\n        if (!beingChosen.has(who)) continue;\n        const key = who + \"/\" + p.el;\n        if (!sugs.has(key)) sugs.set(key, []);\n        sugs.get(key).push({ n: n++, v: v, dir: dir, of: x.of, not: p.not, w: p.s * (weights[kind] || 0), src: p.not ? \"“\" + NOT + \" \" + valueWord(p.el, v) + \"” (\" + said + \")\" : said });\n        if (LOOKS.indexOf(p.el) >= 0 && kind !== \"taste\" && kind !== \"comparison\" && looksFrom.indexOf(r.by) < 0) looksFrom.push(r.by);\n      }\n    }\n  }\n  const frozen = Object.keys(memory.values || {}).length > 0;\n  const counts = {}, chosen = {}, nets = {}, why = {};\n  for (const id of IDS) {\n    h.tick();\n    counts[id] = ((memory.counts || {})[id] || [0, 0, 0]).slice();\n  }\n  const valueFor = (who, el) => (chosen[who] && chosen[who][el] !== undefined ? chosen[who][el] : beingChosen.has(who) ? undefined : ((memory.values || {})[who] || {})[el]);\n  const ofName = {};\n  for (const c of choose) {\n    h.tick();\n    ofName[c.name] = c.of || c.name;\n  }\n  const stillWithout = (who, el) => frozen && ((memory.without || {})[ofName[who]] || []).indexOf(el) >= 0;\n  const variety = el => {\n    const c = counts[el], lv = tasteLevel.variety || 0;\n    const most = [1, 2, 3].sort((a, b) => c[b - 1] - c[a - 1]), least = [1, 2, 3].sort((a, b) => c[a - 1] - c[b - 1]);\n    return lv === 1 ? most[0] : lv === 3 ? least[0] : lv === 2 ? most[1] : 0;\n  };\n  const tally = { more: 0, middle: 0, stronger: 0, first: 0, alone: 0, nobody: 0, self: 0, waited: 0, without: 0 };\n  const ratio = +params.ratio || 2;\n  for (const c of choose) {\n    chosen[c.name] = {};\n    nets[c.name] = {};\n    why[c.name] = {};\n  }\n  for (const el of IDS) {\n    h.tick();\n    const left = choose.map(c => c.name);\n    while (left.length) {\n      h.tick();\n      const waits = who => (sugs.get(who + \"/\" + el) || []).filter(s => s.dir !== undefined && valueFor(s.of, el) === undefined && beingChosen.has(s.of));\n      let k = left.findIndex(who => waits(who).length === 0);\n      const embrace = k < 0;\n      if (embrace) k = 0;\n      const who = left.splice(k, 1)[0];\n      const pro = [0, 0, 0], con = [0, 0, 0], first = [1e9, 1e9, 1e9], forV = [[], [], []], against = [[], [], []], without = [];\n      let pull = 0;\n      for (const s of sugs.get(who + \"/\" + el) || []) {\n        h.tick();\n        if (s.dir !== undefined) {\n          const x = valueFor(s.of, el);\n          if (x === undefined || stillWithout(who, el)) {\n            without.push(s.src);\n            continue;\n          }\n          if (beingChosen.has(s.of)) tally.waited++;\n          if (s.dir === 0) {\n            pro[x - 1] += s.w;\n            forV[x - 1].push(s.src);\n            first[x - 1] = Math.min(first[x - 1], s.n);\n            continue;\n          }\n          pull += s.dir * s.w;\n          for (let v = 1; v <= 3; v++) {\n            if (s.dir > 0 ? v <= x : v >= x) {\n              con[v - 1] += s.w;\n              against[v - 1].push(\"“\" + s.src.split(\" (\")[0] + \"” (\" + s.src.split(\" (\").slice(1).join(\" (\"));\n            }\n          }\n          continue;\n        }\n        if (s.not) {\n          con[s.v - 1] += s.w;\n          against[s.v - 1].push(s.src);\n          continue;\n        }\n        pro[s.v - 1] += s.w;\n        forV[s.v - 1].push(s.src);\n        first[s.v - 1] = Math.min(first[s.v - 1], s.n);\n      }\n      if (without.length) tally.without++;\n      const vv = frozen && ((memory.variety || {})[ofName[who]] || {})[el] !== undefined ? memory.variety[ofName[who]][el] : variety(el);\n      if (!frozen) {\n        memory.variety[who] = memory.variety[who] || {};\n        memory.variety[who][el] = vv;\n      }\n      if (vv && weights.taste) {\n        pro[vv - 1] += weights.taste;\n        forV[vv - 1].push(\"the film's variety\");\n        first[vv - 1] = Math.min(first[vv - 1], n + 1);\n      }\n      const net = [0, 1, 2].map(i => pro[i] - con[i]);\n      const out = [0, 1, 2].map(i => con[i] > 0 && con[i] >= pro[i]);\n      const standing = [1, 2, 3].filter(v => !out[v - 1]);\n      const backed = standing.filter(v => pro[v - 1] > 0).sort((a, b) => net[b - 1] - net[a - 1] || first[a - 1] - first[b - 1]);\n      let v = 2, how = \"\";\n      if (!standing.length) {\n        v = pull > 0 ? 3 : pull < 0 ? 1 : [1, 2, 3].sort((a, b) => net[b - 1] - net[a - 1])[0];\n        how = pull ? \"everything was ruled out, so the comparison kept its own direction\" : \"everything was ruled out, so the least ruled out won\";\n        tally.self++;\n      } else if (!backed.length) {\n        v = standing.indexOf(2) >= 0 ? 2 : standing[0];\n        how = \"nobody suggested anything that wasn't ruled out\";\n        tally.nobody++;\n      } else if (backed.length === 1) {\n        v = backed[0];\n        how = [1, 2, 3].some(x => x !== v && pro[x - 1] > 0) ? \"everything else was ruled out\" : \"nobody suggested anything else\";\n        tally.alone++;\n      } else if (net[backed[0] - 1] > ratio * net[backed[1] - 1]) {\n        v = backed[0];\n        how = \"more than \" + ratio + \" times as strong\";\n        tally.more++;\n      } else if (backed[0] + backed[1] === 4 && !out[1]) {\n        v = 2;\n        how = valueWord(el, 1) + \" and \" + valueWord(el, 3) + \" met in the middle\";\n        tally.middle++;\n      } else {\n        v = backed[0];\n        how = net[backed[0] - 1] > net[backed[1] - 1] ? \"stronger\" : \"said first\";\n        tally[net[backed[0] - 1] > net[backed[1] - 1] ? \"stronger\" : \"first\"]++;\n      }\n      chosen[who][el] = v;\n      nets[who][el] = net;\n      if (!frozen) counts[el][v - 1]++;\n      why[who][el] = { value: valueWord(el, v), how: how, because: forV[v - 1], against: against[v - 1] };\n      if (without.length) why[who][el].without = without;\n      if (embrace && without.length) why[who][el].embrace = true;\n    }\n  }\n  if (tasteLevel.obviousness === 1) {\n    for (const c of choose) {\n      h.tick();\n      const ranked = IDS.filter(el => chosen[c.name][el] !== 2).sort((a, b) => Math.max(nets[c.name][b][0], nets[c.name][b][1], nets[c.name][b][2]) - Math.max(nets[c.name][a][0], nets[c.name][a][1], nets[c.name][a][2]));\n      for (const el of ranked.slice(+params.subtle || 0)) {\n        h.tick();\n        chosen[c.name][el] = 2;\n        why[c.name][el].value = valueWord(el, 2);\n        why[c.name][el].how = \"a subtle film keeps only \" + (+params.subtle || 0) + \" differences\";\n      }\n    }\n  }\n  const before = {}, beforeNets = {};\n  for (const name of (scene.onStage || []).concat(choose.map(c => c.of || c.name))) {\n    before[name] = (memory.values || {})[name];\n    beforeNets[name] = (memory.nets || {})[name];\n  }\n  const changed = [];\n  for (const c of choose) {\n    h.tick();\n    const old = (memory.values || {})[c.of || \"\"];\n    if (c.of && old) changed.push(call(c.of) + \": \" + IDS.filter(el => old[el] !== chosen[c.name][el]).map(el => valueWord(el, old[el]) + \" → \" + valueWord(el, chosen[c.name][el])).join(\", \"));\n    memory.values[c.of || c.name] = chosen[c.name];\n    memory.nets[c.of || c.name] = { shape: nets[c.name].shape, detail: nets[c.name].detail };\n    if (!frozen) memory.without[c.of || c.name] = IDS.filter(el => why[c.name][el].without);\n  }\n  memory.counts = counts;\n  memory.looksFrom = memory.looksFrom.concat(looksFrom.filter(x => memory.looksFrom.indexOf(x) < 0));\n  const choices = {}, strengths = {}, summary = {};\n  const describe = vals => {\n    const shown = IDS.filter(el => vals[el] !== 2).map(el => valueWord(el, vals[el])), mid = IDS.filter(el => vals[el] === 2).map(el => names[el]);\n    return (shown.join(\", \") || levels[1] + \" in everything\") + (shown.length && mid.length ? \" (\" + levels[1] + \": \" + mid.join(\", \") + \")\" : \"\");\n  };\n  for (const name of (scene.onStage || []).concat(choose.filter(c => c.of).map(c => c.name))) {\n    h.tick();\n    const vals = beingChosen.has(name) ? chosen[name] : before[name];\n    if (!vals) continue;\n    choices[name] = vals;\n    strengths[name] = beingChosen.has(name) ? { shape: nets[name].shape, detail: nets[name].detail } : beforeNets[name];\n    summary[name] = describe(vals);\n  }\n  const lost = [], told = memory.told || [];\n  for (const who of Object.keys(unknown)) {\n    h.tick();\n    for (const w of unknown[who]) {\n      h.tick();\n      if (lost.indexOf(w + \" (\" + call(who) + \")\") < 0 && told.indexOf(w + \" (\" + call(who) + \")\") < 0 && (knew[who] || []).indexOf(w) < 0) lost.push(w + \" (\" + call(who) + \")\");\n    }\n  }\n  memory.told = told.concat(lost);\n  let everyone = \"\", say = \"**Scene \" + scene.scene + \" of \" + scene.of + \".** \";\n  if (!choose.length) everyone = \"Nobody's words changed, so everyone keeps the values chosen before:\\n\" + Object.keys(summary).map(nm => \"- **\" + call(nm) + \"**: \" + summary[nm]).join(\"\\n\");\n  else everyone = (frozen ? \"Someone's words changed, so I chose again for \" + joinAnd(choose.map(c => call(c.name))) + \", with the variety and comparisons the first choosing gave them:\\n\" : \"I chose everyone's values once, for the whole film\" + (choose.some(c => low(c.name) === focus) ? \", \" + call(choose[0].name) + \" first, as the film's focus\" : \"\") + \":\\n\") + choose.map(c => \"- **\" + call(c.name) + \"**: \" + describe(chosen[c.name])).join(\"\\n\");\n  if (changed.length) everyone += \"\\n\\nWhat changed: \" + changed.join(\"; \") + \".\";\n  const named = choose.filter(c => low(c.of || c.name) === low(params.explain)).pop();\n  const target = named || ((scene.cast || []).some(n => low(n) === low(params.explain)) ? null : choose[0]);\n  const instead = target && !named && !frozen ? \" \" + params.explain + \" isn't in this story, so I explain \" + call(target.name) + \", the first one chosen.\" : \"\";\n  const explained = [], FILM = \"the film's \", STRONG = \"more than \" + ratio + \" times as strong\";\n  let went = \"\", medium = \"\";\n  if (target) {\n    const w = why[target.name], gone = [], mid = [];\n    IDS.forEach((el, i) => {\n      if (w[el].without) gone.push(names[el]);\n      if (chosen[target.name][el] === 2) {\n        mid.push(names[el] + \" (\" + w[el].how + \")\");\n        return;\n      }\n      const film = w[el].because.filter(x => x.indexOf(FILM) === 0).map(x => x.slice(FILM.length)), own = w[el].because.filter(x => x.indexOf(FILM) !== 0);\n      const p = Math.max(nets[target.name][el][0], nets[target.name][el][1], nets[target.name][el][2]);\n      explained.push({ i: i, p: p, text: w[el].value + \" because of \" + joinAnd(own.concat(film.length ? [FILM + joinAnd(film)] : [])) + (w[el].against.length ? \", against \" + joinAnd(w[el].against) : \"\") + (w[el].how === STRONG ? \"\" : \" (\" + w[el].how + \")\") });\n    });\n    if (mid.length) medium = \" \" + cap(levels[1]) + \": \" + mid.join(\"; \") + \".\";\n    if (gone.length) went = \" \" + (frozen ? \"As in the first choosing, \" + joinAnd(gone) : cap(call(target.name)) + \" was chosen first, so \" + joinAnd(gone)) + \" went without a comparison.\";\n  }\n  const parts = [[tally.more, STRONG], [tally.middle, \"met in the middle\"], [tally.stronger, \"stronger\"], [tally.first, \"said first\"], [tally.alone, \"unopposed\"], [tally.nobody, \"nothing suggested\"], [tally.self, \"kept a comparison's own direction\"]].filter(x => x[0] > 0);\n  const settled = \"**Settled:** \" + parts.map(x => x[0] + \" \" + x[1]).join(\", \") + \". \" + tally.waited + (tally.waited === 1 ? \" comparison\" : \" comparisons\") + \" waited for another's value\" + (tally.without ? \"; \" + tally.without + \" went without, because two choices waited for each other (Ani's “deadly embrace”)\" : \"\") + \".\";\n  const tail = (lost.length ? \"\\n\\n**Words no expert knew:** \" + lost.join(\", \") + \".\" : \"\") + (bad.length ? \"\\n\\n**I couldn't read:** \" + bad.join(\", \") + \".\" : \"\");\n  const whyText = list => (target && (list.length || medium) ? \"**Why \" + call(target.name) + \" is like that:**\" + instead + (list.length ? \" \" + call(target.name) + \" is \" + list.slice().sort((a, b) => a.i - b.i).map(x => x.text).join(\"; \") + \".\" : \"\") + medium + went : \"\");\n  let kept = explained.slice();\n  if ((say + whyText(kept) + \"\\n\\n\" + everyone + \"\\n\\n\" + settled + tail).length > 1960) medium = \"\";\n  while (kept.length && (say + whyText(kept) + \"\\n\\n\" + everyone + \"\\n\\n\" + settled + tail).length > 1960) {\n    h.tick();\n    kept = kept.sort((a, b) => b.p - a.p).slice(0, -1);\n  }\n  say += (whyText(kept) ? whyText(kept) + (kept.length < explained.length ? \" (The rest is in my data, under why.)\" : \"\") + \"\\n\\n\" : \"\") + everyone + (choose.length ? \"\\n\\n\" + settled : \"\") + tail;\n  return { count: choose.length, scene: scene.scene, of: scene.of, title: scene.title, cast: scene.cast, called: scene.called, onStage: scene.onStage, events: scene.events, relations: scene.relations, friends: scene.friends,\n    standIns: choose.filter(c => c.of).map(c => ({ name: c.name, of: c.of })), choices: choices, strengths: strengths, summary: summary, words: words, looksFrom: memory.looksFrom, taste: taste, tasteLevel: tasteLevel, why: why, unknown: lost, say: say, memory: memory };\n}",
           "lineMap": [
             {
               "pseudo": [
@@ -4713,7 +4647,7 @@
               ],
               "js": [
                 46,
-                52
+                56
               ]
             },
             {
@@ -4722,18 +4656,8 @@
                 1
               ],
               "js": [
-                54,
-                57
-              ]
-            },
-            {
-              "pseudo": [
-                1,
-                1
-              ],
-              "js": [
-                66,
-                66
+                65,
+                65
               ]
             },
             {
@@ -4952,8 +4876,8 @@
                 11
               ],
               "js": [
-                102,
-                102
+                85,
+                85
               ]
             },
             {
@@ -4962,8 +4886,8 @@
                 11
               ],
               "js": [
-                184,
-                188
+                167,
+                171
               ]
             },
             {
@@ -4982,8 +4906,8 @@
                 12
               ],
               "js": [
-                107,
-                107
+                90,
+                90
               ]
             },
             {
@@ -4992,8 +4916,8 @@
                 12
               ],
               "js": [
-                118,
-                118
+                101,
+                101
               ]
             },
             {
@@ -5012,8 +4936,8 @@
                 13
               ],
               "js": [
-                107,
-                109
+                90,
+                92
               ]
             },
             {
@@ -5022,8 +4946,8 @@
                 13
               ],
               "js": [
-                111,
-                112
+                94,
+                95
               ]
             },
             {
@@ -5032,8 +4956,8 @@
                 13
               ],
               "js": [
-                118,
-                118
+                101,
+                101
               ]
             },
             {
@@ -5042,8 +4966,8 @@
                 14
               ],
               "js": [
-                40,
-                40
+                66,
+                66
               ]
             },
             {
@@ -5052,8 +4976,8 @@
                 14
               ],
               "js": [
-                47,
-                47
+                73,
+                75
               ]
             },
             {
@@ -5062,8 +4986,8 @@
                 14
               ],
               "js": [
-                53,
-                53
+                98,
+                98
               ]
             },
             {
@@ -5072,8 +4996,8 @@
                 14
               ],
               "js": [
-                79,
-                94
+                126,
+                130
               ]
             },
             {
@@ -5082,18 +5006,8 @@
                 14
               ],
               "js": [
-                119,
-                119
-              ]
-            },
-            {
-              "pseudo": [
-                14,
-                14
-              ],
-              "js": [
-                316,
-                316
+                133,
+                133
               ]
             },
             {
@@ -5102,8 +5016,8 @@
                 15
               ],
               "js": [
-                67,
-                67
+                45,
+                45
               ]
             },
             {
@@ -5112,8 +5026,8 @@
                 15
               ],
               "js": [
-                74,
-                76
+                76,
+                84
               ]
             },
             {
@@ -5122,8 +5036,48 @@
                 15
               ],
               "js": [
-                115,
-                115
+                96,
+                97
+              ]
+            },
+            {
+              "pseudo": [
+                15,
+                15
+              ],
+              "js": [
+                99,
+                100
+              ]
+            },
+            {
+              "pseudo": [
+                15,
+                15
+              ],
+              "js": [
+                102,
+                105
+              ]
+            },
+            {
+              "pseudo": [
+                15,
+                15
+              ],
+              "js": [
+                131,
+                132
+              ]
+            },
+            {
+              "pseudo": [
+                15,
+                15
+              ],
+              "js": [
+                140,
+                141
               ]
             },
             {
@@ -5133,7 +5087,7 @@
               ],
               "js": [
                 143,
-                147
+                144
               ]
             },
             {
@@ -5142,8 +5096,28 @@
                 15
               ],
               "js": [
-                150,
-                150
+                172,
+                175
+              ]
+            },
+            {
+              "pseudo": [
+                15,
+                15
+              ],
+              "js": [
+                224,
+                224
+              ]
+            },
+            {
+              "pseudo": [
+                15,
+                15
+              ],
+              "js": [
+                252,
+                252
               ]
             },
             {
@@ -5152,8 +5126,8 @@
                 16
               ],
               "js": [
-                45,
-                45
+                93,
+                93
               ]
             },
             {
@@ -5162,8 +5136,8 @@
                 16
               ],
               "js": [
-                77,
-                78
+                112,
+                112
               ]
             },
             {
@@ -5172,8 +5146,8 @@
                 16
               ],
               "js": [
-                95,
-                101
+                134,
+                137
               ]
             },
             {
@@ -5182,118 +5156,38 @@
                 16
               ],
               "js": [
-                113,
-                114
+                145,
+                146
               ]
             },
             {
               "pseudo": [
                 16,
                 16
-              ],
-              "js": [
-                116,
-                117
-              ]
-            },
-            {
-              "pseudo": [
-                16,
-                16
-              ],
-              "js": [
-                119,
-                122
-              ]
-            },
-            {
-              "pseudo": [
-                16,
-                16
-              ],
-              "js": [
-                148,
-                149
-              ]
-            },
-            {
-              "pseudo": [
-                16,
-                16
-              ],
-              "js": [
-                157,
-                158
-              ]
-            },
-            {
-              "pseudo": [
-                16,
-                16
-              ],
-              "js": [
-                160,
-                161
-              ]
-            },
-            {
-              "pseudo": [
-                16,
-                16
-              ],
-              "js": [
-                189,
-                192
-              ]
-            },
-            {
-              "pseudo": [
-                16,
-                16
-              ],
-              "js": [
-                241,
-                241
-              ]
-            },
-            {
-              "pseudo": [
-                16,
-                16
-              ],
-              "js": [
-                269,
-                269
-              ]
-            },
-            {
-              "pseudo": [
-                17,
-                17
-              ],
-              "js": [
-                110,
-                110
-              ]
-            },
-            {
-              "pseudo": [
-                17,
-                17
-              ],
-              "js": [
-                129,
-                129
-              ]
-            },
-            {
-              "pseudo": [
-                17,
-                17
               ],
               "js": [
                 151,
-                154
+                157
+              ]
+            },
+            {
+              "pseudo": [
+                16,
+                16
+              ],
+              "js": [
+                159,
+                166
+              ]
+            },
+            {
+              "pseudo": [
+                16,
+                16
+              ],
+              "js": [
+                223,
+                223
               ]
             },
             {
@@ -5302,8 +5196,8 @@
                 17
               ],
               "js": [
-                162,
-                163
+                118,
+                118
               ]
             },
             {
@@ -5312,8 +5206,28 @@
                 17
               ],
               "js": [
-                168,
-                174
+                134,
+                135
+              ]
+            },
+            {
+              "pseudo": [
+                17,
+                17
+              ],
+              "js": [
+                138,
+                139
+              ]
+            },
+            {
+              "pseudo": [
+                17,
+                17
+              ],
+              "js": [
+                147,
+                150
               ]
             },
             {
@@ -5323,7 +5237,7 @@
               ],
               "js": [
                 176,
-                183
+                176
               ]
             },
             {
@@ -5332,8 +5246,38 @@
                 17
               ],
               "js": [
-                240,
-                240
+                221,
+                223
+              ]
+            },
+            {
+              "pseudo": [
+                17,
+                17
+              ],
+              "js": [
+                249,
+                249
+              ]
+            },
+            {
+              "pseudo": [
+                17,
+                17
+              ],
+              "js": [
+                287,
+                287
+              ]
+            },
+            {
+              "pseudo": [
+                17,
+                17
+              ],
+              "js": [
+                297,
+                297
               ]
             },
             {
@@ -5342,8 +5286,8 @@
                 18
               ],
               "js": [
-                135,
-                135
+                68,
+                72
               ]
             },
             {
@@ -5352,8 +5296,8 @@
                 18
               ],
               "js": [
-                151,
-                152
+                108,
+                111
               ]
             },
             {
@@ -5362,8 +5306,8 @@
                 18
               ],
               "js": [
-                155,
-                156
+                119,
+                123
               ]
             },
             {
@@ -5372,58 +5316,8 @@
                 18
               ],
               "js": [
-                164,
-                167
-              ]
-            },
-            {
-              "pseudo": [
-                18,
-                18
-              ],
-              "js": [
-                193,
-                193
-              ]
-            },
-            {
-              "pseudo": [
-                18,
-                18
-              ],
-              "js": [
-                238,
-                240
-              ]
-            },
-            {
-              "pseudo": [
-                18,
-                18
-              ],
-              "js": [
-                266,
-                266
-              ]
-            },
-            {
-              "pseudo": [
-                18,
-                18
-              ],
-              "js": [
-                301,
-                301
-              ]
-            },
-            {
-              "pseudo": [
-                18,
-                18
-              ],
-              "js": [
-                311,
-                311
+                177,
+                186
               ]
             },
             {
@@ -5432,38 +5326,28 @@
                 19
               ],
               "js": [
-                69,
-                73
+                187,
+                189
               ]
             },
             {
               "pseudo": [
                 19,
                 19
+              ],
+              "js": [
+                202,
+                202
+              ]
+            },
+            {
+              "pseudo": [
+                20,
+                20
               ],
               "js": [
                 125,
-                128
-              ]
-            },
-            {
-              "pseudo": [
-                19,
-                19
-              ],
-              "js": [
-                136,
-                140
-              ]
-            },
-            {
-              "pseudo": [
-                19,
-                19
-              ],
-              "js": [
-                194,
-                203
+                125
               ]
             },
             {
@@ -5472,8 +5356,8 @@
                 20
               ],
               "js": [
-                204,
-                206
+                190,
+                191
               ]
             },
             {
@@ -5482,8 +5366,8 @@
                 20
               ],
               "js": [
-                219,
-                219
+                200,
+                207
               ]
             },
             {
@@ -5492,74 +5376,14 @@
                 21
               ],
               "js": [
-                142,
-                142
+                190,
+                191
               ]
             },
             {
               "pseudo": [
                 21,
                 21
-              ],
-              "js": [
-                207,
-                208
-              ]
-            },
-            {
-              "pseudo": [
-                21,
-                21
-              ],
-              "js": [
-                217,
-                224
-              ]
-            },
-            {
-              "pseudo": [
-                22,
-                22
-              ],
-              "js": [
-                207,
-                208
-              ]
-            },
-            {
-              "pseudo": [
-                22,
-                22
-              ],
-              "js": [
-                225,
-                233
-              ]
-            },
-            {
-              "pseudo": [
-                23,
-                23
-              ],
-              "js": [
-                159,
-                159
-              ]
-            },
-            {
-              "pseudo": [
-                23,
-                23
-              ],
-              "js": [
-                175,
-                175
-              ]
-            },
-            {
-              "pseudo": [
-                23,
-                23
               ],
               "js": [
                 208,
@@ -5568,28 +5392,58 @@
             },
             {
               "pseudo": [
-                24,
-                24
+                22,
+                22
               ],
               "js": [
-                69,
-                73
+                142,
+                142
+              ]
+            },
+            {
+              "pseudo": [
+                22,
+                22
+              ],
+              "js": [
+                158,
+                158
+              ]
+            },
+            {
+              "pseudo": [
+                22,
+                22
+              ],
+              "js": [
+                191,
+                199
+              ]
+            },
+            {
+              "pseudo": [
+                23,
+                23
+              ],
+              "js": [
+                68,
+                72
+              ]
+            },
+            {
+              "pseudo": [
+                23,
+                23
+              ],
+              "js": [
+                225,
+                236
               ]
             },
             {
               "pseudo": [
                 24,
                 24
-              ],
-              "js": [
-                242,
-                253
-              ]
-            },
-            {
-              "pseudo": [
-                25,
-                25
               ],
               "js": [
                 41,
@@ -5598,11 +5452,151 @@
             },
             {
               "pseudo": [
+                24,
+                24
+              ],
+              "js": [
+                106,
+                107
+              ]
+            },
+            {
+              "pseudo": [
+                24,
+                24
+              ],
+              "js": [
+                113,
+                118
+              ]
+            },
+            {
+              "pseudo": [
+                24,
+                24
+              ],
+              "js": [
+                177,
+                181
+              ]
+            },
+            {
+              "pseudo": [
+                24,
+                24
+              ],
+              "js": [
+                217,
+                219
+              ]
+            },
+            {
+              "pseudo": [
+                24,
+                24
+              ],
+              "js": [
+                237,
+                253
+              ]
+            },
+            {
+              "pseudo": [
+                24,
+                24
+              ],
+              "js": [
+                258,
+                263
+              ]
+            },
+            {
+              "pseudo": [
+                24,
+                24
+              ],
+              "js": [
+                265,
+                265
+              ]
+            },
+            {
+              "pseudo": [
+                24,
+                24
+              ],
+              "js": [
+                274,
+                274
+              ]
+            },
+            {
+              "pseudo": [
+                24,
+                24
+              ],
+              "js": [
+                278,
+                278
+              ]
+            },
+            {
+              "pseudo": [
+                24,
+                24
+              ],
+              "js": [
+                310,
+                312
+              ]
+            },
+            {
+              "pseudo": [
                 25,
                 25
               ],
               "js": [
-                123,
+                5,
+                6
+              ]
+            },
+            {
+              "pseudo": [
+                25,
+                25
+              ],
+              "js": [
+                57,
+                64
+              ]
+            },
+            {
+              "pseudo": [
+                25,
+                25
+              ],
+              "js": [
+                67,
+                67
+              ]
+            },
+            {
+              "pseudo": [
+                25,
+                25
+              ],
+              "js": [
+                86,
+                89
+              ]
+            },
+            {
+              "pseudo": [
+                25,
+                25
+              ],
+              "js": [
+                124,
                 124
               ]
             },
@@ -5612,28 +5606,8 @@
                 25
               ],
               "js": [
-                130,
-                135
-              ]
-            },
-            {
-              "pseudo": [
-                25,
-                25
-              ],
-              "js": [
-                194,
-                198
-              ]
-            },
-            {
-              "pseudo": [
-                25,
-                25
-              ],
-              "js": [
-                234,
-                236
+                220,
+                220
               ]
             },
             {
@@ -5643,7 +5617,7 @@
               ],
               "js": [
                 254,
-                270
+                257
               ]
             },
             {
@@ -5652,8 +5626,8 @@
                 25
               ],
               "js": [
-                275,
-                280
+                264,
+                264
               ]
             },
             {
@@ -5662,8 +5636,8 @@
                 25
               ],
               "js": [
-                282,
-                282
+                266,
+                277
               ]
             },
             {
@@ -5672,132 +5646,12 @@
                 25
               ],
               "js": [
-                294,
-                294
-              ]
-            },
-            {
-              "pseudo": [
-                25,
-                25
-              ],
-              "js": [
-                325,
-                327
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                5,
-                6
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                58,
-                65
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                68,
-                68
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                103,
-                106
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                141,
-                141
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                237,
-                237
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                271,
-                274
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                281,
-                281
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                283,
-                293
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                295,
-                315
-              ]
-            },
-            {
-              "pseudo": [
-                26,
-                26
-              ],
-              "js": [
-                317,
-                324
+                279,
+                309
               ]
             }
           ],
-          "hash": "62502d44ab2a6331"
+          "hash": "67530955d59123ec"
         },
         "lastGood": null,
         "status": "ok",

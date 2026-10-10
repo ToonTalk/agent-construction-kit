@@ -12,6 +12,18 @@ export default function (T, { modelWindow }) {
     const g = Society.agentById(back, "judge");
     return back.agents.length === s.agents.length && back.rules.length === s.rules.length && g.params.rowsNeeded === 4 && /\{4\}/.test(g.pseudocode) && g.scenarios.length === 5 && g.status === "ok" && Society.validateSociety(back).length === 0;
   });
+  T.test("a society's link keeps its words only when it goes to toontalk.github.io or github.com; any other link shows its address", ["Society"], () => {
+    const linked = (url, label) => { const s = Seeds.makeMiniAni(); s.link = { url, label }; return Society.importSociety(Society.exportSociety(s, null)).society.link; };
+    const kept = [linked("https://toontalk.github.io/ani/", "Watch Ani's film"), linked("https://github.com/ToonTalk/ani", "Its code")];
+    const shown = ["https://evil.example/ani", "https://toontalk.github.io@evil.example/", "https://toontalk.github.io.evil.example/", "https://toontalk.github.io:8080/ani"].map(u => linked(u, "Watch Ani's film"));
+    return kept[0].label === "Watch Ani's film" && kept[1].label === "Its code" && shown.every(l => l.label === l.url) && linked("http://toontalk.github.io/", "x") === undefined;
+  });
+  T.test("a question or opener keeps its {slot} braces and quotes, but not < > or backticks", ["Society"], () => {
+    const s = Seeds.makeMiniAni();
+    s.questions = ["Change “more than {2} times” to \"1\" <b>`now`</b>"]; s.openers = ["What does {-} mean?"];
+    const back = Society.importSociety(Society.exportSociety(s, null)).society;
+    return back.questions[0] === "Change “more than {2} times” to \"1\" bnow/b" && back.openers[0] === "What does {-} mean?";
+  });
   T.test("tampered JavaScript in a file is thrown away; shipped agents come back from the library", ["Society", "Library"], () => {
     const d = exported();
     const g = d.society.agents.find(a => a.id === "judge");

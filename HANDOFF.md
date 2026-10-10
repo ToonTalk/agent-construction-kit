@@ -2,9 +2,9 @@
 
 *Keep this short. Update it at the end of every session.*
 
-## State (2026-10-09)
+## State (2026-10-10)
 
-Agent Kit **1.15.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.15.0 follow reviews
+Agent Kit **1.15.1**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.15.1 follow reviews
 and the first real-model runs (see `SPEC.md` §14). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -16,7 +16,8 @@ folder is a copy without the §14 log.)
   kit is): Logo's `WAIT 15` keeps the picture so far as a frame (60ths of a second); the turtle returns `film`
   (240 frames, 100,000 ops at most; a closing frame if drawing follows the last WAIT); the Renderer adds `frames` to
   its data and says “It is a film of N frames (S seconds)”; the stage's player (`app.ui.film`: ▶ / ⏸, slider,
-  “frame i of n”) survives repaints; at slow and normal speed the run waits for a film to end, faster they queue; the
+  “frame i of n”) survives repaints; at slow and normal speed the run waits for a film to end (30 s at most, 1.15.1),
+  faster they queue; frames that all show nothing are no film, and a cut film ends on the finished picture; the
   exported trace page shows first, middle and last frames; vision models get the last frame; `LOGO_HELP` is
   unchanged. The start box grows with its lines up to 12. Plan: the ani-revival repo's `reports/chapter-x/PLAN.md`,
   Item 5, which corrects `design-mini-ani.md`. Never write in `C:\Users\toont\ani-revival`.
@@ -29,18 +30,26 @@ folder is a copy without the §14 log.)
   slots, cited in the seed's comment (dscrp.17, relate.22, glosug.41, cindy.46, disply.311, aninit.65; Looks is new).
   “Like Ani in 1978” = no Looks expert, so Ken's star, square, circle, triangle (inferred from `looksFrom`). Societies
   can carry one https `link` (the card links to toontalk.github.io/ani). Agrees with CP 29 on 17 of 28 compared
-  choices (`tests/fixtures/cp29-cinderella.json`, floor 17, never tuned). Library: 31 types, the seven under their own
-  heading in + Add an agent.
+  choices (`tests/fixtures/cp29-cinderella.json`, floor 17, never tuned). Library: 32 types, the eight under their own
+  heading in + Add an agent (1.15.1: the programs-only Choice Points are `ani-choices`, with no AI or You parts; the
+  voices' `ani-choice-points` is made from them at load by `libExtend`).
 - **Mini-Ani with AI voices** (1.15.0, `examples/mini-ani-with-ai-voices.json`): the same programs plus ✏️ AI Animator
   (stateless; lines “Name: …” in Ani's words, ≤ 4; asked when the Cast's words contain “suggest values”), 📖 Reader (the
   start “Your own story, in your own words” → Reader → Cast; the Cast's `understood: false` sends its complaint back),
   🎙️ Narrator (collects the Method Chooser's plans, speaks once after “The end.”) and 🙋 You behind “You suggest too”;
   switch “Only the AI Animator suggests”. The Choice Points read lines from messages with words and no data: {2} from an
   AI agent, {3} from {You} (slots `ai`, `you`, `person`, 30 params: the cap), first 4 suggestions only, the rest and
-  unknown words named. Pretend personas `animator` and `reader` (tests only). The programs-only Mini-Ani says exactly
-  what it said in 1.14.0 (all nine start/switch runs, English and Swedish; a test pins the default run's hash).
-  SPEC §14 1.15.0 has the notes on what mixing models with programs showed.
-- The app is the single file `index.html` (848 KB): the `ak-model` script is DOM-free, and
+  unknown words named. Pretend personas `animator` and `reader` (tests only). A test pins the programs-only
+  default run's hash (1.15.1 changed only its words). SPEC §14 1.15.0 has the notes on what mixing models with
+  programs showed.
+- **1.15.1** (a regression review of 1.13.0–1.15.0; all ten findings held): Pause then Run (or Step) in the middle of a
+  model call or Worker program no longer ends the run and loses its messages (the engine remembers the delivery going
+  on, `busy`); the 30 s film wait, blank films, cut films; the Choice Points say why first, their waiting lines and
+  data-only messages and long program are folded in the trace (`app.ui.more`); Taste's focus and the Choice Points'
+  “explain” fall back to the first one named; an unknown word is named once; “compared with”, “same … as”; the
+  programs-only card has five questions; the Helper with no model lists its openers as questions; imports keep
+  `{slot}` braces; a link keeps its label only to toontalk.github.io or github.com.
+- The app is the single file `index.html` (859 KB): the `ak-model` script is DOM-free, and
   the `ak-ui` script is the interface. There is no build step.
 - **Drawings are Logo.** The Artist, the Designer and the drawing pad write Logo
   (`REPEAT 4 [FORWARD 50 RIGHT 90]`), and a small interpreter in the model layer runs it.
@@ -108,10 +117,10 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**604 PASS, 0 FAIL · fingerprint `010e44edcd6d`** · model modules covered 19/19.
-Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; `library.test` 183/192 (the 9 look for
+**623 PASS, 0 FAIL · fingerprint `648e94c38847`** · model modules covered 19/19.
+Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; `library.test` 189/198 (the 9 look for
 English words, two of them the Mini-Ani's “no …” scenario names; the same 9 as 1.14.0); `node tests/leftovers.mjs
-sv/index.html` 25 sentences (of 1,247), all from the scripted stand-ins, which stay English in the copy.
+sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which stay English in the copy.
 
 ## Acceptance criteria (§11)
 
@@ -119,7 +128,7 @@ sv/index.html` 25 sentences (of 1,247), all from the scripted stand-ins, which s
 |---|---|
 | 1 | Scripted stand-ins (tests only since 1.0.3): both microworlds end to end, deterministic (tested). OpenAI gpt-5.6-terra has been run live by the user and by Claude in Chrome (1.0.2). OpenAI with a key has been run live by the user (v1, before Logo). Keyless and Anthropic-key paths are tested against a fake fetch only. |
 | 2 | Every model call keeps its system prompt, messages, exact request body and raw reply, behind "Show full technical details" (tested). |
-| 3 | All 31 library programs pass all their scenarios; line maps are complete; highlighting works both ways (tested, including in the page). |
+| 3 | All 32 library programs pass all their scenarios; line maps are complete; highlighting works both ways (tested, including in the page). |
 | 4 | Dot Counter isn't fooled by labels, and is fooled by pebbles drawn with CIRCLE (both tested). |
 | 5 | Look inside shows only ordinary agents and rules (schema-validated in tests). |
 | 6 | Editing a shipped agent's pseudocode translates it (a pretend canned variant) and reruns the scenarios (tested). |
@@ -127,7 +136,7 @@ sv/index.html` 25 sentences (of 1,247), all from the scripted stand-ins, which s
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 848 KB, under 1 MB (tested); artifact builds 847 KB and 865 KB, under 950 KB, scripts under 565 KB. |
+| 11 | 859 KB, under 1 MB (tested); artifact builds 859 KB and 877 KB, under 950 KB, scripts under 571 KB. |
 
 ## Open issues
 
@@ -156,8 +165,8 @@ sv/index.html` 25 sentences (of 1,247), all from the scripted stand-ins, which s
   example, so it isn't needed. Ken may still want it for societies with switched-off AI agents.
 - **The Mini-Ani (1.14.0)** has had no learner and no model near it (it needs none). Its knowledge edits are slot
   edits; changing its pseudocode beyond the slots asks the translator to rewrite 7–18 KB of JavaScript, which small
-  models can't do. The Choice Points' trace shows “is waiting: 1 of 20 … 5 of 20” each scene, which reads oddly (it
-  runs when nobody else has anything to say). The Cast's “The end.” blocks, so the stage marks the Cast ✗ after a good
+  models can't do. (1.15.1: the Choice Points' “is waiting: 1 of 20 … 5 of 20” lines are left out of the trace once it
+  runs.) The Cast's “The end.” blocks, so the stage marks the Cast ✗ after a good
   run (as Tic-Tac-Toe's Referee). “helps” is a word no expert knows in the default story, on purpose (a question asks
   the learner to fill Relationships' empty line). A default trace is 464 KB (50 KB gzipped). Not built yet: chapter
   marks on the film slider from the Director's `steps`. The revival's run-pass1 wasn't run
@@ -180,10 +189,20 @@ sv/index.html` 25 sentences (of 1,247), all from the scripted stand-ins, which s
   (4) “You suggest too”: answer “Cinderella: very fast” at scene 1; she should come out fast, with You among her
   reasons (unless the AI Animator said slow).
   Known: a Mini-Ani saved by 1.14.0 shows its Choice Points and Cast as changed (their shipped pseudocode changed; they
-  still run the library programs); making the example again gives a clean copy. With your own story, the focus and
-  “explain” slots still say Cinderella, so nobody is explained in full until they are changed. The pretend AI Animator
+  still run the library programs); making the example again gives a clean copy (since 1.15.1 a saved programs-only
+  Mini-Ani runs the voices' Choice Points, which behave the same with no voices). With your own story, the focus and
+  the one explained are the first one the Cast names (1.15.1). The pretend AI Animator
   and Reader read only English, so in the Swedish copy they suggest nothing. The revival (read only, as before):
   `original/` unchanged; it is now a git repository, and its team changed 16 files and added 3 since 1.14.0.
+- **1.15.1, left as they were:** the review's notes on the Helper prompt's size (for the Mini-Ani after a run, about
+  37,500 characters, 8,100 of them the system prompt: too much for a small model such as Gemini Nano) and on films
+  that play below the fold. Also found, not fixed: the static check's name collection stops at a property called `of`
+  (`scene.of`), so a later name in the same `let` looks undeclared (the Choice Points declare `everyone` first, and
+  `libExtend`'s tests would catch a slip). Step after Pause in the middle of a delivery finishes that delivery as the
+  step (it doesn't start another). The voices' Choice Points are built from `ani-choices` at load: an edit to the
+  programs-only Choice Points that adds or removes lines needs `libExtend`'s numbers checked (pseudocode line 13; code
+  lines 40, 47, 52, 77 and 301), and its changed lines kept in step (the Mini-Ani tests check that the new line links to
+  the new code, and run both programs' scenarios).
 - Pretend-mode translation only knows the shipped pseudocode plus two variants. Anything else
   says it needs translation and keeps running the last good program, as §4.2 asks.
 

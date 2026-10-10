@@ -105,6 +105,13 @@ export default function (T, { modelWindow, same }) {
     const slow = await time(true), fast = await time(false);
     return slow.done && fast.done && slow.ms >= 380 && fast.ms < 300;
   });
+  T.test("films: the run waits for one film at most filmWaitMax (30 seconds unless set), not at all for a film of blank frames, and stops waiting when the speed changes", ["Engine"], async () => {
+    const soc = () => society([renderer, prog("b", wrap("return { say: 'seen' };"))], [rule("r1", "r", "b")]);
+    const time = async (logo, deps, during) => { const api = Engine.createRun(soc(), Object.assign({ adapter: pretend, runtime: Runtime, delayMs: 5, filmsWait: true }, deps)); api.start({ to: "r", text: logo }); const t0 = Date.now(), p = api.play(); if (during) setTimeout(() => during(api), 100); await p; return { ms: Date.now() - t0, done: api.run.status === "done" && acts(api.run).length === 2 }; };
+    const LONG = "REPEAT 3 [FORWARD 10 WAIT 300]";   // 3 frames of 5 seconds
+    const capped = await time(LONG, { filmWaitMax: 250 }), blank = await time("REPEAT 3 [WAIT 300]", {}), faster = await time(LONG, {}, api => api.setDelay(5, false));
+    return capped.done && capped.ms >= 240 && capped.ms < 1500 && blank.done && blank.ms < 1000 && faster.done && faster.ms < 1500;
+  });
   T.test("Pause, then Run while the run is waiting between messages, doesn't deliver from two places at once", ["Engine"], async () => {
     const api = Engine.createRun(society([prog("a", wrap("return { say: 'x' };")), prog("b", wrap("return { say: 'y' };"))], [rule("r1", "a", "b"), rule("r2", "b", "a")], { roundLimit: 10 }), { adapter: pretend, runtime: Runtime, delayMs: 1000 });
     const pause = ms => new Promise(r => setTimeout(r, ms));
@@ -118,6 +125,44 @@ export default function (T, { modelWindow, same }) {
     api.stop();
     await Promise.all([p1, p2]);
     return n === 2;
+  });
+  // A model that takes a while to answer, for pressing Pause, Run, Step and Stop in the middle of its call.
+  const slowModel = { id: "slow", kind: "model", name: "Slow", emoji: "🐢", instructions: "Answer.", outputFields: [], canSeeImages: false, history: "stateless", replyKind: "prose" };
+  const slowAdapter = ms => ({ id: "fake", label: "Fake", async call(req) { await new Promise((ok, no) => { const t = setTimeout(ok, ms); if (req.signal) req.signal.addEventListener("abort", () => { clearTimeout(t); no(new Error("Stopped.")); }); }); return { text: "slow answer", raw: "slow answer", data: {}, model: "fake", ms }; } });
+  const slowSociety = () => society([slowModel, prog("b", wrap("return { say: 'got ' + input.text };"))], [rule("r1", "slow", "b")]);
+  T.test("Pause, then Run while a model is still answering: its answer is delivered and the run goes on, instead of ending with it lost", ["Engine"], async () => {
+    const api = Engine.createRun(slowSociety(), { adapter: slowAdapter(200), runtime: Runtime });
+    const pause = ms => new Promise(r => setTimeout(r, ms));
+    api.start({ to: "slow", text: "go" });
+    const p1 = api.play();
+    await pause(50);
+    api.pause();
+    const p2 = api.play();
+    await Promise.all([p1, p2]);
+    const b = acts(api.run).find(e => e.agentId === "b");
+    return api.run.status === "done" && api.run.stopReason === "done" && !!b && b.response.text === "got slow answer" && acts(api.run).length === 2 && api.run.queue.length === 0;
+  });
+  T.test("Pause, then Step while a model is still answering: the step is that answer; Stop in the middle of a call still stops it", ["Engine"], async () => {
+    const pause = ms => new Promise(r => setTimeout(r, ms));
+    const a = Engine.createRun(slowSociety(), { adapter: slowAdapter(200), runtime: Runtime });
+    a.start({ to: "slow", text: "go" });
+    const p1 = a.play();
+    await pause(50);
+    a.pause();
+    const more = await a.step();
+    await p1;
+    const stepped = more === true && a.run.status === "paused" && acts(a.run).length === 1 && a.run.queue.length === 1;
+    const b = Engine.createRun(slowSociety(), { adapter: slowAdapter(5000), runtime: Runtime });
+    b.start({ to: "slow", text: "go" });
+    const p2 = b.play();
+    await pause(50);
+    b.pause();
+    const p3 = b.play();
+    await pause(20);
+    b.stop();
+    await Promise.all([p2, p3]);
+    const e = acts(b.run)[0];
+    return stepped && b.run.status === "stopped" && e.stopped === true && b.run.parked.length === 1 && b.canCarryOn();
   });
   T.test("linked lines work both ways", ["Engine"], () => {
     const map = [{ pseudo: [1, 1], js: [2, 4] }, { pseudo: [2, 2], js: [5, 5] }];

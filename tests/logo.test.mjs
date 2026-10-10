@@ -100,5 +100,12 @@ export default function (T, { modelWindow, same, MODEL_SRC }) {
       b.ok && b.output.film.length === 88 && b.output.filmCut === true && b.output.segments === 3000 &&
       !c.ok && /too many steps/.test(c.error) && !run("WAIT \"soon").ok;
   });
+  T.test("Logo films: a film cut short ends on the finished picture, and says so; frames that all show nothing are no film", ["Logo"], () => {
+    const a = run("REPEAT 300 [DOT 5 FORWARD 1 WAIT 1] RIGHT 90 FORWARD 50"), b = run("REPEAT 120 [REPEAT 25 [FORWARD 1] WAIT 1]"), blank = run("REPEAT 10 [WAIT 60]"), moves = run("PENUP REPEAT 5 [FORWARD 10 WAIT 60]");
+    const fa = a.output.film, fb = b.output.film;
+    return fa.length === 240 && visible(fa[239].ops) === visible(a.output.ops) && fa[239].ops.length === 601 && fa[238].ops.length === 478 && /cut short at 240 frames, so its last frame jumps to the finished picture/.test(a.note) &&
+      fb.length === 88 && visible(fb[87].ops) === visible(b.output.ops) &&
+      blank.ok && !blank.output.film && !blank.output.filmCut && moves.ok && !moves.output.film && !/film/.test(blank.note || "");
+  });
   T.test("Logo films: the prompt help that models get doesn't mention WAIT, so no microworld changes", ["Logo", "Prompts"], () => !/WAIT/.test(w.AK.Prompts.LOGO_HELP) && Logo.NAMES.indexOf("WAIT") >= 0);
 }
