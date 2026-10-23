@@ -257,7 +257,7 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 .errline{background:var(--bad-bg);border-radius:8px;padding:5px 8px;font-size:12.5px;color:#7A1F17;white-space:pre-wrap}
 .replay{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--accent-bg);border-radius:12px;padding:6px 8px;margin-bottom:8px;font-size:12.5px}
 .replay input[type=range]{flex:1;min-width:120px}
-.filmbar{display:flex;align-items:center;gap:6px;width:min(100%,460px);margin:0 auto;background:var(--accent-bg);border-radius:12px;padding:4px 8px;font-size:12.5px}.filmbar input[type=range]{flex:1;min-width:80px}
+.whybox{border:1.5px solid var(--line);border-radius:12px;padding:8px 12px;margin:8px 0;background:var(--accent-bg)}.whybox p{margin:6px 0}.why-head{display:flex;align-items:center;gap:8px}.why-head .icon-btn{margin-left:auto}.why-hint{margin:6px 0 0}.picture.can-why canvas{cursor:pointer}.filmbar{display:flex;align-items:center;gap:6px;width:min(100%,460px);margin:0 auto;background:var(--accent-bg);border-radius:12px;padding:4px 8px;font-size:12.5px}.filmbar input[type=range]{flex:1;min-width:80px}
 
 /* modal */
 .modal-back{position:fixed;inset:0;z-index:60;background:rgba(21,30,50,.42);display:flex;align-items:flex-start;justify-content:center;padding:34px 14px;overflow:auto}
@@ -435,7 +435,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.15.2";
+AK.VERSION = "1.16.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -3859,7 +3859,7 @@ libAgent({
     "after each film, send the next scene: who is on stage, what happens, and how they get on",
     "for someone who changes in a scene, also send a stand-in, \"X {after}\", with the new words; from then on X has them",
     "when the Renderer says a film didn't run, say so, and go on to the next scene",
-    "after the last scene, block, and say \"The end.\"",
+    "after the last scene, end the story, and say \"The end.\"",
     "name any sentence I can't read; with nobody or no scenes, say how to write a story, and wait for another"
   ],
   code: [
@@ -3997,7 +3997,7 @@ libAgent({
     "  const called = (m, n) => m.called[n] || n;",
     "  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);",
     "  const send = (m, note) => {",
-    "    if (m.next >= m.scenes.length) return { pass: false, over: true, say: (note ? note + \" \" : \"\") + \"The end.\", memory: m };",
+    "    if (m.next >= m.scenes.length) return { end: true, over: true, say: (note ? note + \" \" : \"\") + \"The end.\", memory: m };",
     "    const sc = m.scenes[m.next];",
     "    const choose = m.next === 0 ? m.cast.map(n => ({ name: n, words: m.words[n].slice() })) : [];",
     "    const changed = new Map();",
@@ -4045,7 +4045,7 @@ libAgent({
     {"id":"s1","name":"the story is read, and scene 1 goes out with everyone in it","input":{"text":"Ann is shy and kind.\nThe Wolf is mean.\nThe Wolf dominates Ann. Ann helps the Wolf.\nScene 1: Ann is shy. The Wolf dominates Ann.\nScene 2: Ann meets the Wolf."},"expect":{"scene":1,"of":2,"onStage":["Ann","Wolf"],"choose":[{"name":"Ann","words":["shy","kind"]},{"name":"Wolf","words":["mean"]}],"friends":[["Ann","Wolf"]]}},
     {"id":"s2","name":"after a film, the next scene goes out, and nobody is chosen again","input":{"from":"Renderer","text":"I drew 10 shapes and 0 dots.","memory":{"cast":["Ann","Wolf"],"called":{"Wolf":"the Wolf"},"words":{"Ann":["shy","kind"],"Wolf":["mean"]},"relations":[{"who":"Wolf","verb":"dominates","whom":"Ann"}],"friends":[],"unread":[],"next":1,"scenes":[{"text":"Ann is shy. The Wolf dominates Ann.","events":[{"verb":"is","who":"Ann","what":["shy"]},{"verb":"dominates","who":"Wolf","whom":"Ann","also":""}],"onStage":["Ann","Wolf"],"unread":[]},{"text":"Ann changes from shy to bold.","events":[{"verb":"changes","who":"Ann","whom":"","from":["shy"],"to":["bold"]}],"onStage":["Ann"],"unread":[]}]}},"expect":{"scene":2,"onStage":["Ann"],"sayContains":"Ann changes"}},
     {"id":"s3","name":"someone who changes gets a stand-in with the new words","input":{"from":"Renderer","text":"I drew 10 shapes and 0 dots.","memory":{"cast":["Ann","Wolf"],"called":{"Wolf":"the Wolf"},"words":{"Ann":["shy","kind"],"Wolf":["mean"]},"relations":[{"who":"Wolf","verb":"dominates","whom":"Ann"}],"friends":[],"unread":[],"next":1,"scenes":[{"text":"Ann is shy. The Wolf dominates Ann.","events":[{"verb":"is","who":"Ann","what":["shy"]},{"verb":"dominates","who":"Wolf","whom":"Ann","also":""}],"onStage":["Ann","Wolf"],"unread":[]},{"text":"Ann changes from shy to bold.","events":[{"verb":"changes","who":"Ann","whom":"","from":["shy"],"to":["bold"]}],"onStage":["Ann"],"unread":[]}]}},"expect":{"choose":[{"name":"Ann {=after}","of":"Ann","words":["kind","bold"]}]}},
-    {"id":"s4","name":"no more scenes: it blocks, and says “The end.”","input":{"from":"Renderer","text":"I drew 10 shapes and 0 dots.","memory":{"cast":["Ann","Wolf"],"called":{"Wolf":"the Wolf"},"words":{"Ann":["shy","kind"],"Wolf":["mean"]},"relations":[{"who":"Wolf","verb":"dominates","whom":"Ann"}],"friends":[],"unread":[],"next":2,"scenes":[{"text":"Ann is shy. The Wolf dominates Ann.","events":[{"verb":"is","who":"Ann","what":["shy"]},{"verb":"dominates","who":"Wolf","whom":"Ann","also":""}],"onStage":["Ann","Wolf"],"unread":[]},{"text":"Ann changes from shy to bold.","events":[{"verb":"changes","who":"Ann","whom":"","from":["shy"],"to":["bold"]}],"onStage":["Ann"],"unread":[]}]}},"expect":{"pass":false,"say":"The end."}},
+    {"id":"s4","name":"no more scenes: it ends the story, and says “The end.”","input":{"from":"Renderer","text":"I drew 10 shapes and 0 dots.","memory":{"cast":["Ann","Wolf"],"called":{"Wolf":"the Wolf"},"words":{"Ann":["shy","kind"],"Wolf":["mean"]},"relations":[{"who":"Wolf","verb":"dominates","whom":"Ann"}],"friends":[],"unread":[],"next":2,"scenes":[{"text":"Ann is shy. The Wolf dominates Ann.","events":[{"verb":"is","who":"Ann","what":["shy"]},{"verb":"dominates","who":"Wolf","whom":"Ann","also":""}],"onStage":["Ann","Wolf"],"unread":[]},{"text":"Ann changes from shy to bold.","events":[{"verb":"changes","who":"Ann","whom":"","from":["shy"],"to":["bold"]}],"onStage":["Ann"],"unread":[]}]}},"expect":{"end":true,"say":"The end."}},
     {"id":"s5","name":"a film that didn't run is named, and the story goes on","input":{"from":"Renderer","text":"The program did not run.","data":{"pass":false,"error":"Line 3: I don't know how to JUMP."},"memory":{"cast":["Ann","Wolf"],"called":{"Wolf":"the Wolf"},"words":{"Ann":["shy","kind"],"Wolf":["mean"]},"relations":[{"who":"Wolf","verb":"dominates","whom":"Ann"}],"friends":[],"unread":[],"next":1,"scenes":[{"text":"Ann is shy. The Wolf dominates Ann.","events":[{"verb":"is","who":"Ann","what":["shy"]},{"verb":"dominates","who":"Wolf","whom":"Ann","also":""}],"onStage":["Ann","Wolf"],"unread":[]},{"text":"Ann changes from shy to bold.","events":[{"verb":"changes","who":"Ann","whom":"","from":["shy"],"to":["bold"]}],"onStage":["Ann"],"unread":[]}]}},"expect":{"scene":2,"sayContains":"Scene 1's film didn't run (Line 3: I don't know how to JUMP.)"}},
     {"id":"s6","name":"no scenes in the story: it blocks, says how to write one, and waits for another","input":{"text":"Ann is shy and kind."},"expect":{"pass":false,"understood":false,"sayContains":"There are no scenes"}},
     {"id":"s7","name":"a sentence it can't read is named, not dropped","input":{"text":"Ann is shy.\nScene 1: Ann is shy. It rains."},"expect":{"scene":1,"unread":["It rains"]}}
@@ -4072,7 +4072,7 @@ libAgent({
     "and {selfish=mean, grumpy=evil}",
     "these mean the opposite, so they get the suggestions turned around: {brazen=shy, forward=shy, bold=shy, lazy=hardworking}",
     "and {good=evil, clumsy=graceful, unfriendly=friendly, weak=strong}",
-    "send each suggestion with the word it came from, and name the words I don't know"
+    "send each suggestion with the word it came from, and pass on the words I don't know (the Choice Points name the ones no expert knows)"
   ],
   code: [
     "function run(input, params, h) {",
@@ -4122,7 +4122,7 @@ libAgent({
     "      }",
     "      if (!from) (known ? knew : unknown)[c.name].push(w);",
     "    }",
-    "    said.push(\"- **\" + (((input.data || {}).called || {})[c.name] || c.name) + \"**: \" + (told.length ? told.join(\" · \") : \"nothing\") + (unknown[c.name].length ? \". I don't know \" + unknown[c.name].join(\", \") + \".\" : \"\"));",
+    "    said.push(\"- **\" + (((input.data || {}).called || {})[c.name] || c.name) + \"**: \" + (told.length ? told.join(\" · \") : \"nothing\"));",
     "  }",
     "  let say = said.length ? said.join(\"\\n\") : \"Nobody's words changed, so I have nothing new to suggest.\";",
     "  if (say.length > 1900) say = said.map(t => t.split(\" → \")[0]).join(\"\\n\").slice(0, 1900);",
@@ -4152,7 +4152,7 @@ libAgent({
     "these mean the same: {rules=dominates, loves=likes}",
     "these mean the opposite, so the comparisons are turned around: {obeys=dominates, dislikes=likes}",
     "the first one gets the comparison, and the second one gets it turned around",
-    "name the words I don't know"
+    "pass on the words I don't know (the Choice Points name the ones no expert knows)"
   ],
   code: [
     "function run(input, params, h) {",
@@ -4192,12 +4192,11 @@ libAgent({
     "    }",
     "    said.push(\"- \" + call(r.who) + \" \" + verb + \" \" + call(r.whom) + (ways[0].like !== verb ? \" (\" + (ways[0].turn ? \"the opposite of \" : \"like \") + ways[0].like + \")\" : \"\") + \" → \" + call(r.who) + \", compared with \" + call(r.whom) + \": \" + (ways[0].turn ? \"the opposite of “\" + own(ways[0].like).says + \"”\" : own(ways[0].like).says) + \"; \" + call(r.whom) + \": the other way round\");",
     "  }",
-    "  const missing = Object.keys(unknown).map(n => unknown[n].join(\", \") + \" (\" + call(n) + \")\").join(\"; \");",
-    "  const say = (said.length ? said.join(\"\\n\") : \"There are no comparisons to make for anyone being chosen.\") + (missing ? \"\\n\\nI don't know these words: \" + missing + \".\" : \"\");",
+    "  const say = (said.length ? said.join(\"\\n\") : \"There are no comparisons to make for anyone being chosen.\");",
     "  return { count: suggestions.length, suggestions: suggestions, unknown: unknown, say: say };",
     "}"
   ],
-  lineMap: [{ pseudo: [1, 1], js: [2, 3] }, { pseudo: [1, 1], js: [14, 14] }, { pseudo: [1, 1], js: [16, 20] }, { pseudo: [1, 1], js: [37, 37] }, { pseudo: [2, 2], js: [5, 11] }, { pseudo: [2, 2], js: [21, 21] }, { pseudo: [3, 3], js: [5, 11] }, { pseudo: [3, 3], js: [21, 21] }, { pseudo: [4, 4], js: [5, 11] }, { pseudo: [4, 4], js: [21, 21] }, { pseudo: [5, 5], js: [12, 13] }, { pseudo: [5, 5], js: [22, 22] }, { pseudo: [6, 6], js: [12, 13] }, { pseudo: [6, 6], js: [23, 23] }, { pseudo: [7, 7], js: [4, 4] }, { pseudo: [7, 7], js: [28, 36] }, { pseudo: [8, 8], js: [15, 15] }, { pseudo: [8, 8], js: [24, 27] }, { pseudo: [8, 8], js: [38, 41] }],
+  lineMap: [{ pseudo: [1, 1], js: [2, 3] }, { pseudo: [1, 1], js: [14, 14] }, { pseudo: [1, 1], js: [16, 20] }, { pseudo: [1, 1], js: [37, 37] }, { pseudo: [2, 2], js: [5, 11] }, { pseudo: [2, 2], js: [21, 21] }, { pseudo: [3, 3], js: [5, 11] }, { pseudo: [3, 3], js: [21, 21] }, { pseudo: [4, 4], js: [5, 11] }, { pseudo: [4, 4], js: [21, 21] }, { pseudo: [5, 5], js: [12, 13] }, { pseudo: [5, 5], js: [22, 22] }, { pseudo: [6, 6], js: [12, 13] }, { pseudo: [6, 6], js: [23, 23] }, { pseudo: [7, 7], js: [4, 4] }, { pseudo: [7, 7], js: [28, 36] }, { pseudo: [8, 8], js: [15, 15] }, { pseudo: [8, 8], js: [24, 27] }, { pseudo: [8, 8], js: [38, 40] }],
   params: { r1: "dominates", c1: "faster, livelier, above, bigger", r2: "likes", c2: "a bit same speed, a bit same liveliness", r3: "-", c3: "-", same: "rules=dominates, loves=likes", opposite: "obeys=dominates, dislikes=likes" },
   slots: [{ line: 2, text: "dominates", param: "r1" }, { line: 2, text: "faster, livelier, above, bigger", param: "c1" }, { line: 3, text: "likes", param: "r2" }, { line: 3, text: "a bit same speed, a bit same liveliness", param: "c2" }, { line: 4, text: "-", param: "r3" }, { line: 4, text: "-", param: "c3" }, { line: 5, text: "rules=dominates, loves=likes", param: "same" }, { line: 6, text: "obeys=dominates, dislikes=likes", param: "opposite" }],
   scenarios: [
@@ -4275,7 +4274,8 @@ libAgent({
     "  if nobody suggested anything, it is medium; if everything is ruled out, a comparison keeps its own direction",
     "a subtle film keeps only each one's {3} strongest differences from medium",
     "remember the values; a stand-in gets the variety and comparisons its character had, and then its values become the character's",
-    "explain {Cinderella} in full first (or the first one chosen, if nobody in the story is called that), then say everyone's values and how the arguments were settled, and name each word no expert knew, once"
+    "explain {Cinderella} in full first (or the first one chosen, if nobody in the story is called that), then say everyone's values and how the arguments were settled, and name each word no expert knew, once",
+    "keep why each one chosen is like that, for a click on them in the film"
   ],
   code: [
     "function run(input, params, h) {",
@@ -4578,7 +4578,7 @@ libAgent({
     "  }",
     "  const parts = [[tally.more, STRONG], [tally.middle, \"met in the middle\"], [tally.stronger, \"stronger\"], [tally.first, \"said first\"], [tally.alone, \"unopposed\"], [tally.nobody, \"nothing suggested\"], [tally.self, \"kept a comparison's own direction\"]].filter(x => x[0] > 0);",
     "  const settled = \"**Settled:** \" + parts.map(x => x[0] + \" \" + x[1]).join(\", \") + \". \" + tally.waited + (tally.waited === 1 ? \" comparison\" : \" comparisons\") + \" waited for another's value\" + (tally.without ? \"; \" + tally.without + \" went without, because two choices waited for each other (Ani's “deadly embrace”)\" : \"\") + \".\";",
-    "  const tail = (lost.length ? \"\\n\\n**Words no expert knew:** \" + lost.join(\", \") + \".\" : \"\") + (bad.length ? \"\\n\\n**I couldn't read:** \" + bad.join(\", \") + \".\" : \"\");",
+    "  const tail = (lost.length ? \"\\n\\n**No expert knows these words yet:** \" + lost.join(\", \") + \". Teach one on an expert's empty line (Look inside).\" : \"\") + (bad.length ? \"\\n\\n**I couldn't read:** \" + bad.join(\", \") + \".\" : \"\");",
     "  const whyText = list => (target && (list.length || medium) ? \"**Why \" + call(target.name) + \" is like that:**\" + instead + (list.length ? \" \" + call(target.name) + \" is \" + list.slice().sort((a, b) => a.i - b.i).map(x => x.text).join(\"; \") + \".\" : \"\") + medium + went : \"\");",
     "  let kept = explained.slice();",
     "  if ((say + whyText(kept) + \"\\n\\n\" + everyone + \"\\n\\n\" + settled + tail).length > 1960) medium = \"\";",
@@ -4587,11 +4587,26 @@ libAgent({
     "    kept = kept.sort((a, b) => b.p - a.p).slice(0, -1);",
     "  }",
     "  say += (whyText(kept) ? whyText(kept) + (kept.length < explained.length ? \" (The rest is in my data, under why.)\" : \"\") + \"\\n\\n\" : \"\") + everyone + (choose.length ? \"\\n\\n\" + settled : \"\") + tail;",
+    "  // For a click on someone in the film: why each one chosen now is like that, as for the focus.",
+    "  const explain = {};",
+    "  for (const c of choose) {",
+    "    h.tick();",
+    "    const w = why[c.name], list = [], mid = [];",
+    "    IDS.forEach(el => {",
+    "      if (chosen[c.name][el] === 2) {",
+    "        mid.push(names[el]);",
+    "        return;",
+    "      }",
+    "      const film = w[el].because.filter(x => x.indexOf(FILM) === 0).map(x => x.slice(FILM.length)), own = w[el].because.filter(x => x.indexOf(FILM) !== 0);",
+    "      list.push(w[el].value + \" because of \" + joinAnd(own.concat(film.length ? [FILM + joinAnd(film)] : [])) + (w[el].against.length ? \", against \" + joinAnd(w[el].against) : \"\") + (w[el].how === STRONG ? \"\" : \" (\" + w[el].how + \")\"));",
+    "    });",
+    "    explain[c.name] = cap(call(c.name)) + (list.length ? \" is \" + list.join(\"; \") + \".\" : \"\") + (mid.length ? \" \" + cap(levels[1]) + \": \" + joinAnd(mid) + \".\" : \"\");",
+    "  }",
     "  return { count: choose.length, scene: scene.scene, of: scene.of, title: scene.title, cast: scene.cast, called: scene.called, onStage: scene.onStage, events: scene.events, relations: scene.relations, friends: scene.friends,",
-    "    standIns: choose.filter(c => c.of).map(c => ({ name: c.name, of: c.of })), choices: choices, strengths: strengths, summary: summary, words: words, looksFrom: memory.looksFrom, taste: taste, tasteLevel: tasteLevel, why: why, unknown: lost, say: say, memory: memory };",
+    "    standIns: choose.filter(c => c.of).map(c => ({ name: c.name, of: c.of })), choices: choices, strengths: strengths, summary: summary, words: words, looksFrom: memory.looksFrom, taste: taste, tasteLevel: tasteLevel, why: why, explain: explain, unknown: lost, say: say, memory: memory };",
     "}"
   ],
-  lineMap: [{ pseudo: [1, 1], js: [46, 56] }, { pseudo: [1, 1], js: [65, 65] }, { pseudo: [2, 2], js: [2, 4] }, { pseudo: [2, 2], js: [8, 18] }, { pseudo: [2, 2], js: [21, 22] }, { pseudo: [3, 3], js: [8, 18] }, { pseudo: [3, 3], js: [21, 22] }, { pseudo: [4, 4], js: [8, 18] }, { pseudo: [4, 4], js: [21, 22] }, { pseudo: [5, 5], js: [8, 18] }, { pseudo: [5, 5], js: [21, 22] }, { pseudo: [6, 6], js: [8, 18] }, { pseudo: [6, 6], js: [21, 22] }, { pseudo: [7, 7], js: [8, 18] }, { pseudo: [7, 7], js: [21, 22] }, { pseudo: [8, 8], js: [8, 18] }, { pseudo: [8, 8], js: [21, 22] }, { pseudo: [9, 9], js: [8, 18] }, { pseudo: [9, 9], js: [21, 22] }, { pseudo: [10, 10], js: [7, 8] }, { pseudo: [10, 10], js: [19, 20] }, { pseudo: [10, 10], js: [22, 22] }, { pseudo: [11, 11], js: [23, 39] }, { pseudo: [11, 11], js: [85, 85] }, { pseudo: [11, 11], js: [167, 171] }, { pseudo: [12, 12], js: [40, 40] }, { pseudo: [12, 12], js: [90, 90] }, { pseudo: [12, 12], js: [101, 101] }, { pseudo: [13, 13], js: [40, 40] }, { pseudo: [13, 13], js: [90, 92] }, { pseudo: [13, 13], js: [94, 95] }, { pseudo: [13, 13], js: [101, 101] }, { pseudo: [14, 14], js: [66, 66] }, { pseudo: [14, 14], js: [73, 75] }, { pseudo: [14, 14], js: [98, 98] }, { pseudo: [14, 14], js: [126, 130] }, { pseudo: [14, 14], js: [133, 133] }, { pseudo: [15, 15], js: [45, 45] }, { pseudo: [15, 15], js: [76, 84] }, { pseudo: [15, 15], js: [96, 97] }, { pseudo: [15, 15], js: [99, 100] }, { pseudo: [15, 15], js: [102, 105] }, { pseudo: [15, 15], js: [131, 132] }, { pseudo: [15, 15], js: [140, 141] }, { pseudo: [15, 15], js: [143, 144] }, { pseudo: [15, 15], js: [172, 175] }, { pseudo: [15, 15], js: [224, 224] }, { pseudo: [15, 15], js: [252, 252] }, { pseudo: [16, 16], js: [93, 93] }, { pseudo: [16, 16], js: [112, 112] }, { pseudo: [16, 16], js: [134, 137] }, { pseudo: [16, 16], js: [145, 146] }, { pseudo: [16, 16], js: [151, 157] }, { pseudo: [16, 16], js: [159, 166] }, { pseudo: [16, 16], js: [223, 223] }, { pseudo: [17, 17], js: [118, 118] }, { pseudo: [17, 17], js: [134, 135] }, { pseudo: [17, 17], js: [138, 139] }, { pseudo: [17, 17], js: [147, 150] }, { pseudo: [17, 17], js: [176, 176] }, { pseudo: [17, 17], js: [221, 223] }, { pseudo: [17, 17], js: [249, 249] }, { pseudo: [17, 17], js: [287, 287] }, { pseudo: [17, 17], js: [297, 297] }, { pseudo: [18, 18], js: [68, 72] }, { pseudo: [18, 18], js: [108, 111] }, { pseudo: [18, 18], js: [119, 123] }, { pseudo: [18, 18], js: [177, 186] }, { pseudo: [19, 19], js: [187, 189] }, { pseudo: [19, 19], js: [202, 202] }, { pseudo: [20, 20], js: [125, 125] }, { pseudo: [20, 20], js: [190, 191] }, { pseudo: [20, 20], js: [200, 207] }, { pseudo: [21, 21], js: [190, 191] }, { pseudo: [21, 21], js: [208, 216] }, { pseudo: [22, 22], js: [142, 142] }, { pseudo: [22, 22], js: [158, 158] }, { pseudo: [22, 22], js: [191, 199] }, { pseudo: [23, 23], js: [68, 72] }, { pseudo: [23, 23], js: [225, 236] }, { pseudo: [24, 24], js: [41, 45] }, { pseudo: [24, 24], js: [106, 107] }, { pseudo: [24, 24], js: [113, 118] }, { pseudo: [24, 24], js: [177, 181] }, { pseudo: [24, 24], js: [217, 219] }, { pseudo: [24, 24], js: [237, 253] }, { pseudo: [24, 24], js: [258, 263] }, { pseudo: [24, 24], js: [265, 265] }, { pseudo: [24, 24], js: [274, 274] }, { pseudo: [24, 24], js: [278, 278] }, { pseudo: [24, 24], js: [310, 312] }, { pseudo: [25, 25], js: [5, 6] }, { pseudo: [25, 25], js: [57, 64] }, { pseudo: [25, 25], js: [67, 67] }, { pseudo: [25, 25], js: [86, 89] }, { pseudo: [25, 25], js: [124, 124] }, { pseudo: [25, 25], js: [220, 220] }, { pseudo: [25, 25], js: [254, 257] }, { pseudo: [25, 25], js: [264, 264] }, { pseudo: [25, 25], js: [266, 277] }, { pseudo: [25, 25], js: [279, 309] }],
+  lineMap: [{ pseudo: [1, 1], js: [46, 56] }, { pseudo: [1, 1], js: [65, 65] }, { pseudo: [2, 2], js: [2, 4] }, { pseudo: [2, 2], js: [8, 18] }, { pseudo: [2, 2], js: [21, 22] }, { pseudo: [3, 3], js: [8, 18] }, { pseudo: [3, 3], js: [21, 22] }, { pseudo: [4, 4], js: [8, 18] }, { pseudo: [4, 4], js: [21, 22] }, { pseudo: [5, 5], js: [8, 18] }, { pseudo: [5, 5], js: [21, 22] }, { pseudo: [6, 6], js: [8, 18] }, { pseudo: [6, 6], js: [21, 22] }, { pseudo: [7, 7], js: [8, 18] }, { pseudo: [7, 7], js: [21, 22] }, { pseudo: [8, 8], js: [8, 18] }, { pseudo: [8, 8], js: [21, 22] }, { pseudo: [9, 9], js: [8, 18] }, { pseudo: [9, 9], js: [21, 22] }, { pseudo: [10, 10], js: [7, 8] }, { pseudo: [10, 10], js: [19, 20] }, { pseudo: [10, 10], js: [22, 22] }, { pseudo: [11, 11], js: [23, 39] }, { pseudo: [11, 11], js: [85, 85] }, { pseudo: [11, 11], js: [167, 171] }, { pseudo: [12, 12], js: [40, 40] }, { pseudo: [12, 12], js: [90, 90] }, { pseudo: [12, 12], js: [101, 101] }, { pseudo: [13, 13], js: [40, 40] }, { pseudo: [13, 13], js: [90, 92] }, { pseudo: [13, 13], js: [94, 95] }, { pseudo: [13, 13], js: [101, 101] }, { pseudo: [14, 14], js: [66, 66] }, { pseudo: [14, 14], js: [73, 75] }, { pseudo: [14, 14], js: [98, 98] }, { pseudo: [14, 14], js: [126, 130] }, { pseudo: [14, 14], js: [133, 133] }, { pseudo: [15, 15], js: [45, 45] }, { pseudo: [15, 15], js: [76, 84] }, { pseudo: [15, 15], js: [96, 97] }, { pseudo: [15, 15], js: [99, 100] }, { pseudo: [15, 15], js: [102, 105] }, { pseudo: [15, 15], js: [131, 132] }, { pseudo: [15, 15], js: [140, 141] }, { pseudo: [15, 15], js: [143, 144] }, { pseudo: [15, 15], js: [172, 175] }, { pseudo: [15, 15], js: [224, 224] }, { pseudo: [15, 15], js: [252, 252] }, { pseudo: [16, 16], js: [93, 93] }, { pseudo: [16, 16], js: [112, 112] }, { pseudo: [16, 16], js: [134, 137] }, { pseudo: [16, 16], js: [145, 146] }, { pseudo: [16, 16], js: [151, 157] }, { pseudo: [16, 16], js: [159, 166] }, { pseudo: [16, 16], js: [223, 223] }, { pseudo: [17, 17], js: [118, 118] }, { pseudo: [17, 17], js: [134, 135] }, { pseudo: [17, 17], js: [138, 139] }, { pseudo: [17, 17], js: [147, 150] }, { pseudo: [17, 17], js: [176, 176] }, { pseudo: [17, 17], js: [221, 223] }, { pseudo: [17, 17], js: [249, 249] }, { pseudo: [17, 17], js: [287, 287] }, { pseudo: [17, 17], js: [297, 297] }, { pseudo: [18, 18], js: [68, 72] }, { pseudo: [18, 18], js: [108, 111] }, { pseudo: [18, 18], js: [119, 123] }, { pseudo: [18, 18], js: [177, 186] }, { pseudo: [19, 19], js: [187, 189] }, { pseudo: [19, 19], js: [202, 202] }, { pseudo: [20, 20], js: [125, 125] }, { pseudo: [20, 20], js: [190, 191] }, { pseudo: [20, 20], js: [200, 207] }, { pseudo: [21, 21], js: [190, 191] }, { pseudo: [21, 21], js: [208, 216] }, { pseudo: [22, 22], js: [142, 142] }, { pseudo: [22, 22], js: [158, 158] }, { pseudo: [22, 22], js: [191, 199] }, { pseudo: [23, 23], js: [68, 72] }, { pseudo: [23, 23], js: [225, 236] }, { pseudo: [24, 24], js: [41, 45] }, { pseudo: [24, 24], js: [106, 107] }, { pseudo: [24, 24], js: [113, 118] }, { pseudo: [24, 24], js: [177, 181] }, { pseudo: [24, 24], js: [217, 219] }, { pseudo: [24, 24], js: [237, 253] }, { pseudo: [24, 24], js: [258, 263] }, { pseudo: [24, 24], js: [265, 265] }, { pseudo: [24, 24], js: [274, 274] }, { pseudo: [24, 24], js: [278, 278] }, { pseudo: [24, 24], js: [325, 327] }, { pseudo: [25, 25], js: [5, 6] }, { pseudo: [25, 25], js: [57, 64] }, { pseudo: [25, 25], js: [67, 67] }, { pseudo: [25, 25], js: [86, 89] }, { pseudo: [25, 25], js: [124, 124] }, { pseudo: [25, 25], js: [220, 220] }, { pseudo: [25, 25], js: [254, 257] }, { pseudo: [25, 25], js: [264, 264] }, { pseudo: [25, 25], js: [266, 277] }, { pseudo: [25, 25], js: [279, 309] }, { pseudo: [26, 26], js: [310, 324] }],
   params: { wait: 20, speed: "speed: slow/fast, slower/faster", liveliness: "liveliness: calm/lively, calmer/livelier", curves: "curves: straight/curvy, straighter/curvier", jerkiness: "jerkiness: steady/jerky, steadier/jerkier", purpose: "purpose: aimless/purposeful, more aimless/more purposeful", friends: "friends: wary of friends/drawn to friends", strangers: "strangers: wary of strangers/drawn to strangers", size: "size: small/big, smaller/bigger", shape: "shape: smooth/pointed, smoother/pointier", detail: "detail: simple/fancy, simpler/fancier", brightness: "brightness: dim/bright, dimmer/brighter", warmth: "warmth: cool/warm, cooler/warmer", height: "height: lower down/higher up, below/above", levels: "low, medium, high", same: "same", abit: "a bit", very: "very", not: "not", own: 3, alike: 2, opposite: 1, comparison: 4, taste: 1, ratio: 2, subtle: 3, explain: "Cinderella" },
   slots: [{ line: 1, text: "20", param: "wait" }, { line: 3, text: "speed: slow/fast, slower/faster", param: "speed" }, { line: 3, text: "liveliness: calm/lively, calmer/livelier", param: "liveliness" }, { line: 4, text: "curves: straight/curvy, straighter/curvier", param: "curves" }, { line: 4, text: "jerkiness: steady/jerky, steadier/jerkier", param: "jerkiness" }, { line: 5, text: "purpose: aimless/purposeful, more aimless/more purposeful", param: "purpose" }, { line: 6, text: "friends: wary of friends/drawn to friends", param: "friends" }, { line: 6, text: "strangers: wary of strangers/drawn to strangers", param: "strangers" }, { line: 7, text: "size: small/big, smaller/bigger", param: "size" }, { line: 7, text: "shape: smooth/pointed, smoother/pointier", param: "shape" }, { line: 8, text: "detail: simple/fancy, simpler/fancier", param: "detail" }, { line: 8, text: "brightness: dim/bright, dimmer/brighter", param: "brightness" }, { line: 9, text: "warmth: cool/warm, cooler/warmer", param: "warmth" }, { line: 9, text: "height: lower down/higher up, below/above", param: "height" }, { line: 10, text: "low, medium, high", param: "levels" }, { line: 10, text: "same", param: "same" }, { line: 11, text: "a bit", param: "abit" }, { line: 11, text: "very", param: "very" }, { line: 11, text: "not", param: "not" }, { line: 13, text: "3", param: "own" }, { line: 13, text: "2", param: "alike" }, { line: 13, text: "1", param: "opposite" }, { line: 13, text: "4", param: "comparison" }, { line: 13, text: "1", param: "taste" }, { line: 20, text: "2", param: "ratio" }, { line: 23, text: "3", param: "subtle" }, { line: 25, text: "Cinderella", param: "explain" }],
   scenarios: [
@@ -4643,7 +4658,7 @@ libExtend({
   changeCode: {
     40: "  const weights = { own: +params.own || 0, same: +params.alike || 0, opposite: +params.opposite || 0, comparison: +params.comparison || 0, taste: +params.taste || 0, ai: +params.ai || 0, you: +params.you || 0 };",
     47: "  const raw = [], knew = {}, unknown = {}, voices = [];",
-    301: "  const tail = (lost.length ? \"\\n\\n**Words no expert knew:** \" + lost.join(\", \") + \".\" : \"\") + (bad.length ? \"\\n\\n**I couldn't read:** \" + bad.join(\", \") + \".\" : \"\") +"
+    301: "  const tail = (lost.length ? \"\\n\\n**No expert knows these words yet:** \" + lost.join(\", \") + \". Teach one on an expert's empty line (Look inside).\" : \"\") + (bad.length ? \"\\n\\n**I couldn't read:** \" + bad.join(\", \") + \".\" : \"\") +"
   },
   lineMap: [{ pseudo: [14, 14], js: [40, 40] }, { pseudo: [14, 14], js: [47, 47] }, { pseudo: [14, 14], js: [53, 53] }, { pseudo: [14, 14], js: [79, 94] }, { pseudo: [14, 14], js: [119, 119] }, { pseudo: [14, 14], js: [319, 319] }],
   params: { ai: 2, person: "You", you: 3 },
@@ -4781,7 +4796,7 @@ libAgent({
     "    if ((d.strengths || {})[name]) strengths[name] = d.strengths[name];",
     "  }",
     "  const say = \"**Scene \" + d.scene + \"'s plan:**\\n\" + plan.map((s, i) => (i + 1) + \". \" + s.says + (s.because ? \" (\" + s.because + \")\" : \"\") + \".\").join(\"\\n\") +",
-    "    (notes.length ? \"\\n\\n\" + cap(notes.join(\"; \")) + \".\" : \"\") + (unknown.length ? \"\\n\\nI don't know how to show: \" + unknown.join(\", \") + \".\" : \"\");",
+    "    (notes.length ? \"\\n\\n\" + cap(notes.join(\"; \")) + \".\" : \"\") + (unknown.length ? \"\\n\\nNobody has taught me a way to show these yet: \" + unknown.join(\", \") + \".\" : \"\");",
     "  return { scene: d.scene, of: d.of, title: d.title, cast: d.cast, called: d.called, onStage: onStage, plan: plan, ways: plan.map(s => s.way), choices: shown, strengths: strengths, standIns: d.standIns || [],",
     "    summary: d.summary, looksFrom: d.looksFrom || [], tasteLevel: d.tasteLevel || {}, changeFrames: +params.changeFrames || 0, notes: notes, say: say, memory: memory };",
     "}"
@@ -4793,7 +4808,7 @@ libAgent({
     {"id":"s1","name":"{=dominates}: chases off is best when the first one is bigger, so looms over is passed over","input":{"data":{"scene":1,"of":1,"title":"A scene.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=dominates","who":"Ann","whom":"Bob","also":""}],"words":{"speed":["slow","fast","slower","faster"],"liveliness":["calm","lively","calmer","livelier"],"curves":["straight","curvy","straighter","curvier"],"brightness":["dim","bright","dimmer","brighter"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["chases off"],"sayContains":"best when Ann is bigger than Bob"}},
     {"id":"s2","name":"no standing guard when the guard isn't faster: it is crossed out, and it says why","input":{"data":{"scene":1,"of":1,"title":"A scene.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=keeps","who":"Bob","whom":"Ann","also":"Cid"}],"words":{"speed":["slow","fast","slower","faster"],"liveliness":["calm","lively","calmer","livelier"],"curves":["straight","curvy","straighter","curvier"],"brightness":["dim","bright","dimmer","brighter"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["moves about"],"sayContains":"Bob isn't faster than Ann"}},
     {"id":"s3","name":"a way the film has used already is passed over for one it hasn't","input":{"memory":{"used":["chases off"]},"data":{"scene":1,"of":1,"title":"A scene.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=dominates","who":"Cid","whom":"Bob","also":""}],"words":{"speed":["slow","fast","slower","faster"],"liveliness":["calm","lively","calmer","livelier"],"curves":["straight","curvy","straighter","curvier"],"brightness":["dim","bright","dimmer","brighter"]},"standIns":[],"choices":{"Cid":{"speed":3,"size":2},"Bob":{"speed":1,"size":2}}}},"expect":{"ways":["looms over"]}},
-    {"id":"s4","name":"no way to show a word it doesn't know: the character moves about in its own way","input":{"data":{"scene":1,"of":1,"title":"A scene.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"sings","who":"Ann","whom":"Bob","also":""}],"words":{"speed":["slow","fast","slower","faster"],"liveliness":["calm","lively","calmer","livelier"],"curves":["straight","curvy","straighter","curvier"],"brightness":["dim","bright","dimmer","brighter"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["moves about"],"sayContains":"I don't know how to show: sings"}},
+    {"id":"s4","name":"no way to show a word it doesn't know: the character moves about in its own way","input":{"data":{"scene":1,"of":1,"title":"A scene.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"sings","who":"Ann","whom":"Bob","also":""}],"words":{"speed":["slow","fast","slower","faster"],"liveliness":["calm","lively","calmer","livelier"],"curves":["straight","curvy","straighter","curvier"],"brightness":["dim","bright","dimmer","brighter"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["moves about"],"sayContains":"Nobody has taught me a way to show these yet: sings"}},
     {"id":"s5","name":"becoming {=happy} makes someone faster, livelier, curvier and brighter","input":{"data":{"scene":1,"of":1,"title":"A scene.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=becomes","who":"Ann","what":["=happy"]}],"words":{"speed":["slow","fast","slower","faster"],"liveliness":["calm","lively","calmer","livelier"],"curves":["straight","curvy","straighter","curvier"],"brightness":["dim","bright","dimmer","brighter"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["feels"],"plan":[{"way":"feels","who":"Ann","feeling":"=happy","changes":{"speed":1,"liveliness":1,"curves":1,"brightness":1},"because":"","says":"Ann becomes {=happy}: {=happyWays}"}]}},
     {"id":"s6","name":"a change made by someone else: they go to the one who changes, who has a stand-in","input":{"data":{"scene":1,"of":1,"title":"A scene.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=changes","who":"Cid","whom":"Ann","from":["shabby"],"to":["elegant"]}],"words":{"speed":["slow","fast","slower","faster"],"liveliness":["calm","lively","calmer","livelier"],"curves":["straight","curvy","straighter","curvier"],"brightness":["dim","bright","dimmer","brighter"]},"standIns":[{"name":"Ann after","of":"Ann"}],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["goes to and changes"],"sayContains":"Cid goes to Ann and changes Ann"}}
   ]
@@ -6664,14 +6679,14 @@ function createRun(society, deps) {
   // first: the board is drawn before You are asked for your next move.
   const forPerson = id => { const a = byId(id); return !!a && ((deps.playAs && a.id === deps.playAs) || (a.kind === "model" && !!a.human)); };
   function fireRules(agent, response, entry) {
-    const blocked = !!(response.data && response.data.pass === false);
+    const ended = !!(response.data && response.data.end === true), blocked = ended || !!(response.data && response.data.pass === false);   // end: true is the story's end, not a failure
     const later = [];
     for (const rule of soc.rules) {
       if (rule.enabled === false) continue;
       if (!(rule.from === agent.id || (rule.from === "*" && rule.to !== agent.id))) continue;
       const cond = ruleMatches(rule, response);
       if (!cond.match) continue;
-      if (rule.when === "always" && blocked) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), reason: agent.name + "'s data says pass is false, so its rules that don't check for that wait." }); continue; }
+      if (rule.when === "always" && blocked) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), reason: ended ? agent.name + " says the story is over (end is true), so its rules that don't check for that wait." : agent.name + "'s data says pass is false, so its rules that don't check for that wait." }); continue; }
       if (!byId(rule.to)) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: rule.to, reason: "There is no agent called “" + rule.to + "”." }); continue; }
       const msg = buildMessage(rule, agent, response, entry.round);
       (forPerson(rule.to) ? later : run.queue).push(msg);
@@ -6974,6 +6989,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- ⬇ Export and ⬆ Import, at the top of the page, save the society you are in as a file and open one from a file. An agent's emoji is changed by clicking it at the top of its editor.\n" +
   "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
   "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.\n" +
+  "- Why: in a picture or film whose agents explain themselves (the Mini-Ani), a click on a character shows why it looks and moves like that: its looks (the Director), what it does (the Method Chooser) and the reasons (the Choice Points), with a button to the whole answer in the Trace. A program can end a story with end: true in its data: its other rules wait, as with pass: false, but it isn't a failure, so nothing gets a ✗.\n" +
   "- Films: in Logo, WAIT keeps the picture so far as one frame of a film (WAIT 15 is a quarter of a second), so REPEAT 12 [CLEARSCREEN RIGHT 30 * REPCOUNT FORWARD 100 WAIT 15] is a film of 12 frames. The stage plays a film with ▶ / ⏸ and a frame slider; a film in the trace has “Play the film on the stage”. At slow and normal speed the run waits for a film to end. The Renderer's data says how many frames it has (frames), and a model that sees pictures gets the last one.\n" +
   "- Small Helper, Big Helper needs two models; with only one set up, its button is grayed with a 🔒 and it can't run until a grown-up adds another in Settings, under More models.";
 function describeSociety(soc) {
@@ -7725,6 +7741,7 @@ function stripOf(trace, s) {
 }
 function beginRun(override) {
   const s = soc();
+  app.ui.why = null;   // a new run: no old why on the stage
   if (app.settings.connection === "none" && s.agents.some(a => a.kind === "model" && !a.human)) { noModelBanner(); openSettings(); toast("Choose a model first."); return null; }   // programs and You need no model
   const why = unmetNeed(s);
   if (why) { toast(why); return null; }
@@ -8111,6 +8128,58 @@ function filmMarkHTML(renders) {   // 🎞️ on a round card whose round made a
   const films = (renders || []).filter(x => x.frames > 1);
   return films.length ? ' <span class="film-mark" title="' + esc(films.length === 1 ? filmWords(films[0]) : plural(films.length, "film")) + '">🎞️</span>' : "";
 }
+// Ani 1978: click a character to see why. A click near a name in the picture or the film shows what this round's
+// agents said about that character: how it looks (data.looks), what it does (the lines of a plan), and why (data.explain).
+const WHY_T = {"hint": "Click a character to see why it looks and moves like that.", "looks": "Looks", "plan": "What happens", "why": "Why", "round": "round", "show": "Show the whole answer in the trace", "none": "Nothing in round {r} says why {n} is like this.", "miss": "Click on a character, or on its name.", "close": "Close"};
+const hasWhy = trace => (trace || []).some(e => e.response && e.response.data && (e.response.data.explain || e.response.data.looks));
+async function stageOps(s, shown, run) {
+  const f = filmState(s, shown.render);
+  if (f) return f.film[f.i].ops;
+  const mem = run && run.renders && run.renders[shown.render.renderId];
+  if (mem && mem.program === shown.render.program) return mem.ops;
+  const r = await Runtime.runTurtle(shown.render.program || "", { seed: shown.render.seed || 1 });
+  return (r.output && r.output.ops) || [];
+}
+function nameNear(ops, x, y) {   // the name nearest the click: on its label, or on the character just above it
+  let best = null, gap = 70;
+  for (const o of ops || []) {
+    if (o.t !== "T" || !o.text) continue;
+    const cx = o.x + String(o.text).length * 3.5;
+    const d = Math.min(Math.hypot(cx - x, o.y - 4 - y), Math.hypot(cx - x, o.y - 34 - y));
+    if (d < gap) { gap = d; best = String(o.text).trim(); }
+  }
+  return best;
+}
+function whyOf(trace, round, name) {
+  const lc = x => String(x == null ? "" : x).trim().toLowerCase(), n = lc(name);
+  const keysOf = map => (map && typeof map === "object" ? Object.keys(map).filter(k => lc(k) === n || lc(k).replace(/^(the|den|det) /, "") === n || lc(k).indexOf(n + " ") === 0) : []);
+  const acts = (trace || []).filter(e => e.kind === "activation" && e.response && e.response.data && !e.collecting);
+  const parts = [];
+  for (const e of acts.filter(x => x.round === round)) {
+    const d = e.response.data, ks = keysOf(d.looks);
+    for (const k of ks) parts.push({ kind: "looks", e, text: (ks.length > 1 ? k + ": " : "") + d.looks[k] });
+    if (Array.isArray(d.plan)) {
+      const lines = String(e.response.text || "").split("\n").filter(l => /^\s*\d+\./.test(l) && lc(l).indexOf(n) >= 0).map(l => util.stripMd(l).trim());
+      if (lines.length) parts.push({ kind: "plan", e, text: lines.join(" ") });
+    }
+  }
+  for (let r = round; r >= 1; r--) {   // why: the latest explanation at or before this round
+    const e = acts.filter(x => x.round === r && keysOf(x.response.data.explain).length).pop();
+    if (e) { for (const k of keysOf(e.response.data.explain)) parts.push({ kind: "why", e, text: e.response.data.explain[k] }); break; }
+  }
+  const order = ["looks", "plan", "why"], merged = [];   // one paragraph for each kind and agent: looks, what happens, why
+  for (const p of parts) { const m = merged.find(x => x.kind === p.kind && x.e === p.e); if (m) m.text += " · " + p.text; else merged.push(Object.assign({}, p)); }
+  return merged.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+}
+function whyBoxHTML(s, shown, trace) {
+  const w = app.ui.why;
+  if (!w || w.soc !== s.id) return hasWhy(trace) && shown.render ? '<p class="hint why-hint">' + esc(WHY_T.hint) + '</p>' : "";
+  const head = '<div class="whybox"><div class="why-head"><b>' + esc(w.name) + '</b><span class="muted small">' + esc(WHY_T.round + " " + w.round) + '</span><button class="icon-btn" data-act="why-close" aria-label="' + esc(WHY_T.close) + '">✕</button></div>';
+  if (!w.parts.length) return head + '<p class="small muted">' + esc(WHY_T.none.split("{r}").join(w.round).split("{n}").join(w.name)) + '</p></div>';
+  const why = w.parts.find(p => p.kind === "why");
+  return head + w.parts.map(p => '<p class="small"><b>' + esc(WHY_T[p.kind]) + '</b> <span class="muted">(' + esc((p.e.emoji || "") + " " + p.e.agentName + (p.e.round !== w.round ? ", " + WHY_T.round + " " + p.e.round : "")) + ')</span><br>' + esc(p.text) + '</p>').join("") +
+    (why ? '<button class="btn tiny" data-act="why-trace" data-i="' + why.e.i + '">' + esc(WHY_T.show) + '</button>' : "") + '</div>';
+}
 function filmBarHTML(s, render) {
   if (!render || !(render.frames > 1)) return "";
   const f = filmState(s, render), n = render.frames, i = f ? f.i : n - 1, on = !!(f && f.playing);
@@ -8200,8 +8269,8 @@ function renderStage() {
   view.calls = callCounts(trace);
   const shown = stageShown(s, view);   // a film still playing stays on the stage
   h += '<div class="agent-strip">' + s.agents.map(a => achipHTML(a, s, view)).join("") + '</div>' + modelsRowHTML(s);
-  if (hasPictures(s)) h += '<div class="picture-wrap"><div class="picture"><canvas id="stageCanvas" width="512" height="512" aria-label="The latest picture"></canvas>' +
-    (shown.render ? '<span class="tag">' + (view.replay ? "replay · " : "") + "round " + shown.round + (shown.render.frames > 1 ? " · 🎞️" : "") + '</span>' : '<div class="empty">' + (trace.length ? "No picture yet." : "Press ▶ Run to start.<br>Every message will show up in the Trace.") + '</div>') + '</div>' + filmBarHTML(s, shown.render) +
+  if (hasPictures(s)) h += '<div class="picture-wrap"><div class="picture' + (hasWhy(trace) ? " can-why" : "") + '"><canvas id="stageCanvas" data-act="stage-why" width="512" height="512" aria-label="The latest picture"></canvas>' +
+    (shown.render ? '<span class="tag">' + (view.replay ? "replay · " : "") + "round " + shown.round + (shown.render.frames > 1 ? " · 🎞️" : "") + '</span>' : '<div class="empty">' + (trace.length ? "No picture yet." : "Press ▶ Run to start.<br>Every message will show up in the Trace.") + '</div>') + '</div>' + filmBarHTML(s, shown.render) + whyBoxHTML(s, shown, trace) +
     '<div class="bubbles">' + view.bubbles.map(bubbleHTML).join("") + '</div></div>';
   else h += '<div class="bubbles wide">' + (view.bubbles.length ? view.bubbles.map(bubbleHTML).join("") : '<p class="hint">' + (trace.length ? "No messages yet." : "Press ▶ Run to start. Every message will show up here and in the Trace.") + '</p>') + '</div>';
   const rounds = stripOf(trace, s);
@@ -8413,6 +8482,7 @@ function traceEntryHTML(e, s, run, trace, currentI) {
   const a = Society.agentById(s, e.agentId);
   const quiet = !e.error && resp && !String(resp.text || "").trim() && !e.render && !(e.fired || []).length;
   let sum = '<b>' + esc((e.emoji || "") + " " + e.agentName) + '</b> <span class="muted">← ' + esc(e.message ? e.message.fromName : "") + '</span>';
+  if (resp && resp.data && resp.data.end === true) sum = '<span class="badge plain">the end</span> ' + sum;
   if (resp && resp.data && typeof resp.data.pass === "boolean" && (resp.data.pass === false || (a && a.gate))) sum = (resp.data.pass ? '<span class="badge ok">pass</span> ' : '<span class="badge bad">block</span> ') + sum;
   if (e.error) sum += '<br><span style="color:var(--bad)">⚠ ' + shortHTML(e.error, 170, "The problem") + '</span>';
   else if (e.collecting) sum += ' <span class="muted">is waiting: ' + e.collecting.have + ' of ' + e.collecting.want + ' messages so far</span>';
@@ -9381,6 +9451,25 @@ const ACTIONS = {
   "replay-next"() { setReplay((app.ui.replay || 0) + 1); },
   "replay-last"() { setReplay(1e9); },
   "replay-exit"() { app.ui.replay = null; renderStage(); renderTrace(); },
+  async "stage-why"(t, ev) {   // a click on the stage's picture: why the character there looks and moves like that
+    const s = soc(), rec = app.runs[s.id], run = rec ? rec.api.run : null, trace = run ? run.trace : (app.traces[s.id] || []);
+    if (!hasWhy(trace)) return;
+    const shown = stageShown(s, viewState(s, run, trace));
+    if (!shown.render) return;
+    const r = t.getBoundingClientRect(), x = (ev.clientX - r.left) * 512 / (r.width || 512), y = (ev.clientY - r.top) * 512 / (r.height || 512);
+    const name = nameNear(await stageOps(s, shown, run), x, y);
+    if (!name) { toast(WHY_T.miss); return; }
+    app.ui.why = { soc: s.id, name, round: shown.round, parts: whyOf(trace, shown.round, name) };
+    renderStage();
+  },
+  "why-close"() { app.ui.why = null; renderStage(); },
+  "why-trace"(t) {
+    const i = +t.dataset.i;
+    app.ui.expanded.add(i);
+    renderTrace();
+    const b = document.querySelector('[data-act="trace-toggle"][data-i="' + i + '"]');
+    if (b && b.scrollIntoView) b.scrollIntoView({ block: "start" });
+  },
   async "film-play"() {   // ▶ plays the film on the stage (from the start, if it is at the end); ⏸ stops it where it is
     const f = await filmHere();
     if (!f) return;

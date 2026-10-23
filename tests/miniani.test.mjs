@@ -51,7 +51,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const r = await ran();
     const films = acts(r, "renderer"), cast = acts(r, "cast"), last = cast[cast.length - 1];
     return r.status === "done" && films.length === 4 && same(films.map(e => e.round), [1, 2, 3, 4]) && films.every(e => !e.render.error && e.render.frames >= 16) &&
-      last.response.text === "The end." && last.response.data.pass === false && !r.trace.some(e => e.error || e.call) && cast.length === 5;
+      last.response.text === "The end." && last.response.data.end === true && last.response.data.pass === undefined && !r.trace.some(e => e.error || e.call) && cast.length === 5;
   });
   T.test("Mini-Ani: two runs are the same apart from the seed and the timing", ["Engine"], async () => {
     const strip = v => (Array.isArray(v) ? v.map(strip) : v && typeof v === "object" ? Object.keys(v).filter(k => ["seed", "t", "ms", "timestamp"].indexOf(k) < 0).reduce((o, k) => (o[k] = strip(v[k]), o), {}) : v);
@@ -135,7 +135,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
   T.test("any language: the Mini-Ani's default story runs to its end with no model, every scene a film, and only one of its words unknown to every expert", ["Engine", "Seeds"], async () => {
     const r = await ran();
     const last = acts(r, "cast").pop().response.data, films = acts(r, "renderer");
-    return r.status === "done" && last.pass === false && last.over === true && films.length === 4 && films.every(e => e.render.frames >= 16 && !e.render.error) &&
+    return r.status === "done" && last.end === true && last.over === true && films.length === 4 && films.every(e => e.render.frames >= 16 && !e.render.error) &&
       at(r, "choice-points", 1).response.data.unknown.length === 1;
   });
   T.test("page: ＋ New society starts the Mini-Ani with no model set up; its card links to Ani's own film, and + Add an agent lists its programs under their own heading", ["Seeds"], async () => {
@@ -170,8 +170,9 @@ export default function (T, { modelWindow, pageWindow, same }) {
   });
   T.test("Mini-Ani: a word no expert knew is named once, in scene 1, and not again in the scenes after", ["Engine"], async () => {
     const r = await ran();
-    const named = [1, 2, 3, 4].map(n => /\*\*Words no expert knew:\*\* helps \(the Godmother\)\./.test(at(r, "choice-points", n).response.text));
-    return same(named, [true, false, false, false]) && same(at(r, "choice-points", 3).response.data.unknown, []) && /I don't know these words: helps \(the Godmother\)/.test(at(r, "relationships", 3).response.text);
+    const named = [1, 2, 3, 4].map(n => /\*\*No expert knows these words yet:\*\* helps \(the Godmother\)\. Teach one on an expert's empty line \(Look inside\)\./.test(at(r, "choice-points", n).response.text));
+    const rel = at(r, "relationships", 1).response;   // the experts pass unknown words on, and don't name them themselves
+    return same(named, [true, false, false, false]) && same(at(r, "choice-points", 3).response.data.unknown, []) && !/know/.test(rel.text) && same(rel.data.unknown, { Godmother: ["helps"] }) && !/know/.test(at(r, "looks", 1).response.text) && /helps \(the Godmother\)/.test(at(r, "choice-points", 1).response.text);
   });
   T.test("Mini-Ani: a “same” comparison is “as”, not “than”, and Relationships says who is compared with whom", ["Engine"], async () => {
     const rel = agent(Seeds.makeMiniAni(), "relationships"), cp = Library.LIB["ani-choices"];
@@ -214,7 +215,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const head = entry().querySelector(".sum").textContent;
     entry().querySelector('[data-act="trace-toggle"]').click();
     const folds = () => Array.from(entry().querySelectorAll('[data-act="more-toggle"]'));
-    const shut = folds().length === 2 && !entry().querySelector(".pseudo") && !entry().querySelector("ul.heard.got") && /Show the 5 messages, in plain words/.test(folds()[0].textContent) && /Show the program \(25 lines\)/.test(folds()[1].textContent);
+    const shut = folds().length === 2 && !entry().querySelector(".pseudo") && !entry().querySelector("ul.heard.got") && /Show the 5 messages, in plain words/.test(folds()[0].textContent) && /Show the program \(26 lines\)/.test(folds()[1].textContent);
     const said = entry().querySelector(".said").textContent;
     folds()[0].click(); folds()[1].click();
     const got = entry().querySelectorAll("ul.heard.got li"), pseudo = entry().querySelector(".pseudo");
@@ -234,4 +235,46 @@ export default function (T, { modelWindow, pageWindow, same }) {
     ak.app.settings.connection = "pretend"; ak.renderAll();
     return offline && pw.document.querySelectorAll('.drawer [data-act="helper-ask"]').length === 3;
   });
+  T.test("Mini-Ani: the Choice Points explain everyone they choose, not only the focus, for a click on them in the film", ["Engine"], async () => {
+    const r = await ran();
+    const ex1 = at(r, "choice-points", 1).response.data.explain, ex3 = at(r, "choice-points", 3).response.data.explain;
+    return same(Object.keys(ex1), ["Cinderella", "Stepmother", "Godmother", "Prince"]) && /^Cinderella is slow because of shy/.test(ex1.Cinderella) && /^The Stepmother is /.test(ex1.Stepmother) &&
+      same(Object.keys(ex3), ["Cinderella after"]) && /^Cinderella after is /.test(ex3["Cinderella after"]);
+  });
+  T.test("Mini-Ani: the story ends with end: true, so the Cast's rules wait, the trace says “the end”, and nobody gets a ✗", ["Engine"], async () => {
+    const { w: pw } = await pageWindow();
+    const ak = pw.__ak;
+    ak.app.settings.connection = "none"; ak.app.settings.speed = "instant";
+    pw.document.querySelector('[data-act="new-society"]').click();
+    Array.from(pw.document.querySelectorAll(".modal-body")).pop().querySelector('[data-new="example"][data-id="miniani"]').click();
+    await new Promise(r => setTimeout(r, 30));
+    await ak.runNow(); ak.renderAll();
+    const run = ak.app.runs[ak.soc().id].api.run, end = acts(run, "cast").pop();
+    const chip = pw.document.querySelector('.achip[data-id="cast"]');
+    const head = pw.document.querySelector('#traceList [data-act="trace-toggle"][data-i="' + end.i + '"]').textContent;
+    return end.held.length > 0 && end.held.every(h => /says the story is over \(end is true\)/.test(h.reason)) && !/✗/.test(chip.textContent) && !chip.querySelector(".verdict.bad, .v-bad") && /the end/.test(head) && !/block/.test(head);
+  });
+  T.test("page: a click on Cinderella in the Mini-Ani's film shows why she looks and moves like that, from the Director, the Method Chooser and the Choice Points", ["Engine"], async () => {
+    const { w: pw } = await pageWindow();
+    const ak = pw.__ak;
+    ak.app.settings.connection = "none"; ak.app.settings.speed = "instant";
+    pw.document.querySelector('[data-act="new-society"]').click();
+    Array.from(pw.document.querySelectorAll(".modal-body")).pop().querySelector('[data-new="example"][data-id="miniani"]').click();
+    await new Promise(r => setTimeout(r, 30));
+    await ak.runNow();
+    ak.app.ui.film = null; ak.renderAll();   // the film stopped: the stage shows its last frame
+    const hint = /Click a character to see why/.test(pw.document.querySelector("#colCenter").textContent);
+    const run = ak.app.runs[ak.soc().id].api.run, last = acts(run, "renderer").pop();
+    const label = run.renders[last.render.renderId].ops.find(o => o.t === "T" && /Cinderella/.test(o.text));
+    const canvas = pw.document.getElementById("stageCanvas");
+    canvas.dispatchEvent(new pw.MouseEvent("click", { bubbles: true, clientX: label.x + 10, clientY: label.y - 4 }));
+    await new Promise(r => setTimeout(r, 50));
+    const box = pw.document.querySelector(".whybox");
+    const kinds = ak.app.ui.why.parts.map(p => p.kind);
+    const text = box ? box.textContent : "";
+    box.querySelector('[data-act="why-trace"]').click();
+    const opened = ak.app.ui.expanded.has(ak.app.ui.why.parts.find(p => p.kind === "why").e.i);
+    return hint && !!box && /^Cinderella/.test(ak.app.ui.why.name) && kinds.indexOf("looks") >= 0 && kinds.indexOf("why") >= 0 && /Cinderella after is /.test(text) && /round 4/.test(text) && opened;
+  });
 }
+

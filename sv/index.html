@@ -257,7 +257,7 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 .errline{background:var(--bad-bg);border-radius:8px;padding:5px 8px;font-size:12.5px;color:#7A1F17;white-space:pre-wrap}
 .replay{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--accent-bg);border-radius:12px;padding:6px 8px;margin-bottom:8px;font-size:12.5px}
 .replay input[type=range]{flex:1;min-width:120px}
-.filmbar{display:flex;align-items:center;gap:6px;width:min(100%,460px);margin:0 auto;background:var(--accent-bg);border-radius:12px;padding:4px 8px;font-size:12.5px}.filmbar input[type=range]{flex:1;min-width:80px}
+.whybox{border:1.5px solid var(--line);border-radius:12px;padding:8px 12px;margin:8px 0;background:var(--accent-bg)}.whybox p{margin:6px 0}.why-head{display:flex;align-items:center;gap:8px}.why-head .icon-btn{margin-left:auto}.why-hint{margin:6px 0 0}.picture.can-why canvas{cursor:pointer}.filmbar{display:flex;align-items:center;gap:6px;width:min(100%,460px);margin:0 auto;background:var(--accent-bg);border-radius:12px;padding:4px 8px;font-size:12.5px}.filmbar input[type=range]{flex:1;min-width:80px}
 
 /* modal */
 .modal-back{position:fixed;inset:0;z-index:60;background:rgba(21,30,50,.42);display:flex;align-items:flex-start;justify-content:center;padding:34px 14px;overflow:auto}
@@ -435,7 +435,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.15.2";
+AK.VERSION = "1.16.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -3859,7 +3859,7 @@ libAgent({
     "efter varje film: skicka nästa scen, med vilka som är på scenen, vad som händer och hur de kommer överens",
     "för den som ändras i en scen: skicka också en ersättare, \"X {efter}\", med de nya orden; från och med då har X dem",
     "när Ritaren säger att en film inte gick att köra: säg det, och gå vidare till nästa scen",
-    "efter sista scenen: stoppa och säg \"Slut.\"",
+    "efter sista scenen: avsluta berättelsen och säg \"Slut.\"",
     "nämn varje mening jag inte kan läsa; utan någon figur eller scen, säg hur man skriver en berättelse, och vänta på en ny"
   ],
   code: [
@@ -3997,7 +3997,7 @@ libAgent({
     "  const called = (m, n) => m.called[n] || n;",
     "  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);",
     "  const send = (m, note) => {",
-    "    if (m.next >= m.scenes.length) return { pass: false, over: true, say: (note ? note + \" \" : \"\") + \"Slut.\", memory: m };",
+    "    if (m.next >= m.scenes.length) return { end: true, over: true, say: (note ? note + \" \" : \"\") + \"Slut.\", memory: m };",
     "    const sc = m.scenes[m.next];",
     "    const choose = m.next === 0 ? m.cast.map(n => ({ name: n, words: m.words[n].slice() })) : [];",
     "    const changed = new Map();",
@@ -4045,7 +4045,7 @@ libAgent({
     {"id":"s1","name":"berättelsen läses, och scen 1 skickas med alla i den","input":{"text":"Ann är blyg och snäll.\nVargen är elak.\nVargen dominerar Ann. Ann hjälper Vargen.\nScen 1: Ann är blyg. Vargen dominerar Ann.\nScen 2: Ann möter Vargen."},"expect":{"scene":1,"of":2,"onStage":["Ann","Vargen"],"choose":[{"name":"Ann","words":["blyg","snäll"]},{"name":"Vargen","words":["elak"]}],"friends":[["Ann","Vargen"]]}},
     {"id":"s2","name":"efter en film skickas nästa scen, och ingen väljs igen","input":{"from":"Ritaren","text":"Jag ritade 10 former och 0 prickar.","memory":{"cast":["Ann","Vargen"],"called":{},"words":{"Ann":["blyg","snäll"],"Vargen":["elak"]},"relations":[{"who":"Vargen","verb":"dominerar","whom":"Ann"}],"friends":[],"unread":[],"next":1,"scenes":[{"text":"Ann är blyg. Vargen dominerar Ann.","events":[{"verb":"är","who":"Ann","what":["blyg"]},{"verb":"dominerar","who":"Vargen","whom":"Ann","also":""}],"onStage":["Ann","Vargen"],"unread":[]},{"text":"Ann ändrar sig från blyg till modig.","events":[{"verb":"ändrar","who":"Ann","whom":"","from":["blyg"],"to":["modig"]}],"onStage":["Ann"],"unread":[]}]}},"expect":{"scene":2,"onStage":["Ann"],"sayContains":"Ann ändras"}},
     {"id":"s3","name":"den som ändras får en ersättare med de nya orden","input":{"from":"Ritaren","text":"Jag ritade 10 former och 0 prickar.","memory":{"cast":["Ann","Vargen"],"called":{},"words":{"Ann":["blyg","snäll"],"Vargen":["elak"]},"relations":[{"who":"Vargen","verb":"dominerar","whom":"Ann"}],"friends":[],"unread":[],"next":1,"scenes":[{"text":"Ann är blyg. Vargen dominerar Ann.","events":[{"verb":"är","who":"Ann","what":["blyg"]},{"verb":"dominerar","who":"Vargen","whom":"Ann","also":""}],"onStage":["Ann","Vargen"],"unread":[]},{"text":"Ann ändrar sig från blyg till modig.","events":[{"verb":"ändrar","who":"Ann","whom":"","from":["blyg"],"to":["modig"]}],"onStage":["Ann"],"unread":[]}]}},"expect":{"choose":[{"name":"Ann {=after}","of":"Ann","words":["snäll","modig"]}]}},
-    {"id":"s4","name":"inga fler scener: den stoppar och säger ”Slut.”","input":{"from":"Ritaren","text":"Jag ritade 10 former och 0 prickar.","memory":{"cast":["Ann","Vargen"],"called":{},"words":{"Ann":["blyg","snäll"],"Vargen":["elak"]},"relations":[{"who":"Vargen","verb":"dominerar","whom":"Ann"}],"friends":[],"unread":[],"next":2,"scenes":[{"text":"Ann är blyg. Vargen dominerar Ann.","events":[{"verb":"är","who":"Ann","what":["blyg"]},{"verb":"dominerar","who":"Vargen","whom":"Ann","also":""}],"onStage":["Ann","Vargen"],"unread":[]},{"text":"Ann ändrar sig från blyg till modig.","events":[{"verb":"ändrar","who":"Ann","whom":"","from":["blyg"],"to":["modig"]}],"onStage":["Ann"],"unread":[]}]}},"expect":{"pass":false,"say":"Slut."}},
+    {"id":"s4","name":"inga fler scener: den avslutar berättelsen och säger ”Slut.”","input":{"from":"Ritaren","text":"Jag ritade 10 former och 0 prickar.","memory":{"cast":["Ann","Vargen"],"called":{},"words":{"Ann":["blyg","snäll"],"Vargen":["elak"]},"relations":[{"who":"Vargen","verb":"dominerar","whom":"Ann"}],"friends":[],"unread":[],"next":2,"scenes":[{"text":"Ann är blyg. Vargen dominerar Ann.","events":[{"verb":"är","who":"Ann","what":["blyg"]},{"verb":"dominerar","who":"Vargen","whom":"Ann","also":""}],"onStage":["Ann","Vargen"],"unread":[]},{"text":"Ann ändrar sig från blyg till modig.","events":[{"verb":"ändrar","who":"Ann","whom":"","from":["blyg"],"to":["modig"]}],"onStage":["Ann"],"unread":[]}]}},"expect":{"end":true,"say":"Slut."}},
     {"id":"s5","name":"en film som inte gick att köra nämns, och berättelsen fortsätter","input":{"from":"Ritaren","text":"Programmet gick inte att köra.","data":{"pass":false,"error":"Rad 3: Jag vet inte hur man gör JUMP."},"memory":{"cast":["Ann","Vargen"],"called":{},"words":{"Ann":["blyg","snäll"],"Vargen":["elak"]},"relations":[{"who":"Vargen","verb":"dominerar","whom":"Ann"}],"friends":[],"unread":[],"next":1,"scenes":[{"text":"Ann är blyg. Vargen dominerar Ann.","events":[{"verb":"är","who":"Ann","what":["blyg"]},{"verb":"dominerar","who":"Vargen","whom":"Ann","also":""}],"onStage":["Ann","Vargen"],"unread":[]},{"text":"Ann ändrar sig från blyg till modig.","events":[{"verb":"ändrar","who":"Ann","whom":"","from":["blyg"],"to":["modig"]}],"onStage":["Ann"],"unread":[]}]}},"expect":{"scene":2,"sayContains":"Filmen i scen 1 gick inte att köra (Rad 3: Jag vet inte hur man gör JUMP.)"}},
     {"id":"s6","name":"inga scener i berättelsen: den stoppar, säger hur man skriver en och väntar på en ny","input":{"text":"Ann är blyg och snäll."},"expect":{"pass":false,"understood":false,"sayContains":"Det finns inga scener"}},
     {"id":"s7","name":"en mening den inte kan läsa nämns i stället för att tappas bort","input":{"text":"Ann är blyg.\nScen 1: Ann är blyg. Det regnar."},"expect":{"scene":1,"unread":["Det regnar"]}}
@@ -4072,7 +4072,7 @@ libAgent({
     "och {självisk=elak, grinig=ond}",
     "de här betyder motsatsen, så de får förslagen omvända: {fräck=blyg, framfusig=blyg, modig=blyg, lat=flitig}",
     "och {god=ond, klumpig=graciös, ovänlig=vänlig, svag=stark}",
-    "skicka varje förslag med ordet det kom från, och nämn de ord jag inte känner till"
+    "skicka varje förslag med ordet det kom från, och skicka vidare de ord jag inte känner till (Valpunkterna nämner dem som ingen expert känner till)"
   ],
   code: [
     "function run(input, params, h) {",
@@ -4122,7 +4122,7 @@ libAgent({
     "      }",
     "      if (!from) (known ? knew : unknown)[c.name].push(w);",
     "    }",
-    "    said.push(\"- **\" + (((input.data || {}).called || {})[c.name] || c.name) + \"**: \" + (told.length ? told.join(\" · \") : \"ingenting\") + (unknown[c.name].length ? \". Jag känner inte till \" + unknown[c.name].join(\", \") + \".\" : \"\"));",
+    "    said.push(\"- **\" + (((input.data || {}).called || {})[c.name] || c.name) + \"**: \" + (told.length ? told.join(\" · \") : \"ingenting\"));",
     "  }",
     "  let say = said.length ? said.join(\"\\n\") : \"Ingens ord har ändrats, så jag har inget nytt att föreslå.\";",
     "  if (say.length > 1900) say = said.map(t => t.split(\" → \")[0]).join(\"\\n\").slice(0, 1900);",
@@ -4152,7 +4152,7 @@ libAgent({
     "de här betyder samma sak: {styr=dominerar, älskar=gillar}",
     "de här betyder motsatsen, så jämförelserna blir omvända: {lyder=dominerar, ogillar=gillar}",
     "den första får jämförelsen, och den andra får den omvänd",
-    "nämn de ord jag inte känner till"
+    "skicka vidare de ord jag inte känner till (Valpunkterna nämner dem som ingen expert känner till)"
   ],
   code: [
     "function run(input, params, h) {",
@@ -4192,12 +4192,11 @@ libAgent({
     "    }",
     "    said.push(\"- \" + call(r.who) + \" \" + verb + \" \" + call(r.whom) + (ways[0].like !== verb ? \" (\" + (ways[0].turn ? \"motsatsen till \" : \"som \") + ways[0].like + \")\" : \"\") + \" → \" + call(r.who) + \", jämfört med \" + call(r.whom) + \": \" + (ways[0].turn ? \"motsatsen till ”\" + own(ways[0].like).says + \"”\" : own(ways[0].like).says) + \"; \" + call(r.whom) + \": tvärtom\");",
     "  }",
-    "  const missing = Object.keys(unknown).map(n => unknown[n].join(\", \") + \" (\" + call(n) + \")\").join(\"; \");",
-    "  const say = (said.length ? said.join(\"\\n\") : \"Det finns inga jämförelser att göra för någon som väljs.\") + (missing ? \"\\n\\nJag känner inte till de här orden: \" + missing + \".\" : \"\");",
+    "  const say = (said.length ? said.join(\"\\n\") : \"Det finns inga jämförelser att göra för någon som väljs.\");",
     "  return { count: suggestions.length, suggestions: suggestions, unknown: unknown, say: say };",
     "}"
   ],
-  lineMap: [{ pseudo: [1, 1], js: [2, 3] }, { pseudo: [1, 1], js: [14, 14] }, { pseudo: [1, 1], js: [16, 20] }, { pseudo: [1, 1], js: [37, 37] }, { pseudo: [2, 2], js: [5, 11] }, { pseudo: [2, 2], js: [21, 21] }, { pseudo: [3, 3], js: [5, 11] }, { pseudo: [3, 3], js: [21, 21] }, { pseudo: [4, 4], js: [5, 11] }, { pseudo: [4, 4], js: [21, 21] }, { pseudo: [5, 5], js: [12, 13] }, { pseudo: [5, 5], js: [22, 22] }, { pseudo: [6, 6], js: [12, 13] }, { pseudo: [6, 6], js: [23, 23] }, { pseudo: [7, 7], js: [4, 4] }, { pseudo: [7, 7], js: [28, 36] }, { pseudo: [8, 8], js: [15, 15] }, { pseudo: [8, 8], js: [24, 27] }, { pseudo: [8, 8], js: [38, 41] }],
+  lineMap: [{ pseudo: [1, 1], js: [2, 3] }, { pseudo: [1, 1], js: [14, 14] }, { pseudo: [1, 1], js: [16, 20] }, { pseudo: [1, 1], js: [37, 37] }, { pseudo: [2, 2], js: [5, 11] }, { pseudo: [2, 2], js: [21, 21] }, { pseudo: [3, 3], js: [5, 11] }, { pseudo: [3, 3], js: [21, 21] }, { pseudo: [4, 4], js: [5, 11] }, { pseudo: [4, 4], js: [21, 21] }, { pseudo: [5, 5], js: [12, 13] }, { pseudo: [5, 5], js: [22, 22] }, { pseudo: [6, 6], js: [12, 13] }, { pseudo: [6, 6], js: [23, 23] }, { pseudo: [7, 7], js: [4, 4] }, { pseudo: [7, 7], js: [28, 36] }, { pseudo: [8, 8], js: [15, 15] }, { pseudo: [8, 8], js: [24, 27] }, { pseudo: [8, 8], js: [38, 40] }],
   params: { r1: "dominerar", c1: "snabbare, livligare, över, större", r2: "gillar", c2: "lite samma fart, lite samma livlighet", r3: "-", c3: "-", same: "styr=dominerar, älskar=gillar", opposite: "lyder=dominerar, ogillar=gillar" },
   slots: [{ line: 2, text: "dominerar", param: "r1" }, { line: 2, text: "snabbare, livligare, över, större", param: "c1" }, { line: 3, text: "gillar", param: "r2" }, { line: 3, text: "lite samma fart, lite samma livlighet", param: "c2" }, { line: 4, text: "-", param: "r3" }, { line: 4, text: "-", param: "c3" }, { line: 5, text: "styr=dominerar, älskar=gillar", param: "same" }, { line: 6, text: "lyder=dominerar, ogillar=gillar", param: "opposite" }],
   scenarios: [
@@ -4275,7 +4274,8 @@ libAgent({
     "  om ingen föreslog något blir det medel; om allt är uteslutet behåller en jämförelse sin egen riktning",
     "en subtil film behåller bara var och ens {3} starkaste skillnader från medel",
     "kom ihåg värdena; en ersättare får variationen och jämförelserna som dess figur hade, och sedan blir dess värden figurens",
-    "förklara {Askungen} utförligt först (eller den första som väljs, om ingen i berättelsen heter så), säg sedan allas värden och hur striderna avgjordes, och nämn varje ord som ingen expert kände till, en gång"
+    "förklara {Askungen} utförligt först (eller den första som väljs, om ingen i berättelsen heter så), säg sedan allas värden och hur striderna avgjordes, och nämn varje ord som ingen expert kände till, en gång",
+    "spara varför var och en som väljs är sådan, för ett klick på dem i filmen"
   ],
   code: [
     "function run(input, params, h) {",
@@ -4578,7 +4578,7 @@ libAgent({
     "  }",
     "  const parts = [[tally.more, STRONG], [tally.middle, \"möttes på mitten\"], [tally.stronger, \"starkare\"], [tally.first, \"sades först\"], [tally.alone, \"utan motstånd\"], [tally.nobody, \"inget föreslaget\"], [tally.self, \"en jämförelse behöll sin riktning\"]].filter(x => x[0] > 0);",
     "  const settled = \"**Avgjort:** \" + parts.map(x => x[0] + \" \" + x[1]).join(\", \") + \". \" + tally.waited + (tally.waited === 1 ? \" jämförelse\" : \" jämförelser\") + \" väntade på någon annans värde\" + (tally.without ? \"; \" + tally.without + \" gick utan, eftersom två val väntade på varandra (Anis ”dödliga omfamning”)\" : \"\") + \".\";",
-    "  const tail = (lost.length ? \"\\n\\n**Ord som ingen expert kände till:** \" + lost.join(\", \") + \".\" : \"\") + (bad.length ? \"\\n\\n**Jag kunde inte läsa:** \" + bad.join(\", \") + \".\" : \"\");",
+    "  const tail = (lost.length ? \"\\n\\n**Ord som ingen expert känner till ännu:** \" + lost.join(\", \") + \". Lär en expert dem på dess tomma rad (Titta inuti).\" : \"\") + (bad.length ? \"\\n\\n**Jag kunde inte läsa:** \" + bad.join(\", \") + \".\" : \"\");",
     "  const whyText = list => (target && (list.length || medium) ? \"**Varför \" + call(target.name) + \" är sådan:**\" + instead + (list.length ? \" \" + call(target.name) + \" är \" + list.slice().sort((a, b) => a.i - b.i).map(x => x.text).join(\"; \") + \".\" : \"\") + medium + went : \"\");",
     "  let kept = explained.slice();",
     "  if ((say + whyText(kept) + \"\\n\\n\" + everyone + \"\\n\\n\" + settled + tail).length > 1960) medium = \"\";",
@@ -4587,11 +4587,26 @@ libAgent({
     "    kept = kept.sort((a, b) => b.p - a.p).slice(0, -1);",
     "  }",
     "  say += (whyText(kept) ? whyText(kept) + (kept.length < explained.length ? \" (Resten finns i mina data, under why.)\" : \"\") + \"\\n\\n\" : \"\") + everyone + (choose.length ? \"\\n\\n\" + settled : \"\") + tail;",
+    "  // För ett klick på någon i filmen: varför var och en som väljs nu är sådan, som för fokus.",
+    "  const explain = {};",
+    "  for (const c of choose) {",
+    "    h.tick();",
+    "    const w = why[c.name], list = [], mid = [];",
+    "    IDS.forEach(el => {",
+    "      if (chosen[c.name][el] === 2) {",
+    "        mid.push(names[el]);",
+    "        return;",
+    "      }",
+    "      const film = w[el].because.filter(x => x.indexOf(FILM) === 0).map(x => x.slice(FILM.length)), own = w[el].because.filter(x => x.indexOf(FILM) !== 0);",
+    "      list.push(w[el].value + \" på grund av \" + joinAnd(own.concat(film.length ? [FILM + joinAnd(film)] : [])) + (w[el].against.length ? \", mot \" + joinAnd(w[el].against) : \"\") + (w[el].how === STRONG ? \"\" : \" (\" + w[el].how + \")\"));",
+    "    });",
+    "    explain[c.name] = cap(call(c.name)) + (list.length ? \" är \" + list.join(\"; \") + \".\" : \"\") + (mid.length ? \" \" + cap(levels[1]) + \": \" + joinAnd(mid) + \".\" : \"\");",
+    "  }",
     "  return { count: choose.length, scene: scene.scene, of: scene.of, title: scene.title, cast: scene.cast, called: scene.called, onStage: scene.onStage, events: scene.events, relations: scene.relations, friends: scene.friends,",
-    "    standIns: choose.filter(c => c.of).map(c => ({ name: c.name, of: c.of })), choices: choices, strengths: strengths, summary: summary, words: words, looksFrom: memory.looksFrom, taste: taste, tasteLevel: tasteLevel, why: why, unknown: lost, say: say, memory: memory };",
+    "    standIns: choose.filter(c => c.of).map(c => ({ name: c.name, of: c.of })), choices: choices, strengths: strengths, summary: summary, words: words, looksFrom: memory.looksFrom, taste: taste, tasteLevel: tasteLevel, why: why, explain: explain, unknown: lost, say: say, memory: memory };",
     "}"
   ],
-  lineMap: [{ pseudo: [1, 1], js: [46, 56] }, { pseudo: [1, 1], js: [65, 65] }, { pseudo: [2, 2], js: [2, 4] }, { pseudo: [2, 2], js: [8, 18] }, { pseudo: [2, 2], js: [21, 22] }, { pseudo: [3, 3], js: [8, 18] }, { pseudo: [3, 3], js: [21, 22] }, { pseudo: [4, 4], js: [8, 18] }, { pseudo: [4, 4], js: [21, 22] }, { pseudo: [5, 5], js: [8, 18] }, { pseudo: [5, 5], js: [21, 22] }, { pseudo: [6, 6], js: [8, 18] }, { pseudo: [6, 6], js: [21, 22] }, { pseudo: [7, 7], js: [8, 18] }, { pseudo: [7, 7], js: [21, 22] }, { pseudo: [8, 8], js: [8, 18] }, { pseudo: [8, 8], js: [21, 22] }, { pseudo: [9, 9], js: [8, 18] }, { pseudo: [9, 9], js: [21, 22] }, { pseudo: [10, 10], js: [7, 8] }, { pseudo: [10, 10], js: [19, 20] }, { pseudo: [10, 10], js: [22, 22] }, { pseudo: [11, 11], js: [23, 39] }, { pseudo: [11, 11], js: [85, 85] }, { pseudo: [11, 11], js: [167, 171] }, { pseudo: [12, 12], js: [40, 40] }, { pseudo: [12, 12], js: [90, 90] }, { pseudo: [12, 12], js: [101, 101] }, { pseudo: [13, 13], js: [40, 40] }, { pseudo: [13, 13], js: [90, 92] }, { pseudo: [13, 13], js: [94, 95] }, { pseudo: [13, 13], js: [101, 101] }, { pseudo: [14, 14], js: [66, 66] }, { pseudo: [14, 14], js: [73, 75] }, { pseudo: [14, 14], js: [98, 98] }, { pseudo: [14, 14], js: [126, 130] }, { pseudo: [14, 14], js: [133, 133] }, { pseudo: [15, 15], js: [45, 45] }, { pseudo: [15, 15], js: [76, 84] }, { pseudo: [15, 15], js: [96, 97] }, { pseudo: [15, 15], js: [99, 100] }, { pseudo: [15, 15], js: [102, 105] }, { pseudo: [15, 15], js: [131, 132] }, { pseudo: [15, 15], js: [140, 141] }, { pseudo: [15, 15], js: [143, 144] }, { pseudo: [15, 15], js: [172, 175] }, { pseudo: [15, 15], js: [224, 224] }, { pseudo: [15, 15], js: [252, 252] }, { pseudo: [16, 16], js: [93, 93] }, { pseudo: [16, 16], js: [112, 112] }, { pseudo: [16, 16], js: [134, 137] }, { pseudo: [16, 16], js: [145, 146] }, { pseudo: [16, 16], js: [151, 157] }, { pseudo: [16, 16], js: [159, 166] }, { pseudo: [16, 16], js: [223, 223] }, { pseudo: [17, 17], js: [118, 118] }, { pseudo: [17, 17], js: [134, 135] }, { pseudo: [17, 17], js: [138, 139] }, { pseudo: [17, 17], js: [147, 150] }, { pseudo: [17, 17], js: [176, 176] }, { pseudo: [17, 17], js: [221, 223] }, { pseudo: [17, 17], js: [249, 249] }, { pseudo: [17, 17], js: [287, 287] }, { pseudo: [17, 17], js: [297, 297] }, { pseudo: [18, 18], js: [68, 72] }, { pseudo: [18, 18], js: [108, 111] }, { pseudo: [18, 18], js: [119, 123] }, { pseudo: [18, 18], js: [177, 186] }, { pseudo: [19, 19], js: [187, 189] }, { pseudo: [19, 19], js: [202, 202] }, { pseudo: [20, 20], js: [125, 125] }, { pseudo: [20, 20], js: [190, 191] }, { pseudo: [20, 20], js: [200, 207] }, { pseudo: [21, 21], js: [190, 191] }, { pseudo: [21, 21], js: [208, 216] }, { pseudo: [22, 22], js: [142, 142] }, { pseudo: [22, 22], js: [158, 158] }, { pseudo: [22, 22], js: [191, 199] }, { pseudo: [23, 23], js: [68, 72] }, { pseudo: [23, 23], js: [225, 236] }, { pseudo: [24, 24], js: [41, 45] }, { pseudo: [24, 24], js: [106, 107] }, { pseudo: [24, 24], js: [113, 118] }, { pseudo: [24, 24], js: [177, 181] }, { pseudo: [24, 24], js: [217, 219] }, { pseudo: [24, 24], js: [237, 253] }, { pseudo: [24, 24], js: [258, 263] }, { pseudo: [24, 24], js: [265, 265] }, { pseudo: [24, 24], js: [274, 274] }, { pseudo: [24, 24], js: [278, 278] }, { pseudo: [24, 24], js: [310, 312] }, { pseudo: [25, 25], js: [5, 6] }, { pseudo: [25, 25], js: [57, 64] }, { pseudo: [25, 25], js: [67, 67] }, { pseudo: [25, 25], js: [86, 89] }, { pseudo: [25, 25], js: [124, 124] }, { pseudo: [25, 25], js: [220, 220] }, { pseudo: [25, 25], js: [254, 257] }, { pseudo: [25, 25], js: [264, 264] }, { pseudo: [25, 25], js: [266, 277] }, { pseudo: [25, 25], js: [279, 309] }],
+  lineMap: [{ pseudo: [1, 1], js: [46, 56] }, { pseudo: [1, 1], js: [65, 65] }, { pseudo: [2, 2], js: [2, 4] }, { pseudo: [2, 2], js: [8, 18] }, { pseudo: [2, 2], js: [21, 22] }, { pseudo: [3, 3], js: [8, 18] }, { pseudo: [3, 3], js: [21, 22] }, { pseudo: [4, 4], js: [8, 18] }, { pseudo: [4, 4], js: [21, 22] }, { pseudo: [5, 5], js: [8, 18] }, { pseudo: [5, 5], js: [21, 22] }, { pseudo: [6, 6], js: [8, 18] }, { pseudo: [6, 6], js: [21, 22] }, { pseudo: [7, 7], js: [8, 18] }, { pseudo: [7, 7], js: [21, 22] }, { pseudo: [8, 8], js: [8, 18] }, { pseudo: [8, 8], js: [21, 22] }, { pseudo: [9, 9], js: [8, 18] }, { pseudo: [9, 9], js: [21, 22] }, { pseudo: [10, 10], js: [7, 8] }, { pseudo: [10, 10], js: [19, 20] }, { pseudo: [10, 10], js: [22, 22] }, { pseudo: [11, 11], js: [23, 39] }, { pseudo: [11, 11], js: [85, 85] }, { pseudo: [11, 11], js: [167, 171] }, { pseudo: [12, 12], js: [40, 40] }, { pseudo: [12, 12], js: [90, 90] }, { pseudo: [12, 12], js: [101, 101] }, { pseudo: [13, 13], js: [40, 40] }, { pseudo: [13, 13], js: [90, 92] }, { pseudo: [13, 13], js: [94, 95] }, { pseudo: [13, 13], js: [101, 101] }, { pseudo: [14, 14], js: [66, 66] }, { pseudo: [14, 14], js: [73, 75] }, { pseudo: [14, 14], js: [98, 98] }, { pseudo: [14, 14], js: [126, 130] }, { pseudo: [14, 14], js: [133, 133] }, { pseudo: [15, 15], js: [45, 45] }, { pseudo: [15, 15], js: [76, 84] }, { pseudo: [15, 15], js: [96, 97] }, { pseudo: [15, 15], js: [99, 100] }, { pseudo: [15, 15], js: [102, 105] }, { pseudo: [15, 15], js: [131, 132] }, { pseudo: [15, 15], js: [140, 141] }, { pseudo: [15, 15], js: [143, 144] }, { pseudo: [15, 15], js: [172, 175] }, { pseudo: [15, 15], js: [224, 224] }, { pseudo: [15, 15], js: [252, 252] }, { pseudo: [16, 16], js: [93, 93] }, { pseudo: [16, 16], js: [112, 112] }, { pseudo: [16, 16], js: [134, 137] }, { pseudo: [16, 16], js: [145, 146] }, { pseudo: [16, 16], js: [151, 157] }, { pseudo: [16, 16], js: [159, 166] }, { pseudo: [16, 16], js: [223, 223] }, { pseudo: [17, 17], js: [118, 118] }, { pseudo: [17, 17], js: [134, 135] }, { pseudo: [17, 17], js: [138, 139] }, { pseudo: [17, 17], js: [147, 150] }, { pseudo: [17, 17], js: [176, 176] }, { pseudo: [17, 17], js: [221, 223] }, { pseudo: [17, 17], js: [249, 249] }, { pseudo: [17, 17], js: [287, 287] }, { pseudo: [17, 17], js: [297, 297] }, { pseudo: [18, 18], js: [68, 72] }, { pseudo: [18, 18], js: [108, 111] }, { pseudo: [18, 18], js: [119, 123] }, { pseudo: [18, 18], js: [177, 186] }, { pseudo: [19, 19], js: [187, 189] }, { pseudo: [19, 19], js: [202, 202] }, { pseudo: [20, 20], js: [125, 125] }, { pseudo: [20, 20], js: [190, 191] }, { pseudo: [20, 20], js: [200, 207] }, { pseudo: [21, 21], js: [190, 191] }, { pseudo: [21, 21], js: [208, 216] }, { pseudo: [22, 22], js: [142, 142] }, { pseudo: [22, 22], js: [158, 158] }, { pseudo: [22, 22], js: [191, 199] }, { pseudo: [23, 23], js: [68, 72] }, { pseudo: [23, 23], js: [225, 236] }, { pseudo: [24, 24], js: [41, 45] }, { pseudo: [24, 24], js: [106, 107] }, { pseudo: [24, 24], js: [113, 118] }, { pseudo: [24, 24], js: [177, 181] }, { pseudo: [24, 24], js: [217, 219] }, { pseudo: [24, 24], js: [237, 253] }, { pseudo: [24, 24], js: [258, 263] }, { pseudo: [24, 24], js: [265, 265] }, { pseudo: [24, 24], js: [274, 274] }, { pseudo: [24, 24], js: [278, 278] }, { pseudo: [24, 24], js: [325, 327] }, { pseudo: [25, 25], js: [5, 6] }, { pseudo: [25, 25], js: [57, 64] }, { pseudo: [25, 25], js: [67, 67] }, { pseudo: [25, 25], js: [86, 89] }, { pseudo: [25, 25], js: [124, 124] }, { pseudo: [25, 25], js: [220, 220] }, { pseudo: [25, 25], js: [254, 257] }, { pseudo: [25, 25], js: [264, 264] }, { pseudo: [25, 25], js: [266, 277] }, { pseudo: [25, 25], js: [279, 309] }, { pseudo: [26, 26], js: [310, 324] }],
   params: { wait: 20, speed: "fart: långsam/snabb, långsammare/snabbare", liveliness: "livlighet: lugn/livlig, lugnare/livligare", curves: "kurvor: rak/kurvig, rakare/kurvigare", jerkiness: "ryckighet: jämn/ryckig, jämnare/ryckigare", purpose: "mål: planlös/målmedveten, mer planlös/mer målmedveten", friends: "vänner: vänskygg/vänsökande", strangers: "främlingar: främlingsskygg/främlingsvänlig", size: "storlek: liten/stor, mindre/större", shape: "form: rund/spetsig, rundare/spetsigare", detail: "detaljer: enkel/sirlig, enklare/sirligare", brightness: "ljusstyrka: mörk/ljus, mörkare/ljusare", warmth: "värme: kall/varm, kallare/varmare", height: "höjd: längre ner/högre upp, under/över", levels: "låg, medel, hög", same: "samma", abit: "lite", very: "mycket", not: "inte", own: 3, alike: 2, opposite: 1, comparison: 4, taste: 1, ratio: 2, subtle: 3, explain: "Askungen" },
   slots: [{ line: 1, text: "20", param: "wait" }, { line: 3, text: "fart: långsam/snabb, långsammare/snabbare", param: "speed" }, { line: 3, text: "livlighet: lugn/livlig, lugnare/livligare", param: "liveliness" }, { line: 4, text: "kurvor: rak/kurvig, rakare/kurvigare", param: "curves" }, { line: 4, text: "ryckighet: jämn/ryckig, jämnare/ryckigare", param: "jerkiness" }, { line: 5, text: "mål: planlös/målmedveten, mer planlös/mer målmedveten", param: "purpose" }, { line: 6, text: "vänner: vänskygg/vänsökande", param: "friends" }, { line: 6, text: "främlingar: främlingsskygg/främlingsvänlig", param: "strangers" }, { line: 7, text: "storlek: liten/stor, mindre/större", param: "size" }, { line: 7, text: "form: rund/spetsig, rundare/spetsigare", param: "shape" }, { line: 8, text: "detaljer: enkel/sirlig, enklare/sirligare", param: "detail" }, { line: 8, text: "ljusstyrka: mörk/ljus, mörkare/ljusare", param: "brightness" }, { line: 9, text: "värme: kall/varm, kallare/varmare", param: "warmth" }, { line: 9, text: "höjd: längre ner/högre upp, under/över", param: "height" }, { line: 10, text: "låg, medel, hög", param: "levels" }, { line: 10, text: "samma", param: "same" }, { line: 11, text: "lite", param: "abit" }, { line: 11, text: "mycket", param: "very" }, { line: 11, text: "inte", param: "not" }, { line: 13, text: "3", param: "own" }, { line: 13, text: "2", param: "alike" }, { line: 13, text: "1", param: "opposite" }, { line: 13, text: "4", param: "comparison" }, { line: 13, text: "1", param: "taste" }, { line: 20, text: "2", param: "ratio" }, { line: 23, text: "3", param: "subtle" }, { line: 25, text: "Askungen", param: "explain" }],
   scenarios: [
@@ -4643,7 +4658,7 @@ libExtend({
   changeCode: {
     40: "  const weights = { own: +params.own || 0, same: +params.alike || 0, opposite: +params.opposite || 0, comparison: +params.comparison || 0, taste: +params.taste || 0, ai: +params.ai || 0, you: +params.you || 0 };",
     47: "  const raw = [], knew = {}, unknown = {}, voices = [];",
-    301: "  const tail = (lost.length ? \"\\n\\n**Ord som ingen expert kände till:** \" + lost.join(\", \") + \".\" : \"\") + (bad.length ? \"\\n\\n**Jag kunde inte läsa:** \" + bad.join(\", \") + \".\" : \"\") +"
+    301: "  const tail = (lost.length ? \"\\n\\n**Ord som ingen expert känner till ännu:** \" + lost.join(\", \") + \". Lär en expert dem på dess tomma rad (Titta inuti).\" : \"\") + (bad.length ? \"\\n\\n**Jag kunde inte läsa:** \" + bad.join(\", \") + \".\" : \"\") +"
   },
   lineMap: [{ pseudo: [14, 14], js: [40, 40] }, { pseudo: [14, 14], js: [47, 47] }, { pseudo: [14, 14], js: [53, 53] }, { pseudo: [14, 14], js: [79, 94] }, { pseudo: [14, 14], js: [119, 119] }, { pseudo: [14, 14], js: [319, 319] }],
   params: { ai: 2, person: "Du", you: 3 },
@@ -4781,7 +4796,7 @@ libAgent({
     "    if ((d.strengths || {})[name]) strengths[name] = d.strengths[name];",
     "  }",
     "  const say = \"**Planen för scen \" + d.scene + \":**\\n\" + plan.map((s, i) => (i + 1) + \". \" + s.says + (s.because ? \" (\" + s.because + \")\" : \"\") + \".\").join(\"\\n\") +",
-    "    (notes.length ? \"\\n\\n\" + cap(notes.join(\"; \")) + \".\" : \"\") + (unknown.length ? \"\\n\\nJag vet inte hur man visar: \" + unknown.join(\", \") + \".\" : \"\");",
+    "    (notes.length ? \"\\n\\n\" + cap(notes.join(\"; \")) + \".\" : \"\") + (unknown.length ? \"\\n\\nIngen har lärt mig något sätt att visa de här ännu: \" + unknown.join(\", \") + \".\" : \"\");",
     "  return { scene: d.scene, of: d.of, title: d.title, cast: d.cast, called: d.called, onStage: onStage, plan: plan, ways: plan.map(s => s.way), choices: shown, strengths: strengths, standIns: d.standIns || [],",
     "    summary: d.summary, looksFrom: d.looksFrom || [], tasteLevel: d.tasteLevel || {}, changeFrames: +params.changeFrames || 0, notes: notes, say: say, memory: memory };",
     "}"
@@ -4793,7 +4808,7 @@ libAgent({
     {"id":"s1","name":"{=dominates}: jagar bort är bäst när den första är större, så tornar upp sig får stå tillbaka","input":{"data":{"scene":1,"of":1,"title":"En scen.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=dominates","who":"Ann","whom":"Bob","also":""}],"words":{"speed":["långsam","snabb","långsammare","snabbare"],"liveliness":["lugn","livlig","lugnare","livligare"],"curves":["rak","kurvig","rakare","kurvigare"],"brightness":["mörk","ljus","mörkare","ljusare"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["jagar bort"],"sayContains":"bäst när Ann är större än Bob"}},
     {"id":"s2","name":"ingen vakt när vakten inte är snabbare: det stryks, och den säger varför","input":{"data":{"scene":1,"of":1,"title":"En scen.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=keeps","who":"Bob","whom":"Ann","also":"Cid"}],"words":{"speed":["långsam","snabb","långsammare","snabbare"],"liveliness":["lugn","livlig","lugnare","livligare"],"curves":["rak","kurvig","rakare","kurvigare"],"brightness":["mörk","ljus","mörkare","ljusare"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["rör sig fritt"],"sayContains":"Bob är inte snabbare än Ann"}},
     {"id":"s3","name":"ett sätt som filmen redan har använt får stå tillbaka för ett som den inte har använt","input":{"memory":{"used":["jagar bort"]},"data":{"scene":1,"of":1,"title":"En scen.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=dominates","who":"Cid","whom":"Bob","also":""}],"words":{"speed":["långsam","snabb","långsammare","snabbare"],"liveliness":["lugn","livlig","lugnare","livligare"],"curves":["rak","kurvig","rakare","kurvigare"],"brightness":["mörk","ljus","mörkare","ljusare"]},"standIns":[],"choices":{"Cid":{"speed":3,"size":2},"Bob":{"speed":1,"size":2}}}},"expect":{"ways":["tornar upp sig"]}},
-    {"id":"s4","name":"inget sätt att visa ett ord den inte känner till: figuren rör sig fritt på sitt eget sätt","input":{"data":{"scene":1,"of":1,"title":"En scen.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"sjunger","who":"Ann","whom":"Bob","also":""}],"words":{"speed":["långsam","snabb","långsammare","snabbare"],"liveliness":["lugn","livlig","lugnare","livligare"],"curves":["rak","kurvig","rakare","kurvigare"],"brightness":["mörk","ljus","mörkare","ljusare"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["rör sig fritt"],"sayContains":"Jag vet inte hur man visar: sjunger"}},
+    {"id":"s4","name":"inget sätt att visa ett ord den inte känner till: figuren rör sig fritt på sitt eget sätt","input":{"data":{"scene":1,"of":1,"title":"En scen.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"sjunger","who":"Ann","whom":"Bob","also":""}],"words":{"speed":["långsam","snabb","långsammare","snabbare"],"liveliness":["lugn","livlig","lugnare","livligare"],"curves":["rak","kurvig","rakare","kurvigare"],"brightness":["mörk","ljus","mörkare","ljusare"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["rör sig fritt"],"sayContains":"Ingen har lärt mig något sätt att visa de här ännu: sjunger"}},
     {"id":"s5","name":"att bli {=happy} gör någon snabbare, livligare, kurvigare och ljusare","input":{"data":{"scene":1,"of":1,"title":"En scen.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=becomes","who":"Ann","what":["=happy"]}],"words":{"speed":["långsam","snabb","långsammare","snabbare"],"liveliness":["lugn","livlig","lugnare","livligare"],"curves":["rak","kurvig","rakare","kurvigare"],"brightness":["mörk","ljus","mörkare","ljusare"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["känner"],"plan":[{"way":"känner","who":"Ann","feeling":"=happy","changes":{"speed":1,"liveliness":1,"curves":1,"brightness":1},"because":"","says":"Ann blir {=happy}: {=happyWays}"}]}},
     {"id":"s6","name":"en ändring som någon annan gör: den går fram till den som ändras, som har en ersättare","input":{"data":{"scene":1,"of":1,"title":"En scen.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=changes","who":"Cid","whom":"Ann","from":["sjaskig"],"to":["elegant"]}],"words":{"speed":["långsam","snabb","långsammare","snabbare"],"liveliness":["lugn","livlig","lugnare","livligare"],"curves":["rak","kurvig","rakare","kurvigare"],"brightness":["mörk","ljus","mörkare","ljusare"]},"standIns":[{"name":"Ann efter","of":"Ann"}],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["går fram och ändrar"],"sayContains":"Cid går fram till Ann och ändrar Ann"}}
   ]
@@ -6664,14 +6679,14 @@ function createRun(society, deps) {
   // first: the board is drawn before You are asked for your next move.
   const forPerson = id => { const a = byId(id); return !!a && ((deps.playAs && a.id === deps.playAs) || (a.kind === "model" && !!a.human)); };
   function fireRules(agent, response, entry) {
-    const blocked = !!(response.data && response.data.pass === false);
+    const ended = !!(response.data && response.data.end === true), blocked = ended || !!(response.data && response.data.pass === false);   // end: true is the story's end, not a failure
     const later = [];
     for (const rule of soc.rules) {
       if (rule.enabled === false) continue;
       if (!(rule.from === agent.id || (rule.from === "*" && rule.to !== agent.id))) continue;
       const cond = ruleMatches(rule, response);
       if (!cond.match) continue;
-      if (rule.when === "always" && blocked) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), reason: svOwner(agent.name) + " data säger att pass är false, så de av dess regler som inte kollar det får vänta." }); continue; }
+      if (rule.when === "always" && blocked) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), reason: ended ? agent.name + " säger att berättelsen är slut (end är true), så de av dess regler som inte kollar det får vänta." : svOwner(agent.name) + " data säger att pass är false, så de av dess regler som inte kollar det får vänta." }); continue; }
       if (!byId(rule.to)) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: rule.to, reason: "Det finns ingen agent som heter “" + rule.to + "”." }); continue; }
       const msg = buildMessage(rule, agent, response, entry.round);
       (forPerson(rule.to) ? later : run.queue).push(msg);
@@ -6974,6 +6989,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- ⬇ Exportera och ⬆ Importera, högst upp på sidan, sparar samhället man är i som en fil och öppnar ett från en fil. En agents emoji ändras genom att klicka på den högst upp i dess redigerare.\n" +
   "- ＋ Nytt samhälle, efter mikrovärldsknapparna, startar ett samhälle från början eller kopierar det man är i. I ett eget samhälle kan man i Titta inuti ändra dess namn, fråga, introduktion, frågor och start. “+ Lägg till en agent” lägger till en ny AI-agent, en Ritare eller ett färdigt program från biblioteket.\n" +
   "- Efter en körning visar varje AI-agents knapp på scenen hur många modellanrop den gjorde och hur lång tid de tog.\n" +
+  "- Varför: i en bild eller film vars agenter förklarar sig (Mini-Ani) visar ett klick på en figur varför den ser ut och rör sig så: dess utseende (Regissören), vad den gör (Metodväljaren) och skälen (Valpunkterna), med en knapp till hela svaret i Loggen. Ett program kan avsluta en berättelse med end: true i sina data: dess andra regler väntar, som med pass: false, men det är inget misslyckande, så ingen får ett ✗.\n" +
   "- Filmer: i Logo sparar WAIT bilden så långt som en bildruta i en film (WAIT 15 är en kvarts sekund), så REPEAT 12 [CLEARSCREEN RIGHT 30 * REPCOUNT FORWARD 100 WAIT 15] är en film med 12 bildrutor. Scenen spelar en film med ▶ / ⏸ och ett reglage för bildrutorna; en film i loggen har “Spela filmen på scenen”. I långsam och normal hastighet väntar körningen tills en film är slut. Ritarens data säger hur många bildrutor den har (frames), och en modell som ser bilder får den sista.\n" +
   "- Liten hjälpare, stor hjälpare behöver två modeller; med bara en inställd är dess knapp grå med ett 🔒, och den kan inte köras förrän en vuxen lägger till en till i Inställningar, under “Fler modeller”.";
 function describeSociety(soc) {
@@ -7725,6 +7741,7 @@ function stripOf(trace, s) {
 }
 function beginRun(override) {
   const s = soc();
+  app.ui.why = null;   // a new run: no old why on the stage
   if (app.settings.connection === "none" && s.agents.some(a => a.kind === "model" && !a.human)) { noModelBanner(); openSettings(); toast("Välj en modell först."); return null; }   // programs and You need no model
   const why = unmetNeed(s);
   if (why) { toast(why); return null; }
@@ -8111,6 +8128,58 @@ function filmMarkHTML(renders) {   // 🎞️ on a round card whose round made a
   const films = (renders || []).filter(x => x.frames > 1);
   return films.length ? ' <span class="film-mark" title="' + esc(films.length === 1 ? filmWords(films[0]) : plural(films.length, "film|filmer")) + '">🎞️</span>' : "";
 }
+// Ani 1978: click a character to see why. A click near a name in the picture or the film shows what this round's
+// agents said about that character: how it looks (data.looks), what it does (the lines of a plan), and why (data.explain).
+const WHY_T = {"hint": "Klicka på en figur för att se varför den ser ut och rör sig så.", "looks": "Utseende", "plan": "Vad som händer", "why": "Varför", "round": "omgång", "show": "Visa hela svaret i loggen", "none": "Inget i omgång {r} säger varför {n} är så här.", "miss": "Klicka på en figur, eller på dess namn.", "close": "Stäng"};
+const hasWhy = trace => (trace || []).some(e => e.response && e.response.data && (e.response.data.explain || e.response.data.looks));
+async function stageOps(s, shown, run) {
+  const f = filmState(s, shown.render);
+  if (f) return f.film[f.i].ops;
+  const mem = run && run.renders && run.renders[shown.render.renderId];
+  if (mem && mem.program === shown.render.program) return mem.ops;
+  const r = await Runtime.runTurtle(shown.render.program || "", { seed: shown.render.seed || 1 });
+  return (r.output && r.output.ops) || [];
+}
+function nameNear(ops, x, y) {   // the name nearest the click: on its label, or on the character just above it
+  let best = null, gap = 70;
+  for (const o of ops || []) {
+    if (o.t !== "T" || !o.text) continue;
+    const cx = o.x + String(o.text).length * 3.5;
+    const d = Math.min(Math.hypot(cx - x, o.y - 4 - y), Math.hypot(cx - x, o.y - 34 - y));
+    if (d < gap) { gap = d; best = String(o.text).trim(); }
+  }
+  return best;
+}
+function whyOf(trace, round, name) {
+  const lc = x => String(x == null ? "" : x).trim().toLowerCase(), n = lc(name);
+  const keysOf = map => (map && typeof map === "object" ? Object.keys(map).filter(k => lc(k) === n || lc(k).replace(/^(the|den|det) /, "") === n || lc(k).indexOf(n + " ") === 0) : []);
+  const acts = (trace || []).filter(e => e.kind === "activation" && e.response && e.response.data && !e.collecting);
+  const parts = [];
+  for (const e of acts.filter(x => x.round === round)) {
+    const d = e.response.data, ks = keysOf(d.looks);
+    for (const k of ks) parts.push({ kind: "looks", e, text: (ks.length > 1 ? k + ": " : "") + d.looks[k] });
+    if (Array.isArray(d.plan)) {
+      const lines = String(e.response.text || "").split("\n").filter(l => /^\s*\d+\./.test(l) && lc(l).indexOf(n) >= 0).map(l => util.stripMd(l).trim());
+      if (lines.length) parts.push({ kind: "plan", e, text: lines.join(" ") });
+    }
+  }
+  for (let r = round; r >= 1; r--) {   // why: the latest explanation at or before this round
+    const e = acts.filter(x => x.round === r && keysOf(x.response.data.explain).length).pop();
+    if (e) { for (const k of keysOf(e.response.data.explain)) parts.push({ kind: "why", e, text: e.response.data.explain[k] }); break; }
+  }
+  const order = ["looks", "plan", "why"], merged = [];   // one paragraph for each kind and agent: looks, what happens, why
+  for (const p of parts) { const m = merged.find(x => x.kind === p.kind && x.e === p.e); if (m) m.text += " · " + p.text; else merged.push(Object.assign({}, p)); }
+  return merged.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+}
+function whyBoxHTML(s, shown, trace) {
+  const w = app.ui.why;
+  if (!w || w.soc !== s.id) return hasWhy(trace) && shown.render ? '<p class="hint why-hint">' + esc(WHY_T.hint) + '</p>' : "";
+  const head = '<div class="whybox"><div class="why-head"><b>' + esc(w.name) + '</b><span class="muted small">' + esc(WHY_T.round + " " + w.round) + '</span><button class="icon-btn" data-act="why-close" aria-label="' + esc(WHY_T.close) + '">✕</button></div>';
+  if (!w.parts.length) return head + '<p class="small muted">' + esc(WHY_T.none.split("{r}").join(w.round).split("{n}").join(w.name)) + '</p></div>';
+  const why = w.parts.find(p => p.kind === "why");
+  return head + w.parts.map(p => '<p class="small"><b>' + esc(WHY_T[p.kind]) + '</b> <span class="muted">(' + esc((p.e.emoji || "") + " " + p.e.agentName + (p.e.round !== w.round ? ", " + WHY_T.round + " " + p.e.round : "")) + ')</span><br>' + esc(p.text) + '</p>').join("") +
+    (why ? '<button class="btn tiny" data-act="why-trace" data-i="' + why.e.i + '">' + esc(WHY_T.show) + '</button>' : "") + '</div>';
+}
 function filmBarHTML(s, render) {
   if (!render || !(render.frames > 1)) return "";
   const f = filmState(s, render), n = render.frames, i = f ? f.i : n - 1, on = !!(f && f.playing);
@@ -8200,8 +8269,8 @@ function renderStage() {
   view.calls = callCounts(trace);
   const shown = stageShown(s, view);   // a film still playing stays on the stage
   h += '<div class="agent-strip">' + s.agents.map(a => achipHTML(a, s, view)).join("") + '</div>' + modelsRowHTML(s);
-  if (hasPictures(s)) h += '<div class="picture-wrap"><div class="picture"><canvas id="stageCanvas" width="512" height="512" aria-label="Den senaste bilden"></canvas>' +
-    (shown.render ? '<span class="tag">' + (view.replay ? "uppspelning · " : "") + "omgång " + shown.round + (shown.render.frames > 1 ? " · 🎞️" : "") + '</span>' : '<div class="empty">' + (trace.length ? "Ingen bild än." : "Tryck på ▶ Kör för att börja.<br>Varje meddelande syns i Loggen.") + '</div>') + '</div>' + filmBarHTML(s, shown.render) +
+  if (hasPictures(s)) h += '<div class="picture-wrap"><div class="picture' + (hasWhy(trace) ? " can-why" : "") + '"><canvas id="stageCanvas" data-act="stage-why" width="512" height="512" aria-label="Den senaste bilden"></canvas>' +
+    (shown.render ? '<span class="tag">' + (view.replay ? "uppspelning · " : "") + "omgång " + shown.round + (shown.render.frames > 1 ? " · 🎞️" : "") + '</span>' : '<div class="empty">' + (trace.length ? "Ingen bild än." : "Tryck på ▶ Kör för att börja.<br>Varje meddelande syns i Loggen.") + '</div>') + '</div>' + filmBarHTML(s, shown.render) + whyBoxHTML(s, shown, trace) +
     '<div class="bubbles">' + view.bubbles.map(bubbleHTML).join("") + '</div></div>';
   else h += '<div class="bubbles wide">' + (view.bubbles.length ? view.bubbles.map(bubbleHTML).join("") : '<p class="hint">' + (trace.length ? "Inga meddelanden än." : "Tryck på ▶ Kör för att börja. Varje meddelande syns här och i Loggen.") + '</p>') + '</div>';
   const rounds = stripOf(trace, s);
@@ -8413,6 +8482,7 @@ function traceEntryHTML(e, s, run, trace, currentI) {
   const a = Society.agentById(s, e.agentId);
   const quiet = !e.error && resp && !String(resp.text || "").trim() && !e.render && !(e.fired || []).length;
   let sum = '<b>' + esc((e.emoji || "") + " " + e.agentName) + '</b> <span class="muted">← ' + esc(e.message ? e.message.fromName : "") + '</span>';
+  if (resp && resp.data && resp.data.end === true) sum = '<span class="badge plain">slut</span> ' + sum;
   if (resp && resp.data && typeof resp.data.pass === "boolean" && (resp.data.pass === false || (a && a.gate))) sum = (resp.data.pass ? '<span class="badge ok">släpp igenom</span> ' : '<span class="badge bad">stoppa</span> ') + sum;
   if (e.error) sum += '<br><span style="color:var(--bad)">⚠ ' + shortHTML(e.error, 170, "Problemet") + '</span>';
   else if (e.collecting) sum += ' <span class="muted">väntar: ' + e.collecting.have + ' av ' + e.collecting.want + ' meddelanden hittills</span>';
@@ -9381,6 +9451,25 @@ const ACTIONS = {
   "replay-next"() { setReplay((app.ui.replay || 0) + 1); },
   "replay-last"() { setReplay(1e9); },
   "replay-exit"() { app.ui.replay = null; renderStage(); renderTrace(); },
+  async "stage-why"(t, ev) {   // a click on the stage's picture: why the character there looks and moves like that
+    const s = soc(), rec = app.runs[s.id], run = rec ? rec.api.run : null, trace = run ? run.trace : (app.traces[s.id] || []);
+    if (!hasWhy(trace)) return;
+    const shown = stageShown(s, viewState(s, run, trace));
+    if (!shown.render) return;
+    const r = t.getBoundingClientRect(), x = (ev.clientX - r.left) * 512 / (r.width || 512), y = (ev.clientY - r.top) * 512 / (r.height || 512);
+    const name = nameNear(await stageOps(s, shown, run), x, y);
+    if (!name) { toast(WHY_T.miss); return; }
+    app.ui.why = { soc: s.id, name, round: shown.round, parts: whyOf(trace, shown.round, name) };
+    renderStage();
+  },
+  "why-close"() { app.ui.why = null; renderStage(); },
+  "why-trace"(t) {
+    const i = +t.dataset.i;
+    app.ui.expanded.add(i);
+    renderTrace();
+    const b = document.querySelector('[data-act="trace-toggle"][data-i="' + i + '"]');
+    if (b && b.scrollIntoView) b.scrollIntoView({ block: "start" });
+  },
   async "film-play"() {   // ▶ plays the film on the stage (from the start, if it is at the end); ⏸ stops it where it is
     const f = await filmHere();
     if (!f) return;
