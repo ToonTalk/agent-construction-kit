@@ -257,7 +257,7 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 .errline{background:var(--bad-bg);border-radius:8px;padding:5px 8px;font-size:12.5px;color:#7A1F17;white-space:pre-wrap}
 .replay{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--accent-bg);border-radius:12px;padding:6px 8px;margin-bottom:8px;font-size:12.5px}
 .replay input[type=range]{flex:1;min-width:120px}
-.teach{border:1.5px dashed var(--line);border-radius:12px;padding:8px 12px;margin:10px 0}.teach h4{margin:0 0 4px}.teach .row{gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}.teach .proposal{background:var(--accent-bg);border-radius:10px;padding:8px 10px;margin:6px 0}.teach .proposal p{margin:6px 0}.whybox{border:1.5px solid var(--line);border-radius:12px;padding:8px 12px;margin:8px 0;background:var(--accent-bg)}.whybox p{margin:6px 0}.why-head{display:flex;align-items:center;gap:8px}.why-head .icon-btn{margin-left:auto}.why-hint{margin:6px 0 0}.picture.can-why canvas{cursor:pointer}.filmbar{display:flex;align-items:center;gap:6px;width:min(100%,460px);margin:0 auto;background:var(--accent-bg);border-radius:12px;padding:4px 8px;font-size:12.5px}.filmbar input[type=range]{flex:1;min-width:80px}
+.teach{border:1.5px dashed var(--line);border-radius:12px;padding:8px 12px;margin:10px 0}.teach h4{margin:0 0 4px}.teach .row{gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}.teach .proposal{background:var(--accent-bg);border-radius:10px;padding:8px 10px;margin:6px 0}.teach .proposal p{margin:6px 0}.guide-lead{font-size:1.08em}.guide-pic{margin:6px 0 10px}.guide-pic svg{width:100%;max-width:440px;height:auto;display:block}.guide-pic figcaption{font-size:.92em;color:var(--muted,#5b6b8c)}.whybox{border:1.5px solid var(--line);border-radius:12px;padding:8px 12px;margin:8px 0;background:var(--accent-bg)}.whybox p{margin:6px 0}.why-head{display:flex;align-items:center;gap:8px}.why-head .icon-btn{margin-left:auto}.why-hint{margin:6px 0 0}.picture.can-why canvas{cursor:pointer}.filmbar{display:flex;align-items:center;gap:6px;width:min(100%,460px);margin:0 auto;background:var(--accent-bg);border-radius:12px;padding:4px 8px;font-size:12.5px}.filmbar input[type=range]{flex:1;min-width:80px}
 
 /* modal */
 .modal-back{position:fixed;inset:0;z-index:60;background:rgba(21,30,50,.42);display:flex;align-items:flex-start;justify-content:center;padding:34px 14px;overflow:auto}
@@ -435,7 +435,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.20.0";
+AK.VERSION = "1.20.1";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -10026,11 +10026,13 @@ function runOrLastTrace(id) { const rec = app.runs[id]; return rec ? rec.api.run
 const GUIDES = {
   learner: { title: "📘 A guide for learners", html: () =>
     "<h3>Your first 15 minutes</h3>" +
-    "<p>Agent Kit is for building a <b>society</b>: a team of agents that pass messages to each other. Some agents are AIs following instructions you can read; some are little programs; one, the Renderer, turns drawing programs into pictures. Nothing is hidden.</p>" +
+    "<p class='guide-lead'><b>A society is a team of helpers that talk to each other.</b> Each helper is an <b>agent</b>.</p>" +
+    "<figure class='guide-pic'><svg viewBox='0 0 440 118' role='img' aria-label='Three agents in a row. Writer A sends a sentence to Writer B, and Writer B sends a sentence to the Name Keeper.'><defs><marker id='gArrow' viewBox='0 0 10 10' refX='9' refY='5' markerWidth='7' markerHeight='7' orient='auto'><path d='M0 0L10 5L0 10z' fill='#5b6b8c'/></marker></defs><g font-family='inherit' font-size='13' text-anchor='middle'><rect x='6' y='62' width='104' height='44' rx='12' fill='#eef3ff' stroke='#9db0d8' stroke-width='1.5'/><text x='58' y='89'>✍️ Writer A</text><rect x='168' y='62' width='104' height='44' rx='12' fill='#eef3ff' stroke='#9db0d8' stroke-width='1.5'/><text x='220' y='89'>✍️ Writer B</text><rect x='330' y='62' width='104' height='44' rx='12' fill='#eef3ff' stroke='#9db0d8' stroke-width='1.5'/><text x='382' y='89'>🔎 Name Keeper</text><path d='M112 84H164' stroke='#5b6b8c' stroke-width='2' marker-end='url(#gArrow)'/><path d='M274 84H326' stroke='#5b6b8c' stroke-width='2' marker-end='url(#gArrow)'/><rect x='70' y='8' width='136' height='34' rx='10' fill='#fff' stroke='#c9d3e6'/><text x='138' y='30'>“Pip found a shell.”</text><path d='M138 42L138 76' stroke='#c9d3e6' stroke-dasharray='3 3'/><rect x='232' y='8' width='136' height='34' rx='10' fill='#fff' stroke='#c9d3e6'/><text x='300' y='30'>“He took it home.”</text><path d='M300 42L300 76' stroke='#c9d3e6' stroke-dasharray='3 3'/></g></svg><figcaption>Each agent gets a message, does its job, and sends a message on. <b>Rules</b> say who gets what.</figcaption></figure>" +
+    "<p>Agent Kit is for building societies. Some agents are AIs following instructions you can read; some are little programs; one, the Renderer, turns drawing programs into pictures. Nothing is hidden.</p>" +
     "<ol class='steps'>" +
     "<li><b>Try one.</b> Pick <b>Story Chain</b>, the first microworld at the top, and read its question. Before you press <b>▶ Run</b>, say what you think will happen. Then watch the writers, round by round.</li>" +
     "<li><b>Change one thing.</b> Tick a switch under the start (like “Writer A remembers everything”), or press <b>🔍 Look inside</b> and change one agent's instructions or one rule. Run it again. What changed, and why?</li>" +
-    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, start from scratch, or start from an example like <b>Evolution</b>, <b>Two Answers</b>, <b>Tic-Tac-Toe</b>, <b>Trail Mix Barter</b>, <b>Artist and Critic</b>, <b>Mini-Ani</b> or <b>Mini-Ani with AI voices</b>. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
+    "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, start from scratch, or start from an example like <b>Evolution</b>, <b>Two Answers</b>, <b>Tic-Tac-Toe</b>, <b>Trail Mix Barter</b>, <b>Artist and Critic</b>, or one of the four <b>Mini-Ani</b>s. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
     "</ol>" +
     "<p>Stuck? Ask the <b>🤔 Helper</b> (bottom right). It knows where everything is, and it will ask you questions back. Working with a friend? One of you drives and the other predicts; swap every run.</p>" +
     "<details class='ref'><summary><b>Everything else, when you need it</b></summary>" +

@@ -534,6 +534,10 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **Model calls at the same time.** When a message waits for a model agent with no earlier message waiting (not a collector, not a person, not the round agent), its call starts while earlier messages are delivered, at most four at once, built exactly as at its turn. The trace keeps delivery order, so a run reads the same; Stop drops calls asked early. `createRun(…, { parallel: false })` asks one at a time. A test with a slow stand-in model sees three calls at once and the same trace.
   - Library: 35 agents. Swedish still paused.
   - Suite: 665 PASS, fingerprint `ec7f823d1948`.
+- 2026-10-23 — **Revision 1.20.1: the learner guide starts simpler** (a high school student's two sessions with his sisters, 15 and 7: understanding and fixing Story Chain's lost Pip was within reach with one hint; building from scratch wasn't; the busy screen was the main obstacle; after reading the learner guide both made a society from an example, but the 7-year-old needed “society” and messages explained).
+  - The learner guide opens with “A society is a team of helpers that talk to each other. Each helper is an agent.” and a small picture of messages going from Writer A to Writer B to the Name Keeper (“Rules say who gets what”). Its list of examples names all four Mini-Anis.
+  - Ken: the minified artifact is what must stay small, so the readable page's test cap is now 1.5 MB (the artifact build still refuses more than about 950 KB).
+  - Suite: 665 PASS, fingerprint ` 721de7a7761e`.
 - 2026-10-10 — **Revision 1.15.1: what a regression review of 1.13.0–1.15.0 found.** Each finding was checked first;
   all ten held. An earlier, unfinished attempt (kept in `git stash`, untested) was reused where it was sound.
   - **Pause, then Run, in the middle of a delivery lost it** (pre-existing). A model's answer or a Worker program is

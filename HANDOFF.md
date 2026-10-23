@@ -4,7 +4,7 @@
 
 ## State (2026-10-10)
 
-Agent Kit **1.20.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.20.0 follow reviews
+Agent Kit **1.20.1**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.20.1 follow reviews
 and the first real-model runs (see `SPEC.md` §14). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -49,7 +49,7 @@ folder is a copy without the §14 log.)
   “explain” fall back to the first one named; an unknown word is named once; “compared with”, “same … as”; the
   programs-only card has five questions; the Helper with no model lists its openers as questions; imports keep
   `{slot}` braces; a link keeps its label only to toontalk.github.io or github.com.
-- The app is the single file `index.html` (956 KB): the `ak-model` script is DOM-free, and
+- The app is the single file `index.html` (958 KB): the `ak-model` script is DOM-free, and
   the `ak-ui` script is the interface. There is no build step.
 - **Drawings are Logo.** The Artist, the Designer and the drawing pad write Logo
   (`REPEAT 4 [FORWARD 50 RIGHT 90]`), and a small interpreter in the model layer runs it.
@@ -124,7 +124,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**665 PASS, 0 FAIL · fingerprint `ec7f823d1948`** · model modules covered 19/19.
+**665 PASS, 0 FAIL · fingerprint ` 721de7a7761e`** · model modules covered 19/19.
 Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; `library.test` 189/198 (the 9 look for
 English words, two of them the Mini-Ani's “no …” scenario names; the same 9 as 1.14.0); `node tests/leftovers.mjs
 sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which stay English in the copy.
