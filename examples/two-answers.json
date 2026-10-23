@@ -1,18 +1,18 @@
 {
   "kind": "agent-kit-export",
   "schema": 1,
-  "app": "Agent Kit 1.4.1",
-  "exportedAt": "2026-10-02T16:18:07.616Z",
+  "app": "Agent Kit 1.15.2",
+  "exportedAt": "2026-10-23T08:59:38.170Z",
   "society": {
     "kind": "agent-kit-society",
     "schema": 1,
     "id": "contemplative",
     "title": "Two Answers",
     "question": "Does a pause to think make an answer wiser?",
-    "intro": "The same question goes to two AI agents. The Plain one just answers. The Contemplative one is asked to pause first and think about four principles: emptiness, non-duality, mindfulness and boundless care (from the paper “Contemplative Artificial Intelligence”, Laukkonen and others, 2025). Which answer would you rather get?",
+    "intro": "The same question goes to two AI agents. The Plain one just answers. The Contemplative one is asked to pause first and think about four principles: emptiness, non-duality, mindfulness and boundless care (from the paper “Contemplative Artificial Intelligence”, Laukkonen and others, 2025). Which answer would you rather get? (Its reflections are text it writes, not a window into how the model works.)",
     "questions": [
       "Which answer would you rather get? Why?",
-      "What did the Contemplative agent's thinking change in its answer? Is anything missing from the Plain one?",
+      "What did the reflections the Contemplative agent wrote change in its answer? Is anything missing from the Plain one?",
       "Is the contemplative answer wiser, or just more careful? Could it be too cautious?",
       "Change one of the four principles in its instructions, or take one out. Does the answer change?",
       "Both agents can use the same model. Then what made the difference?"

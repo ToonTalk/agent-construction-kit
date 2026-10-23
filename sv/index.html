@@ -410,7 +410,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 .yourturn{margin-top:10px;border:2px solid var(--ok);background:var(--ok-bg);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .yourturn .yt-head{font-family:var(--display);font-weight:900;font-size:16px;color:#11532F}
 .yourturn .said{background:#fff}
-.yt-work,.logo-edit{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start}
+.yt-work,.logo-edit{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}.logo-edit .logo-ta{flex:1 1 360px;min-width:0;width:auto}.logo-edit canvas{flex:0 0 auto}
 .yt-work canvas{width:220px;height:220px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
 .logo-edit canvas{width:200px;height:200px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
 @media (max-width:640px){.yt-work,.logo-edit{grid-template-columns:1fr}}
@@ -435,7 +435,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.15.1";
+AK.VERSION = "1.15.2";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -7168,6 +7168,8 @@ const LANGUAGES = [{ code: "en", name: "English", path: "" }, { code: "sv", name
 // The claude.ai artifact build (tools/build_artifact.py sets this true): only keyless Claude, and Gemini Nano where Chrome has it.
 const ARTIFACT_BUILD = false;
 const ARTIFACT_CONNS = ["keyless", "nano"];
+// The making-of page sits at the site's top level, next to the English page.
+const MAKING_OF_URL = (ARTIFACT_BUILD ? "https://toontalk.github.io/agent-construction-kit/" : PAGE_LANG === "en" ? "./" : "../") + "making-of.html";
 const SITE_URL = "https://toontalk.github.io/agent-construction-kit/";   // speech listens and speaks in this language
 const PROJECT_URL = "https://github.com/ToonTalk/agent-construction-kit";
 let storage = null;
@@ -8287,7 +8289,7 @@ function callHTML(c, run, trace) {
 function logoEditHTML(e, s, text) {
   const ed = app.ui.logoEdit;
   if (!ed || ed.i !== e.i) return (text != null ? logoBox(text) : "") + '<button class="btn tiny" data-act="logo-edit" data-i="' + e.i + '">✎ Ändra det och se det ritas</button>';
-  return '<div class="logo-edit"><textarea class="field code logo-ta" rows="' + Math.min(18, Math.max(6, ed.text.split("\n").length + 1)) + '" data-bind="logo-edit" spellcheck="false" aria-label="Ändra Logo-koden">' + esc(ed.text) + '</textarea><canvas id="logoEditCanvas" width="200" height="200" aria-label="Din ändrade teckning"></canvas></div><div class="hint" id="logoEditErr">Ändra Logo-koden: teckningen till höger följer med.</div>' +
+  return '<div class="logo-edit"><textarea class="field code logo-ta" rows="' + Math.min(18, Math.max(6, ed.text.split("\n").length + 1)) + '" data-bind="logo-edit" spellcheck="false" aria-label="Ändra Logo-koden">' + esc(ed.text) + '</textarea><canvas id="logoEditCanvas" width="200" height="200" aria-label="Din ändrade teckning"></canvas></div><div class="hint" id="logoEditErr">Ändra Logo-koden, så följer teckningen med.</div>' +
     '<div class="row"><button class="btn tiny primary" data-act="logo-run">▶ Skicka det till Ritaren i en ny körning</button><button class="btn tiny" data-act="logo-cancel">Avbryt</button></div>';
 }
 function programOf(e) { return e.render ? e.render.program : (e.response && e.response.text) || ""; }
@@ -8302,7 +8304,7 @@ function paintLogoEdit() {
     try { ctx = c.getContext("2d"); } catch (e) { ctx = null; }
     if (ctx) paintOps(ctx, (r.output && r.output.ops) || [], c.width / 512);
     const err = $("#logoEditErr");
-    if (err) err.textContent = r.ok && r.note ? "💡 " + r.note : r.ok ? "Ändra Logo-koden: teckningen till höger följer med." : "⚠ " + r.error;
+    if (err) err.textContent = r.ok && r.note ? "💡 " + r.note : r.ok ? "Ändra Logo-koden, så följer teckningen med." : "⚠ " + r.error;
   }, 120);
 }
 function responseHTML(e, s, run) {
@@ -8928,6 +8930,7 @@ function renderSettings() {
       "Allt sparas i den här webbläsaren medan du arbetar: dina samhällen, deras senaste körningar, chattarna med Hjälparen och de här inställningarna (nycklar bara om du kryssade i “Kom ihåg mina nycklar”). Allt finns kvar om du laddar om fliken. Det stannar i den här webbläsaren på den här datorn: en annan webbläsare eller dator ser det inte, och om du rensar webbläsarens webbplatsdata raderas det. ⬇ Exportera gör en kopia som en fil, att behålla, flytta eller dela.") + '</p>' +
     '<label class="row small" style="margin-bottom:8px"><input type="checkbox" data-bind="saving"' + (off ? "" : " checked") + '> Spara mitt arbete i den här webbläsaren</label>') +
     '<div class="row"><button class="btn tiny" data-act="export-society">⬇ Exportera det här samhället</button><button class="btn tiny" data-act="import-society">⬆ Importera ett samhälle</button><button class="btn tiny danger" data-act="reset-all">Starta om allt (radera mina samhällen)</button></div></div>';
+  h += '<div class="section"><h3>Om Agent Kit</h3><p class="small">Så gjordes den: <a href="' + esc(MAKING_OF_URL) + '" target="_blank" rel="noopener">The making of Agent Kit</a> (på engelska), och <a href="https://docs.google.com/document/d/1eq9W_bW533ivHT02PvRy6RcV-qYB53mfBPjHnfTkeM8/edit?usp=sharing" target="_blank" rel="noopener">samtalet som ledde fram till den</a>, Ken Kahns inlägg (på engelska) om en simulerad panel med Seymour Papert, Marvin Minsky, Alan Kay och Lev Vygotskij.</p></div>';
   h += '<div class="section small muted">Agent Kit ' + esc(AK.VERSION) + ' · <button class="btn tiny ghost" data-act="copy-link">Kopiera länken till projektet</button></div>';
   const focusId = document.activeElement && document.activeElement.id;
   m.body.innerHTML = h;

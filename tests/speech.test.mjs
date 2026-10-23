@@ -122,5 +122,12 @@ export default function (T, { pageWindow }) {
     head().dispatchEvent(new w.MouseEvent("dblclick", { bubbles: true }));
     return moved && kept && !w.__ak.app.settings.helperBox && !w.document.querySelector(".drawer").getAttribute("style");
   });
+  T.test("Settings links to the making-of page and to Ken's post about the conversation that led to the kit", ["Speech"], async () => {
+    const w = await boot();
+    w.__ak.openSettings();
+    const m = last(w, ".modal-body");
+    const links = Array.from(m.querySelectorAll("a")).map(a => a.getAttribute("href"));
+    return /About Agent Kit/.test(m.textContent) && links.indexOf("./making-of.html") >= 0 && links.some(h => /1eq9W_bW533ivHT02PvRy6RcV-qYB53mfBPjHnfTkeM8/.test(h));
+  });
 }
 

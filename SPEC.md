@@ -494,6 +494,12 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - Not run with a live model: everything here ran on the scripted stand-ins. A SHA-256 manifest of `ani-revival` taken now, compared with 1.14.0's: `original/` unchanged; the revival has become a git repository since (1,645 files under `.git`), and 16 files in app/, artifact/, reports/, site/, src/, test/, tools/ and package.json changed and 3 were added, by the team working there; this work only read `reports/chapter-x/design-mini-ani.md` and `PLAN.md`.
   - Sizes: `index.html` 848 KB, `sv/index.html` 865 KB; artifact builds 847 KB and 865 KB (limit 950 KB), scripts at most 562 KB (limit 800 KB).
   - Suite: 604 PASS, fingerprint `010e44edcd6d`.
+- 2026-10-23 — **Revision 1.15.2: links in Settings, and Logo you can read** (Ken).
+  - Settings → **About Agent Kit** links to the making-of page and to Ken's post about the simulated panel that led to the kit (`MAKING_OF_URL`: the site's own page, or the full address from an artifact). Both copies.
+  - The Logo box beside its drawing (✎ Change it and see it drawn) was squeezed to a narrow column in the trace, because it only stacked below 640 pixels of window width. Now the drawing moves below the code whenever there isn't room for both (flex-wrap, the code at least 360 pixels), and the hint says “the drawing follows”, not “on the right”.
+  - `tools/export_examples.mjs` writes every example to `examples/<title>.json`; the shipped files had kept their 1.4 to 1.7 stamps and wording until now.
+  - The artifact builds are 860 and 878 KB, near claude.ai's limit of about 950 KB.
+  - Suite: 624 PASS, fingerprint `9b080c82b0b3`.
 - 2026-10-10 — **Revision 1.15.1: what a regression review of 1.13.0–1.15.0 found.** Each finding was checked first;
   all ten held. An earlier, unfinished attempt (kept in `git stash`, untested) was reused where it was sound.
   - **Pause, then Run, in the middle of a delivery lost it** (pre-existing). A model's answer or a Worker program is
