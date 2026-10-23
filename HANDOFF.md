@@ -78,6 +78,10 @@ folder is a copy without the §14 log.)
 - **Translated copies** (1.10.1): `sv/index.html` is a Swedish snapshot made by coding agents from `sv/GLOSSARY.md`
   (see TRANSLATING.md). It does not follow later changes: remake it, or patch both files with one script and two
   phrase tables (as 1.11.0 did). Check copies with `AK_HTML=sv/index.html node tests/run.mjs "any language"`.
+  **Paused (Ken, 2026-10-23):** the Swedish copy is in step with 1.17.0 and is not patched after it, until Ken is
+  ready to release. Then bring it up to date from `git diff c38eae4 -- index.html`, with `sv/GLOSSARY.md`.
+- **Artifact size:** keep the English artifact under 950 KB (the build refuses more). Ken wants the chat-copy route,
+  because its artifact can still send pictures to Claude; a published artifact's `sample` can't. 1.17.0: 876 KB.
 - **Speech** (1.9.0, `SpeechUI`): 🔊 Read aloud, a 🎤 by the focused text box, the Helper by voice; when listening
   can't work, the 🎤 explains the OS's own dictation (Windows + H …). Number words aren't moves yet.
 - **Yours** (1.8.0): the top row is the microworlds, then your four most recent societies (`app.used`), then
