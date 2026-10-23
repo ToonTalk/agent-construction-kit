@@ -257,7 +257,7 @@ pre.box.reply{background:#F5F3FF;border-color:#DCD6FF}
 .errline{background:var(--bad-bg);border-radius:8px;padding:5px 8px;font-size:12.5px;color:#7A1F17;white-space:pre-wrap}
 .replay{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--accent-bg);border-radius:12px;padding:6px 8px;margin-bottom:8px;font-size:12.5px}
 .replay input[type=range]{flex:1;min-width:120px}
-.whybox{border:1.5px solid var(--line);border-radius:12px;padding:8px 12px;margin:8px 0;background:var(--accent-bg)}.whybox p{margin:6px 0}.why-head{display:flex;align-items:center;gap:8px}.why-head .icon-btn{margin-left:auto}.why-hint{margin:6px 0 0}.picture.can-why canvas{cursor:pointer}.filmbar{display:flex;align-items:center;gap:6px;width:min(100%,460px);margin:0 auto;background:var(--accent-bg);border-radius:12px;padding:4px 8px;font-size:12.5px}.filmbar input[type=range]{flex:1;min-width:80px}
+.teach{border:1.5px dashed var(--line);border-radius:12px;padding:8px 12px;margin:10px 0}.teach h4{margin:0 0 4px}.teach .row{gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}.teach .proposal{background:var(--accent-bg);border-radius:10px;padding:8px 10px;margin:6px 0}.teach .proposal p{margin:6px 0}.whybox{border:1.5px solid var(--line);border-radius:12px;padding:8px 12px;margin:8px 0;background:var(--accent-bg)}.whybox p{margin:6px 0}.why-head{display:flex;align-items:center;gap:8px}.why-head .icon-btn{margin-left:auto}.why-hint{margin:6px 0 0}.picture.can-why canvas{cursor:pointer}.filmbar{display:flex;align-items:center;gap:6px;width:min(100%,460px);margin:0 auto;background:var(--accent-bg);border-radius:12px;padding:4px 8px;font-size:12.5px}.filmbar input[type=range]{flex:1;min-width:80px}
 
 /* modal */
 .modal-back{position:fixed;inset:0;z-index:60;background:rgba(21,30,50,.42);display:flex;align-items:flex-start;justify-content:center;padding:34px 14px;overflow:auto}
@@ -435,7 +435,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.17.0";
+AK.VERSION = "1.18.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -2486,6 +2486,8 @@ const Pretend = (() => {
       reply: ctx => animatorLines(ctx.message && ctx.message.text) },
     reader: { id: "reader", title: "Pretend Reader", about: "Used by the tests. It finds the characters a story brings in with “called” or “named”, and the words near each one that Ani's experts know; then each later sentence that names someone and has a verb it knows (bossed, helped, met, liked, became) is a scene, in the Cast's simple sentences. It always reads the first story it was told.",
       reply: ctx => readerStory((((ctx.history || []).find(m => m.role === "user") || {}).content) || (ctx.message && ctx.message.text)) },
+    teacher: { id: "teacher", title: "Pretend Teacher", about: "Used by the tests. Asked to teach a program a word, it suggests one of the words it may use and one it may not (sparkly, or flies away), and says why.",
+      reply: ctx => { const t = ctx.teach || {}, ws = t.words || ["slow"]; return t.kind === "methods" ? t.word + ": " + ws[4 % ws.length] + ", flies away\nBecause they stay close." : t.word + " suggests a bit " + ws[ws.length > 1 ? 1 : 0] + ", sparkly\nBecause that is how it feels."; } },
     generic: { id: "generic", title: "Pretend agent", about: "This agent has no pretend program of its own, so in pretend mode it just repeats the start of what it was told.",
       reply: genericReply }
   };
@@ -4680,6 +4682,7 @@ libAgent({
     "  A {keeps} B from C: {stands guard}",
     "  A {helps} B: {goes along}",
     "  A {meets} B: {come together}",
+    "  A {-} B: {-}",
     "  A {changes} B from X to Y: {goes to and changes}; A changes from X to Y: {comes closer bit by bit}",
     "  A {becomes} {happy}: {faster, livelier, curvier, brighter}",
     "  A becomes {sad}: {slower, calmer, straighter, dimmer}",
@@ -4704,7 +4707,7 @@ libAgent({
     "  const value = (who, el) => (choices[who] || {})[el] || 2;",
     "  const friends = (a, b) => (d.friends || []).some(p => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a));",
     "  const standIn = who => ((d.standIns || []).find(s => s.of === who) || {}).name || \"\";",
-    "  const verbWays = [[low(params.dominates), listOf(params.dominatesWays)], [low(params.keeps), listOf(params.keepsWays)], [low(params.helps), listOf(params.helpsWays)], [low(params.meets), listOf(params.meetsWays)]];",
+    "  const verbWays = [[low(params.dominates), listOf(params.dominatesWays)], [low(params.keeps), listOf(params.keepsWays)], [low(params.helps), listOf(params.helpsWays)], [low(params.meets), listOf(params.meetsWays)], [low(params.other), listOf(params.otherWays)]].filter(x => x[0] && x[0] !== \"-\");",
     "  const plan = [], notes = [], unknown = [];",
     "  const says = s => {",
     "    const a = call(s.who), b = call(s.whom || \"\"), c = call(s.third || \"\");",
@@ -4800,12 +4803,12 @@ libAgent({
     "  const say = \"**Scene \" + d.scene + \"'s plan:**\\n\" + plan.map((s, i) => (i + 1) + \". \" + s.says + (s.because ? \" (\" + s.because + \")\" : \"\") + \".\").join(\"\\n\") +",
     "    (notes.length ? \"\\n\\n\" + cap(notes.join(\"; \")) + \".\" : \"\") + (unknown.length ? \"\\n\\nNobody has taught me a way to show these yet: \" + unknown.join(\", \") + \".\" : \"\");",
     "  return { scene: d.scene, of: d.of, title: d.title, cast: d.cast, called: d.called, onStage: onStage, plan: plan, ways: plan.map(s => s.way), choices: shown, strengths: strengths, standIns: d.standIns || [],",
-    "    summary: d.summary, looksFrom: d.looksFrom || [], tasteLevel: d.tasteLevel || {}, changeFrames: +params.changeFrames || 0, notes: notes, say: say, memory: memory };",
+    "    summary: d.summary, looksFrom: d.looksFrom || [], tasteLevel: d.tasteLevel || {}, changeFrames: +params.changeFrames || 0, notes: notes, untaught: unknown, say: say, memory: memory };",
     "}"
   ],
-  lineMap: [{ pseudo: [1, 1], js: [2, 4] }, { pseudo: [1, 1], js: [6, 6] }, { pseudo: [1, 1], js: [35, 35] }, { pseudo: [1, 1], js: [56, 57] }, { pseudo: [1, 1], js: [59, 61] }, { pseudo: [1, 1], js: [82, 82] }, { pseudo: [1, 1], js: [93, 94] }, { pseudo: [2, 2], js: [4, 4] }, { pseudo: [2, 2], js: [11, 11] }, { pseudo: [2, 2], js: [58, 58] }, { pseudo: [2, 2], js: [81, 81] }, { pseudo: [2, 2], js: [83, 87] }, { pseudo: [3, 3], js: [4, 4] }, { pseudo: [3, 3], js: [11, 11] }, { pseudo: [3, 3], js: [58, 58] }, { pseudo: [3, 3], js: [81, 81] }, { pseudo: [3, 3], js: [83, 87] }, { pseudo: [4, 4], js: [4, 4] }, { pseudo: [4, 4], js: [13, 13] }, { pseudo: [4, 4], js: [88, 90] }, { pseudo: [4, 4], js: [92, 92] }, { pseudo: [5, 5], js: [4, 4] }, { pseudo: [5, 5], js: [13, 13] }, { pseudo: [5, 5], js: [88, 90] }, { pseudo: [5, 5], js: [92, 92] }, { pseudo: [6, 6], js: [4, 4] }, { pseudo: [6, 6], js: [13, 13] }, { pseudo: [6, 6], js: [88, 90] }, { pseudo: [6, 6], js: [92, 92] }, { pseudo: [7, 7], js: [4, 4] }, { pseudo: [7, 7], js: [13, 13] }, { pseudo: [7, 7], js: [88, 90] }, { pseudo: [7, 7], js: [92, 92] }, { pseudo: [8, 8], js: [4, 4] }, { pseudo: [8, 8], js: [12, 12] }, { pseudo: [8, 8], js: [74, 80] }, { pseudo: [9, 9], js: [4, 4] }, { pseudo: [9, 9], js: [62, 73] }, { pseudo: [10, 10], js: [4, 4] }, { pseudo: [10, 10], js: [62, 73] }, { pseudo: [11, 11], js: [8, 8] }, { pseudo: [11, 11], js: [10, 10] }, { pseudo: [11, 11], js: [21, 25] }, { pseudo: [11, 11], js: [27, 28] }, { pseudo: [11, 11], js: [36, 38] }, { pseudo: [11, 11], js: [43, 47] }, { pseudo: [11, 11], js: [49, 49] }, { pseudo: [12, 12], js: [10, 10] }, { pseudo: [12, 12], js: [21, 21] }, { pseudo: [12, 12], js: [26, 28] }, { pseudo: [12, 12], js: [36, 38] }, { pseudo: [12, 12], js: [43, 47] }, { pseudo: [12, 12], js: [49, 49] }, { pseudo: [13, 13], js: [10, 10] }, { pseudo: [13, 13], js: [29, 34] }, { pseudo: [13, 13], js: [36, 38] }, { pseudo: [13, 13], js: [48, 50] }, { pseudo: [13, 13], js: [52, 55] }, { pseudo: [14, 14], js: [7, 7] }, { pseudo: [14, 14], js: [36, 38] }, { pseudo: [14, 14], js: [48, 50] }, { pseudo: [14, 14], js: [52, 55] }, { pseudo: [14, 14], js: [98, 98] }, { pseudo: [15, 15], js: [109, 109] }, { pseudo: [16, 16], js: [39, 42] }, { pseudo: [16, 16], js: [51, 51] }, { pseudo: [16, 16], js: [91, 91] }, { pseudo: [16, 16], js: [107, 107] }, { pseudo: [17, 17], js: [5, 5] }, { pseudo: [17, 17], js: [9, 9] }, { pseudo: [17, 17], js: [14, 20] }, { pseudo: [17, 17], js: [95, 97] }, { pseudo: [17, 17], js: [99, 110] }],
-  params: { shyWords: "shy", shyWays: "keeps away", meanWords: "mean, evil", meanWays: "chases off", dominates: "dominates", dominatesWays: "looms over, chases off", keeps: "keeps", keepsWays: "stands guard", helps: "helps", helpsWays: "goes along", meets: "meets", meetsWays: "come together", changes: "changes", changesWays: "goes to and changes", selfWays: "comes closer bit by bit", becomes: "becomes", happy: "happy", happyWays: "faster, livelier, curvier, brighter", sad: "sad", sadWays: "slower, calmer, straighter, dimmer", changeFrames: 8 },
-  slots: [{ line: 2, text: "shy", param: "shyWords" }, { line: 2, text: "keeps away", param: "shyWays" }, { line: 3, text: "mean, evil", param: "meanWords" }, { line: 3, text: "chases off", param: "meanWays" }, { line: 4, text: "dominates", param: "dominates" }, { line: 4, text: "looms over, chases off", param: "dominatesWays" }, { line: 5, text: "keeps", param: "keeps" }, { line: 5, text: "stands guard", param: "keepsWays" }, { line: 6, text: "helps", param: "helps" }, { line: 6, text: "goes along", param: "helpsWays" }, { line: 7, text: "meets", param: "meets" }, { line: 7, text: "come together", param: "meetsWays" }, { line: 8, text: "changes", param: "changes" }, { line: 8, text: "goes to and changes", param: "changesWays" }, { line: 8, text: "comes closer bit by bit", param: "selfWays" }, { line: 9, text: "becomes", param: "becomes" }, { line: 9, text: "happy", param: "happy" }, { line: 9, text: "faster, livelier, curvier, brighter", param: "happyWays" }, { line: 10, text: "sad", param: "sad" }, { line: 10, text: "slower, calmer, straighter, dimmer", param: "sadWays" }, { line: 15, text: "8", param: "changeFrames" }],
+  lineMap: [{ pseudo: [1, 1], js: [2, 4] }, { pseudo: [1, 1], js: [6, 6] }, { pseudo: [1, 1], js: [35, 35] }, { pseudo: [1, 1], js: [56, 57] }, { pseudo: [1, 1], js: [59, 61] }, { pseudo: [1, 1], js: [82, 82] }, { pseudo: [1, 1], js: [93, 94] }, { pseudo: [2, 2], js: [4, 4] }, { pseudo: [2, 2], js: [11, 11] }, { pseudo: [2, 2], js: [58, 58] }, { pseudo: [2, 2], js: [81, 81] }, { pseudo: [2, 2], js: [83, 87] }, { pseudo: [3, 3], js: [4, 4] }, { pseudo: [3, 3], js: [11, 11] }, { pseudo: [3, 3], js: [58, 58] }, { pseudo: [3, 3], js: [81, 81] }, { pseudo: [3, 3], js: [83, 87] }, { pseudo: [4, 4], js: [4, 4] }, { pseudo: [4, 4], js: [13, 13] }, { pseudo: [4, 4], js: [88, 90] }, { pseudo: [4, 4], js: [92, 92] }, { pseudo: [5, 5], js: [4, 4] }, { pseudo: [5, 5], js: [13, 13] }, { pseudo: [5, 5], js: [88, 90] }, { pseudo: [5, 5], js: [92, 92] }, { pseudo: [6, 6], js: [4, 4] }, { pseudo: [6, 6], js: [13, 13] }, { pseudo: [6, 6], js: [88, 90] }, { pseudo: [6, 6], js: [92, 92] }, { pseudo: [7, 7], js: [4, 4] }, { pseudo: [7, 7], js: [13, 13] }, { pseudo: [7, 7], js: [88, 90] }, { pseudo: [7, 7], js: [92, 92] }, { pseudo: [9, 9], js: [4, 4] }, { pseudo: [9, 9], js: [12, 12] }, { pseudo: [9, 9], js: [74, 80] }, { pseudo: [10, 10], js: [4, 4] }, { pseudo: [10, 10], js: [62, 73] }, { pseudo: [11, 11], js: [4, 4] }, { pseudo: [11, 11], js: [62, 73] }, { pseudo: [12, 12], js: [8, 8] }, { pseudo: [12, 12], js: [10, 10] }, { pseudo: [12, 12], js: [21, 25] }, { pseudo: [12, 12], js: [27, 28] }, { pseudo: [12, 12], js: [36, 38] }, { pseudo: [12, 12], js: [43, 47] }, { pseudo: [12, 12], js: [49, 49] }, { pseudo: [13, 13], js: [10, 10] }, { pseudo: [13, 13], js: [21, 21] }, { pseudo: [13, 13], js: [26, 28] }, { pseudo: [13, 13], js: [36, 38] }, { pseudo: [13, 13], js: [43, 47] }, { pseudo: [13, 13], js: [49, 49] }, { pseudo: [14, 14], js: [10, 10] }, { pseudo: [14, 14], js: [29, 34] }, { pseudo: [14, 14], js: [36, 38] }, { pseudo: [14, 14], js: [48, 50] }, { pseudo: [14, 14], js: [52, 55] }, { pseudo: [15, 15], js: [7, 7] }, { pseudo: [15, 15], js: [36, 38] }, { pseudo: [15, 15], js: [48, 50] }, { pseudo: [15, 15], js: [52, 55] }, { pseudo: [15, 15], js: [98, 98] }, { pseudo: [16, 16], js: [109, 109] }, { pseudo: [17, 17], js: [39, 42] }, { pseudo: [17, 17], js: [51, 51] }, { pseudo: [17, 17], js: [91, 91] }, { pseudo: [17, 17], js: [107, 107] }, { pseudo: [18, 18], js: [5, 5] }, { pseudo: [18, 18], js: [9, 9] }, { pseudo: [18, 18], js: [14, 20] }, { pseudo: [18, 18], js: [95, 97] }, { pseudo: [18, 18], js: [99, 110] }, { pseudo: [8, 8], js: [13, 13] }],
+  params: { shyWords: "shy", shyWays: "keeps away", meanWords: "mean, evil", meanWays: "chases off", dominates: "dominates", dominatesWays: "looms over, chases off", keeps: "keeps", keepsWays: "stands guard", helps: "helps", helpsWays: "goes along", meets: "meets", meetsWays: "come together", other: "-", otherWays: "-", changes: "changes", changesWays: "goes to and changes", selfWays: "comes closer bit by bit", becomes: "becomes", happy: "happy", happyWays: "faster, livelier, curvier, brighter", sad: "sad", sadWays: "slower, calmer, straighter, dimmer", changeFrames: 8 },
+  slots: [{ line: 2, text: "shy", param: "shyWords" }, { line: 2, text: "keeps away", param: "shyWays" }, { line: 3, text: "mean, evil", param: "meanWords" }, { line: 3, text: "chases off", param: "meanWays" }, { line: 4, text: "dominates", param: "dominates" }, { line: 4, text: "looms over, chases off", param: "dominatesWays" }, { line: 5, text: "keeps", param: "keeps" }, { line: 5, text: "stands guard", param: "keepsWays" }, { line: 6, text: "helps", param: "helps" }, { line: 6, text: "goes along", param: "helpsWays" }, { line: 7, text: "meets", param: "meets" }, { line: 7, text: "come together", param: "meetsWays" }, { line: 8, text: "-", param: "other" }, { line: 8, text: "-", param: "otherWays" }, { line: 9, text: "changes", param: "changes" }, { line: 9, text: "goes to and changes", param: "changesWays" }, { line: 9, text: "comes closer bit by bit", param: "selfWays" }, { line: 10, text: "becomes", param: "becomes" }, { line: 10, text: "happy", param: "happy" }, { line: 10, text: "faster, livelier, curvier, brighter", param: "happyWays" }, { line: 11, text: "sad", param: "sad" }, { line: 11, text: "slower, calmer, straighter, dimmer", param: "sadWays" }, { line: 16, text: "8", param: "changeFrames" }],
   scenarios: [
     {"id":"s1","name":"{=dominates}: chases off is best when the first one is bigger, so looms over is passed over","input":{"data":{"scene":1,"of":1,"title":"A scene.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=dominates","who":"Ann","whom":"Bob","also":""}],"words":{"speed":["slow","fast","slower","faster"],"liveliness":["calm","lively","calmer","livelier"],"curves":["straight","curvy","straighter","curvier"],"brightness":["dim","bright","dimmer","brighter"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["chases off"],"sayContains":"best when Ann is bigger than Bob"}},
     {"id":"s2","name":"no standing guard when the guard isn't faster: it is crossed out, and it says why","input":{"data":{"scene":1,"of":1,"title":"A scene.","cast":["Ann","Bob","Cid"],"called":{},"onStage":["Ann","Bob","Cid"],"relations":[],"friends":[],"events":[{"verb":"=keeps","who":"Bob","whom":"Ann","also":"Cid"}],"words":{"speed":["slow","fast","slower","faster"],"liveliness":["calm","lively","calmer","livelier"],"curves":["straight","curvy","straighter","curvier"],"brightness":["dim","bright","dimmer","brighter"]},"standIns":[],"choices":{"Ann":{"speed":3,"size":3,"strangers":2,"friends":2},"Bob":{"speed":1,"size":1,"strangers":2,"friends":2},"Cid":{"speed":2,"size":2,"strangers":2,"friends":2}}}},"expect":{"ways":["moves about"],"sayContains":"Bob isn't faster than Ann"}},
@@ -6004,7 +6007,7 @@ const V1_TEXTS = [
 AK.Seeds = { makeEvolution, makeContemplative, makeTicTacToe, makeBarter, makeArtCritic, makeMiniAni, makeMiniAni1978, makeMiniAniVoices, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
-const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "collect", "wait", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "contract", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
+const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "collect", "wait", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "contract", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results", "taught"] };
 const agentById = (soc, id) => (soc && soc.agents || []).find(a => a.id === id) || null;
 const clampInt = (v, lo, hi, d) => { const n = Math.round(+v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 const arr = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
@@ -6263,6 +6266,8 @@ function sanitizeAgent(a, ids) {
     out.params = sanitizeParams(a.params);
     out.slots = arr(a.slots, 60).filter(s => s && Number.isInteger(s.line) && typeof s.text === "string" && typeof s.param === "string").map(s => ({ line: s.line, text: cleanText(s.text, 60), param: String(s.param).slice(0, 40) }));
     out.scenarios = arr(a.scenarios, 60).map(sanitizeScenario).filter(Boolean);
+    const taught = arr(a.taught, 20).filter(t => t && typeof t.word === "string" && t.values && typeof t.values === "object").map(t => ({ word: cleanName(t.word, 40), values: sanitizeParams(t.values), by: cleanName(t.by, 80) || "a model", at: String(t.at || "").replace(/[^\d-]/g, "").slice(0, 10) }));
+    if (taught.length) out.taught = taught;
     out.lastGood = null;
     // Imported JS is always discarded. A shipped agent is restored from the library by type id;
     // anything else must be retranslated here before it can run.
@@ -7052,6 +7057,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
   "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.\n" +
   "- Why: in a picture or film whose agents explain themselves (the Mini-Ani), a click on a character shows why it looks and moves like that: its looks (the Director), what it does (the Method Chooser) and the reasons (the Choice Points), with a button to the whole answer in the Trace. A program can end a story with end: true in its data: its other rules wait, as with pass: false, but it isn't a failure, so nothing gets a ✗.\n" +
+  "- Teaching with a model: in the Mini-Ani, the experts (Personality, Looks, Relationships) and the Method Chooser have a ✨ Teach section in Look inside. A model suggests a line for an empty line, using only words the Choice Points know (or ways the Director can show); the learner decides whether it goes in, and the line remembers which model suggested it. The words the last run didn't know are offered there.\n" +
   "- Films: in Logo, WAIT keeps the picture so far as one frame of a film (WAIT 15 is a quarter of a second), so REPEAT 12 [CLEARSCREEN RIGHT 30 * REPCOUNT FORWARD 100 WAIT 15] is a film of 12 frames. The stage plays a film with ▶ / ⏸ and a frame slider; a film in the trace has “Play the film on the stage”. At slow and normal speed the run waits for a film to end. The Renderer's data says how many frames it has (frames), and a model that sees pictures gets the last one.\n" +
   "- Small Helper, Big Helper needs two models; with only one set up, its button is grayed with a 🔒 and it can't run until a grown-up adds another in Settings, under More models.";
 function describeSociety(soc) {
@@ -7119,6 +7125,121 @@ function helperRequest(soc, trace, question, chat, models) {
   };
 }
 AK.Helper = { HELPER_SYSTEM, describeSociety, describeModels, describeTrace, describeScenarioResults, helperRequest };
+
+/* ===== SECTION: TEACH (a model suggests a line for a program's empty line; a person puts it in, or not) ===== */
+// The knowledge-writer. When the Mini-Ani's experts or its Method Chooser don't know a word, a model can suggest a line
+// for one of their empty lines, using only what their readers understand: the Choice Points' words for an expert, their
+// comparisons for Relationships, and the ways the Director can show for the Method Chooser. Anything else is left out,
+// and a person decides whether the line goes in. The program stays a program; the line remembers who suggested it.
+const TEACHABLE = { "ani-expert": "expert", "ani-relations": "relations", "ani-methods": "methods" };
+const METHOD_WAYS = ["keeps away", "chases off", "looms over", "stands guard", "goes along", "come together", "goes to and changes", "comes closer bit by bit"];
+const METHOD_LINES = [["shyWords", "shyWays"], ["meanWords", "meanWays"], ["dominates", "dominatesWays"], ["keeps", "keepsWays"], ["helps", "helpsWays"], ["meets", "meetsWays"], ["other", "otherWays"]];
+const teachKind = a => (a && a.kind === "program" && TEACHABLE[a.typeId]) || "";
+const lowWords = t => String(t == null ? "" : t).split(",").map(w => w.trim().toLowerCase()).filter(w => w && w !== "-");
+// The Choice Points' words, thing by thing: “speed: slow/fast, slower/faster” is { el, low, high, lower, higher }.
+function choiceWords(soc) {
+  const cp = ((soc && soc.agents) || []).find(a => a.kind === "program" && /^ani-choice/.test(a.typeId));
+  const p = (cp && cp.params) || LIB["ani-choices"].params, els = [];
+  for (const k of Object.keys(p)) {
+    const m = typeof p[k] === "string" ? /^\s*([^:,\/]+):\s*([^\/,]+)\/([^,]+?)(?:,\s*([^\/]+)\/(.+?))?\s*$/.exec(p[k]) : null;
+    if (m) els.push({ el: m[1].trim(), low: m[2].trim(), high: m[3].trim(), lower: (m[4] || "").trim(), higher: (m[5] || "").trim() });
+  }
+  return { els, abit: p.abit || "a bit", very: p.very || "very", not: p.not || "not", same: p.same || "same" };
+}
+// What it knows now, as lines like “shy suggests a bit slow”: what the model is shown, to write one more like them.
+function teachLines(a) {
+  const p = a.params || {}, kind = teachKind(a), out = [];
+  if (kind === "methods") { for (const [w, ways] of METHOD_LINES) if (lowWords(p[w]).length && lowWords(p[ways]).length) out.push(lowWords(p[w]).join(", ") + ": " + lowWords(p[ways]).join(", ")); return out; }
+  const [wk, sk, tail] = kind === "relations" ? ["r", "c", " than the other one"] : ["w", "s", ""];
+  for (let n = 1; p[wk + n] !== undefined; n++) if (p[wk + n] !== "-" && p[sk + n] !== "-") out.push(p[wk + n] + " suggests " + p[sk + n] + tail);
+  return out;
+}
+// The words a line may use: an expert keeps to the things it already talks about (how they move, or how they look).
+function teachVocab(a, soc) {
+  const kind = teachKind(a), cw = choiceWords(soc), mods = [cw.abit, cw.very, cw.not];
+  if (kind === "methods") return { words: METHOD_WAYS.slice(), mods: [], max: 2 };
+  if (kind === "relations") return { words: [].concat(...cw.els.map(e => (e.lower ? [e.lower, e.higher] : []).concat([cw.same + " " + e.el]))), mods, max: 4 };
+  const p = a.params || {}, said = [];
+  for (let n = 1; p["s" + n] !== undefined; n++) said.push(...lowWords(p["s" + n]));
+  const uses = e => said.some(x => x === e.low.toLowerCase() || x === e.high.toLowerCase() || x.endsWith(" " + e.low.toLowerCase()) || x.endsWith(" " + e.high.toLowerCase()));
+  const els = cw.els.filter(uses).length ? cw.els.filter(uses) : cw.els;
+  return { words: [].concat(...els.map(e => [e.low, e.high])), mods, max: 4 };
+}
+// Where a line for this word would go: { word, ways } params, or why it can't go in.
+function teachSlot(a, word) {
+  const p = a.params || {}, kind = teachKind(a), w = String(word || "").trim().toLowerCase();
+  if (!w) return { why: "Which word?" };
+  if (kind === "methods") {
+    const line = METHOD_LINES.find(x => lowWords(p[x[0]]).indexOf(w) >= 0);
+    if (line) return lowWords(p[line[1]]).length ? { why: "It already has a way to show “" + w + "”." } : { word: null, ways: line[1] };
+    return p.other === "-" || lowWords(p.other).indexOf(w) >= 0 ? { word: "other", ways: "otherWays" } : { why: "Its empty line is used. Change a line by hand, or empty one with -." };
+  }
+  if (!kind) return { why: "Only the Mini-Ani's experts and Method Chooser can be taught like this." };
+  const [wk, sk] = kind === "relations" ? ["r", "c"] : ["w", "s"];
+  for (let n = 1; p[wk + n] !== undefined; n++) if (String(p[wk + n]).trim().toLowerCase() === w) return { why: "It already knows “" + w + "”: see its line " + (n + 1) + "." };
+  for (let n = 1; p[wk + n] !== undefined; n++) if (p[wk + n] === "-") return { word: wk + n, ways: sk + n };
+  return { why: "It has no empty line left. Change a line by hand, or empty one with - in both places." };
+}
+function teachRequest(a, soc, word) {
+  const kind = teachKind(a), v = teachVocab(a, soc), w = String(word || "").trim();
+  const what = kind === "methods" ? "It plans how to show what happens in a scene. Each line says which ways can show a word, best first:"
+    : kind === "relations" ? "It knows ways that characters get on. Each line says what a way of getting on suggests about the first character, compared with the second:"
+    : "It is an expert in words that describe characters. Each line says what a word suggests about a character:";
+  const form = kind === "methods" ? "“" + w + ": a way”, or two ways, best first" : "“" + w + " suggests …”, with at most " + v.max + " suggestions";
+  const system = "You help a child teach a small program, one of a society of programs that turns a story into a cartoon, as Ken Kahn's program Ani did in 1978. " + what + "\n" +
+    teachLines(a).map(l => "  " + l).join("\n") + "\n\nWrite one more line, for the word “" + w + "”, in the same form: " + form + ". Use only these " + (kind === "methods" ? "ways" : "words") + ": " + v.words.join(", ") + "." +
+    (v.mods.length ? " Put “" + v.mods[0] + "” or “" + v.mods[1] + "” before one to make it weaker or stronger, or “" + v.mods[2] + "” to rule it out." : "") +
+    " Then, on a second line, say why in one short sentence that a child would understand. Write only those two lines.";
+  return { system, messages: [{ role: "user", content: "Teach it “" + w + "”." }], images: [], outputFields: [], replyKind: "prose", maxTokens: 400, effort: "low", meta: { persona: "teacher", teach: { kind, word: w, words: v.words } } };
+}
+// The model's reply as a line to put in: only the words the readers know are kept, at most max of them.
+function parseTeach(a, soc, word, text) {
+  const kind = teachKind(a), v = teachVocab(a, soc), w = String(word || "").trim(), slot = teachSlot(a, w);
+  if (slot.why) return { ok: false, why: slot.why, kept: [], dropped: [] };
+  const lines = String(text || "").split("\n").map(l => l.replace(/^[\s*>"“”'`•-]+|[\s*"“”'`]+$/g, "")).filter(Boolean);
+  const lw = w.toLowerCase(), head = l => { const t = l.toLowerCase(); return t.indexOf(lw + " suggests") === 0 ? lw.length + 9 : t.indexOf(lw + ":") === 0 ? lw.length + 1 : -1; };
+  let at = lines.findIndex(l => head(l) >= 0);
+  const body = at >= 0 ? lines[at].slice(head(lines[at])) : (lines[0] || "");
+  if (at < 0) at = 0;
+  const kept = [], dropped = [];
+  for (let item of body.replace(/\s*than the other one\s*\.?\s*$/i, "").split(kind === "methods" ? /[,;]/ : /[,;]|\s+and\s+/)) {
+    item = item.trim().toLowerCase().replace(/[.!]+$/, "");
+    if (!item) continue;
+    const mod = v.mods.find(m => item.indexOf(m.toLowerCase() + " ") === 0);
+    const base = mod ? item.slice(mod.length + 1).trim() : item, known = v.words.find(x => x.toLowerCase() === base);
+    if (known && kept.length < v.max && !kept.some(k => k === known || k.endsWith(" " + known))) kept.push((mod ? mod + " " : "") + known);
+    else dropped.push(item);
+  }
+  const why = lines.filter((l, i) => i !== at).join(" ").slice(0, 240);
+  if (!kept.length) return { ok: false, why: "None of its suggestions were " + (kind === "methods" ? "ways the Director can show" : "words the Choice Points know") + (dropped.length ? " (" + dropped.join(", ") + ")" : "") + ".", kept, dropped };
+  const values = {};
+  if (slot.word) values[slot.word] = w;
+  values[slot.ways] = kept.join(", ");
+  return { ok: true, word: w, kept, dropped, why, values, line: w + (kind === "methods" ? ": " : " suggests ") + kept.join(", ") + (kind === "relations" ? " than the other one" : "") };
+}
+// Put the line in, and remember who suggested it, so its knowledge still says where it came from.
+function acceptTeach(a, proposal, by) {
+  setParams(a, proposal.values);
+  const lw = proposal.word.toLowerCase();
+  a.taught = (a.taught || []).filter(t => t.word.toLowerCase() !== lw).concat([{ word: proposal.word, values: clone(proposal.values), by: String(by || "a model").slice(0, 80), at: new Date().toISOString().slice(0, 10) }]).slice(-20);
+}
+// Its taught lines, each saying whether it was changed by hand since.
+const taughtNow = a => (a.taught || []).map(t => Object.assign({}, t, { changed: Object.keys(t.values || {}).some(k => (a.params || {})[k] !== t.values[k]) }));
+// The words it could be taught from the last run: the ones no expert knew (or no way could show), that this one passed on.
+function teachWordsFrom(a, trace) {
+  const kind = teachKind(a), out = [];
+  const lastData = id => { for (let i = (trace || []).length - 1; i >= 0; i--) { const e = trace[i]; if (e.kind === "activation" && e.agentId === id && e.response && e.response.data) return e.response.data; } return null; };
+  const add = w => { w = String(w || "").trim(); if (w && out.indexOf(w) < 0 && out.length < 8 && !teachSlot(a, w).why) out.push(w); };
+  const mine = [];
+  for (let i = 0; i < (trace || []).length; i++) { const e = trace[i]; if (e.kind !== "activation" || e.agentId !== a.id || !e.response || !e.response.data) continue; const d = e.response.data;
+    if (kind === "methods") mine.push(...(d.untaught || [])); else for (const k of Object.keys(d.unknown || {})) mine.push(...(d.unknown[k] || [])); }
+  if (kind === "methods") { mine.forEach(add); return out; }
+  const cpId = (((trace || []).find(e => e.kind === "activation" && e.response && e.response.data && Array.isArray(e.response.data.unknown))) || {}).agentId;
+  const lost = cpId ? [].concat(...(trace || []).filter(e => e.kind === "activation" && e.agentId === cpId && e.response && e.response.data && Array.isArray(e.response.data.unknown)).map(e => e.response.data.unknown)).map(x => String(x).replace(/\s*\(.*$/, "").toLowerCase()) : null;
+  mine.filter(w => !lost || lost.indexOf(String(w).toLowerCase()) >= 0).forEach(add);
+  return out;
+}
+AK.Teach = { teachKind, choiceWords, teachLines, teachVocab, teachSlot, teachRequest, parseTeach, acceptTeach, taughtNow, teachWordsFrom, METHOD_WAYS };
 
 /* ===== SECTION: WORDS (data said in plain words, so the trace needn't show JSON) ===== */
 const FIELD_WORDS = { cols: "columns", rowList: "rows from the top", dots: "dots", segments: "lines", labels: "labels", frames: "film frames" };
@@ -7191,7 +7312,7 @@ async function unpack(str) {
   throw new Error("The saved work is in a format this version doesn't know.");
 }
 AK.Store = { pack, unpack };
-AK.MODULES = ["util", "SafeJS", "Sandbox", "Logo", "Runtime", "Geometry", "Prompts", "Pretend", "Adapters", "Library", "Slots", "Seeds", "Society", "Translator", "Scenarios", "Engine", "Helper", "Words", "Store"];
+AK.MODULES = ["util", "SafeJS", "Sandbox", "Logo", "Runtime", "Geometry", "Prompts", "Pretend", "Adapters", "Library", "Slots", "Seeds", "Society", "Translator", "Scenarios", "Engine", "Helper", "Teach", "Words", "Store"];
 
 })(typeof globalThis !== "undefined" ? globalThis : window);
 </script>
@@ -8907,12 +9028,55 @@ function programEditorHTML(a, s) {
     h += contractHTML(a) + pseudoViewHTML(a);
     const keys = Object.keys(a.params || {});
     if (keys.length) h += '<div class="params">' + keys.map(k => '<span class="param"><code>params.' + esc(k) + '</code><input data-bind="param" data-param="' + esc(k) + '" value="' + esc(Slots.formatSlotValue(a.params[k])) + '" aria-label="' + esc(k) + '"></span>').join("") + '</div>';
+    if (AK.Teach.teachKind(a)) h += teachHTML(a, s);
   }
   const mine = ed.mode === "edit" ? ed.draft : a.pseudocode, lib = AK.Library.LIB[a.typeId];   // a nudge for the learner's own pseudocode, not the kit's
   const bare = t => String(t || "").replace(/\{[^}]*\}/g, "{}");   // its slots (like the secret, new every run) don't count as changes
   if (!(lib && bare(mine) === bare(lib.pseudocode)) && String(mine).split("\n").filter(l => l.trim()).length > 8) h +='<div class="nudge">This agent is getting long. Could it be two agents?</div>';
   h += '</div>' + connectionsHTML(a, s) + peekHTML(a) + scenariosHTML(a);
   return h;
+}
+
+// Teach it a word with a model's help (AK.Teach): the words the last run didn't know, or any word; the model's line is
+// shown with what was left out, and goes in only if the learner says so.
+function teachHTML(a, s) {
+  const T = AK.Teach, t = app.ui.teach && app.ui.teach.agent === a.id ? app.ui.teach : { word: "" }, kind = T.teachKind(a);
+  const refs = modelRefs(), by = refs.length ? refs[0].label : getAdapter().label, words = T.teachWordsFrom(a, runOrLastTrace(s.id));
+  let h = '<div class="teach"><h4>✨ Teach it a word, with a model\'s help</h4><p class="hint">A model suggests a line for ' + (kind === "methods" ? "its empty line, using only ways the Director can show" : "an empty line, using only words the Choice Points know") + '. You decide whether it goes in.</p>';
+  if (words.length) h += '<div class="row teach-words"><span class="hint">Not known in the last run:</span>' + words.map(w => '<button class="btn tiny" data-act="teach-word" data-word="' + esc(w) + '"' + (t.busy ? " disabled" : "") + '>' + esc(w) + '</button>').join("") + '</div>';
+  h += '<div class="row"><input class="field grow" id="teachWord" value="' + esc(t.word || "") + '" placeholder="' + (kind === "methods" ? "a word like obeys" : kind === "relations" ? "a word like helps" : "a word like brave") + '" aria-label="The word to teach"><button class="btn" data-act="teach-ask"' + (app.settings.connection === "none" || t.busy ? " disabled" : "") + '>' + (t.busy ? "Asking…" : "Ask " + esc(by)) + '</button></div>';
+  if (app.settings.connection === "none") h += '<p class="hint">Connect a model in Settings to ask one, or fill an empty line yourself, above.</p>';
+  if (t.error) h += '<div class="warnline">' + esc(t.error) + '</div>';
+  const p = t.proposal;
+  if (p) h += '<div class="proposal"><div><b>' + esc(t.by) + ' suggests:</b> <code>' + esc(p.line) + '</code></div>' + (p.why ? '<p>' + esc(p.why) + '</p>' : "") +
+    (p.dropped.length ? '<p class="hint">Left out, because ' + (kind === "methods" ? "the Director can't show them" : "the Choice Points don't know them") + ': ' + esc(p.dropped.join(", ")) + '</p>' : "") +
+    '<div class="row"><button class="btn primary" data-act="teach-accept">✓ Put it in</button><button class="btn" data-act="teach-drop">✕ No thanks</button></div></div>';
+  const taught = T.taughtNow(a);
+  if (taught.length) h += '<p class="hint">Taught with a model\'s help: ' + taught.map(x => '<b>' + esc(x.word) + '</b> (suggested by ' + esc(x.by) + (x.at ? ", " + esc(x.at) : "") + (x.changed ? ", changed since" : "") + ')').join("; ") + '</p>';
+  return h + '</div>';
+}
+async function teachAsk(word) {
+  const a = editorAgent(), ed = app.ui.editor;
+  if (!a || !ed) return;
+  const s = app.societies[ed.socId], w = String(word || "").trim().slice(0, 40), T = AK.Teach;
+  const t = app.ui.teach = { agent: a.id, word: w };
+  const room = T.teachSlot(a, w);
+  if (room.why) { t.error = room.why; renderEditor(); return; }
+  t.busy = true;
+  renderEditor();
+  const adapter = getAdapter(), req = T.teachRequest(a, s, w), refs = modelRefs();
+  t.by = refs.length ? refs[0].label : adapter.label;
+  try {
+    const r = await adapter.call(req);
+    const p = T.parseTeach(a, s, w, r.text || r.raw);
+    logWorkshop(s.id, { kind: "teach", title: "Teach " + a.name + ": " + w, status: p.ok ? "ok" : "error", error: p.ok ? undefined : p.why, call: { adapter: adapter.id, adapterLabel: adapter.label, model: r.model, persona: r.persona, pretend: !!r.pretend, system: r.system, messages: req.messages, request: r.request, reply: r.raw, ms: Math.round(r.ms || 0), warning: r.warning } });
+    if (p.ok) t.proposal = p; else t.error = p.why;
+  } catch (e) {
+    t.error = "😕 " + e.message;
+    handleCallError({ errorKind: e.kind });
+  }
+  t.busy = false;
+  renderEditor();
 }
 
 /* ===== SECTION: PROGRAM EDITS, TRANSLATION, SCENARIOS ===== */
@@ -9642,6 +9806,17 @@ const ACTIONS = {
   "test-conn"() { testConnection(); },
   "copy-link"() { copyText(PROJECT_URL); },
   // agent editor
+  "teach-word"(t) { teachAsk(t.dataset.word); },
+  "teach-ask"() { const box = $("#teachWord"); teachAsk(box ? box.value : ""); },
+  "teach-drop"() { app.ui.teach = null; renderEditor(); },
+  async "teach-accept"() {
+    const a = editorAgent(), t = app.ui.teach;
+    if (!a || !t || !t.proposal || t.agent !== a.id) return;
+    AK.Teach.acceptTeach(a, t.proposal, t.by);
+    app.ui.teach = null;
+    toast("“" + t.proposal.word + "” is on its line now. Run the story again to see what changes.");
+    await applyParamChange(a, {});
+  },
   "edit-pseudo"() { const ed = app.ui.editor, a = editorAgent(); if (!ed || !a) return; ed.mode = "edit"; const c = contractText(a); ed.draft = (c ? c + "\n\n" : "") + a.pseudocode; renderEditor(); const box = $("#pseudoDraft"); if (box) box.focus(); },
   async "back-to-running"() {
     const a = editorAgent();

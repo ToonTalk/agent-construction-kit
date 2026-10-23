@@ -51,13 +51,13 @@ export default function (T, { modelWindow, pageWindow, same }) {
       s.agents.filter(a => a.kind === "program").every(a => a.code.js === Library.LIB[a.typeId].js) && s.link.url === plainOne.link.url && s.intro.length < 420 &&
       !plainOne.agents.some(a => a.kind === "model") && plainOne.rules.every(r => /^m\d+$/.test(r.id));
   });
-  T.test("Mini-Ani with AI voices: the programs-only Mini-Ani says exactly what it said in 1.17.0 (every agent's words, data and Logo in the default run)", ["Engine"], async () => {
+  T.test("Mini-Ani with AI voices: the programs-only Mini-Ani says exactly what it said in 1.18.0 (every agent's words, data and Logo in the default run)", ["Engine"], async () => {
     const s = Seeds.makeMiniAni();
     const api = Engine.createRun(s, { runtime: Runtime, seed: 5 });
     api.start({ to: s.starts[0].to, text: s.starts[0].value });
     await api.play();
     const all = JSON.stringify(api.run.trace.filter(e => e.kind === "activation" && !e.collecting).map(e => [e.agentId, e.round, e.response && e.response.text, e.response && e.response.data, e.render && e.render.program, e.error || null]));
-    return createHash("sha256").update(all).digest("hex").slice(0, 12) === "d0d763f12eef";   // recorded from 1.17.0 (1.16.0 said 24013a24fbea; 1.17.0: an opposite's suggestions are said as the opposite, and weaker; the Director draws larger shapes and names; 1.15.1 said a754d52e34a2; 1.16.0: the experts pass unknown words on unnamed, the Choice Points invite teaching them and explain everyone, the Cast ends with end: true; 1.14.0 and 1.15.0 said 113b57f29d36)
+    return createHash("sha256").update(all).digest("hex").slice(0, 12) === "272465bd8f36";   // recorded from 1.18.0 (1.17.0 said d0d763f12eef; 1.18.0: the Method Chooser sends untaught words as data; 1.16.0 said 24013a24fbea; 1.17.0: an opposite's suggestions are said as the opposite, and weaker; the Director draws larger shapes and names; 1.15.1 said a754d52e34a2; 1.16.0: the experts pass unknown words on unnamed, the Choice Points invite teaching them and explain everyone, the Cast ends with end: true; 1.14.0 and 1.15.0 said 113b57f29d36)
   });
   T.test("Mini-Ani with AI voices: the AI Animator is asked only when someone's values are chosen (scenes 1, 3 and 4), and its lines are among the Choice Points' reasons", ["Engine"], async () => {
     const r = await ran();
