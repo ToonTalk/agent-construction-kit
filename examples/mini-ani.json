@@ -1,8 +1,8 @@
 {
   "kind": "agent-kit-export",
   "schema": 1,
-  "app": "Agent Kit 1.16.0",
-  "exportedAt": "2026-10-23T09:38:00.399Z",
+  "app": "Agent Kit 1.17.0",
+  "exportedAt": "2026-10-23T10:03:16.962Z",
   "society": {
     "kind": "agent-kit-society",
     "schema": 1,
@@ -18,7 +18,7 @@
       "Why is Cinderella small and slow? Open the Choice Points' answer for scene 1 in the trace: it says why first.",
       "Change the Choice Points' “more than {2} times as strong” to 1, then to 100. Do the characters look more alike, or less?",
       "No expert knows “helps” (the Choice Points say so). Fill Relationships' empty line, “{-} suggests {-}”, to say what helping suggests. What changes?",
-      "Switch on “Like Ani in 1978”. What does the Looks expert add to the film?",
+      "Switch on “No Looks expert”. What does the Looks expert add to the film? (“Mini-Ani, as in 1978”, in New society, is Ani as it was.)",
       "Who made this film: the experts, the Choice Points, the Director, or the people who wrote their knowledge?"
     ],
     "openers": [
@@ -54,7 +54,7 @@
     "variants": [
       {
         "id": "1978",
-        "label": "Like Ani in 1978: no Looks expert; Ken's shapes and colors",
+        "label": "No Looks expert: Ken's 1978 shapes and colors",
         "disable": [
           "m2",
           "m7"
@@ -1383,7 +1383,7 @@
         ],
         "code": {
           "pseudocode": "for each character whose values are being chosen, look up each of their words:\n{shy} suggests {a bit slow, very wary of strangers, a bit drawn to friends}\n{hardworking} suggests {not slow, very lively, purposeful}\n{graceful} suggests {slow, curvy, steady}\n{friendly} suggests {a bit lively, very drawn to friends, drawn to strangers}\n{evil} suggests {very jerky, a bit straight, purposeful, a bit lively}\n{kind} suggests {very drawn to friends, drawn to strangers, a bit lively}\n{strong} suggests {fast, very purposeful, a bit steady}\n{determined} suggests {very purposeful, steady, not slow}\n{mean} suggests {wary of strangers, a bit drawn to friends}\n{-} suggests {-}\n{-} suggests {-}\n{beautiful} brings {graceful}: whoever is the first word is the second one too\nthese mean the same, so they get the same suggestions: {industrious=hardworking, stubborn=determined, good=kind}\nand {selfish=mean, grumpy=evil}\nthese mean the opposite, so they get the suggestions turned around: {brazen=shy, forward=shy, bold=shy, lazy=hardworking}\nand {good=evil, clumsy=graceful, unfriendly=friendly, weak=strong}\nsend each suggestion with the word it came from, and pass on the words I don't know (the Choice Points name the ones no expert knows)",
-          "js": "function run(input, params, h) {\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const lines = [];\n  for (let i = 1; i <= 11; i++) {\n    h.tick();\n    const word = low(params[\"w\" + i]), says = String(params[\"s\" + i] == null ? \"\" : params[\"s\" + i]).trim();\n    if (word && word !== \"-\" && says && says !== \"-\") lines.push({ word: word, says: says });\n  }\n  const own = w => lines.find(l => l.word === w);\n  const pairs = text => String(text == null ? \"\" : text).split(\",\").map(p => p.split(\"=\").map(low)).filter(p => p.length === 2 && p[0] && p[1]);\n  const same = pairs(params.same1).concat(pairs(params.same2));\n  const opposite = pairs(params.opp1).concat(pairs(params.opp2));\n  const bringer = low(params.bw), brought = low(params.bt);\n  const suggestions = [], knew = {}, unknown = {}, said = [];\n  for (const c of (input.data || {}).choose || []) {\n    h.tick();\n    const words = (c.words || []).map(low);\n    const all = words.concat(bringer !== \"-\" && words.indexOf(bringer) >= 0 && words.indexOf(brought) < 0 ? [brought] : []);\n    const told = [];\n    knew[c.name] = [];\n    unknown[c.name] = [];\n    for (const w of all) {\n      h.tick();\n      const from = words.indexOf(w) < 0 ? bringer : \"\";\n      let known = w === bringer && own(brought) !== undefined;\n      const mine = own(w);\n      if (mine) {\n        suggestions.push({ who: c.name, word: w, kind: \"own\", from: from, says: mine.says });\n        told.push(w + (from ? \" (\" + from + \" brings it)\" : \"\") + \" → \" + mine.says);\n        known = true;\n      }\n      for (const p of same) {\n        h.tick();\n        if (p[0] !== w || !own(p[1])) continue;\n        suggestions.push({ who: c.name, word: w, kind: \"same\", like: p[1], says: own(p[1]).says });\n        told.push(w + \", like \" + p[1] + \" → \" + own(p[1]).says);\n        known = true;\n      }\n      for (const p of opposite) {\n        h.tick();\n        if (p[0] !== w || !own(p[1])) continue;\n        suggestions.push({ who: c.name, word: w, kind: \"opposite\", like: p[1], turn: true, says: own(p[1]).says });\n        told.push(w + \", the opposite of \" + p[1] + \" → \" + own(p[1]).says + \", turned around\");\n        known = true;\n      }\n      if (!from) (known ? knew : unknown)[c.name].push(w);\n    }\n    said.push(\"- **\" + (((input.data || {}).called || {})[c.name] || c.name) + \"**: \" + (told.length ? told.join(\" · \") : \"nothing\"));\n  }\n  let say = said.length ? said.join(\"\\n\") : \"Nobody's words changed, so I have nothing new to suggest.\";\n  if (say.length > 1900) say = said.map(t => t.split(\" → \")[0]).join(\"\\n\").slice(0, 1900);\n  return { count: suggestions.length, suggestions: suggestions, knew: knew, unknown: unknown, say: say };\n}",
+          "js": "function run(input, params, h) {\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const lines = [];\n  for (let i = 1; i <= 11; i++) {\n    h.tick();\n    const word = low(params[\"w\" + i]), says = String(params[\"s\" + i] == null ? \"\" : params[\"s\" + i]).trim();\n    if (word && word !== \"-\" && says && says !== \"-\") lines.push({ word: word, says: says });\n  }\n  const own = w => lines.find(l => l.word === w);\n  const pairs = text => String(text == null ? \"\" : text).split(\",\").map(p => p.split(\"=\").map(low)).filter(p => p.length === 2 && p[0] && p[1]);\n  const same = pairs(params.same1).concat(pairs(params.same2));\n  const opposite = pairs(params.opp1).concat(pairs(params.opp2));\n  const bringer = low(params.bw), brought = low(params.bt);\n  const suggestions = [], knew = {}, unknown = {}, said = [];\n  for (const c of (input.data || {}).choose || []) {\n    h.tick();\n    const words = (c.words || []).map(low);\n    const all = words.concat(bringer !== \"-\" && words.indexOf(bringer) >= 0 && words.indexOf(brought) < 0 ? [brought] : []);\n    const told = [];\n    knew[c.name] = [];\n    unknown[c.name] = [];\n    for (const w of all) {\n      h.tick();\n      const from = words.indexOf(w) < 0 ? bringer : \"\";\n      let known = w === bringer && own(brought) !== undefined;\n      const mine = own(w);\n      if (mine) {\n        suggestions.push({ who: c.name, word: w, kind: \"own\", from: from, says: mine.says });\n        told.push(w + (from ? \" (\" + from + \" brings it)\" : \"\") + \" → \" + mine.says);\n        known = true;\n      }\n      for (const p of same) {\n        h.tick();\n        if (p[0] !== w || !own(p[1])) continue;\n        suggestions.push({ who: c.name, word: w, kind: \"same\", like: p[1], says: own(p[1]).says });\n        told.push(w + \", like \" + p[1] + \" → \" + own(p[1]).says);\n        known = true;\n      }\n      for (const p of opposite) {\n        h.tick();\n        if (p[0] !== w || !own(p[1])) continue;\n        suggestions.push({ who: c.name, word: w, kind: \"opposite\", like: p[1], turn: true, says: own(p[1]).says });\n        told.push(w + \", the opposite of \" + p[1] + \" → the opposite of “\" + own(p[1]).says + \"” (weaker)\");\n        known = true;\n      }\n      if (!from) (known ? knew : unknown)[c.name].push(w);\n    }\n    said.push(\"- **\" + (((input.data || {}).called || {})[c.name] || c.name) + \"**: \" + (told.length ? told.join(\" · \") : \"nothing\"));\n  }\n  let say = said.length ? said.join(\"\\n\") : \"Nobody's words changed, so I have nothing new to suggest.\";\n  if (say.length > 1900) say = said.map(t => t.split(\" → \")[0]).join(\"\\n\").slice(0, 1900);\n  return { count: suggestions.length, suggestions: suggestions, knew: knew, unknown: unknown, say: say };\n}",
           "lineMap": [
             {
               "pseudo": [
@@ -2016,7 +2016,7 @@
               ]
             }
           ],
-          "hash": "c5604586e91bb197"
+          "hash": "92b2af4552989d34"
         },
         "lastGood": null,
         "status": "ok",
@@ -2334,7 +2334,7 @@
         ],
         "code": {
           "pseudocode": "for each character whose values are being chosen, look up each of their words:\n{beautiful} suggests {smooth, a bit bright, a bit fancy}\n{shabby} suggests {very dim, simple, a bit small}\n{magical} suggests {very fancy, very bright}\n{evil} suggests {very dim, very pointed, a bit cool}\n{mean} suggests {dim, pointed}\n{shy} suggests {a bit small, a bit dim}\n{kind} suggests {warm, a bit smooth}\n{friendly} suggests {smooth, warm}\n{strong} suggests {big, a bit pointed}\n{-} suggests {-}\n{-} suggests {-}\n{-} brings {-}: whoever is the first word is the second one too\nthese mean the same, so they get the same suggestions: {pretty=beautiful, gorgeous=beautiful, unkempt=shabby}\nand {good=kind, selfish=mean, grumpy=evil}\nthese mean the opposite, so they get the suggestions turned around: {elegant=shabby, ugly=beautiful, bold=shy}\nand {unfriendly=friendly, weak=strong}\nsend each suggestion with the word it came from, and pass on the words I don't know (the Choice Points name the ones no expert knows)",
-          "js": "function run(input, params, h) {\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const lines = [];\n  for (let i = 1; i <= 11; i++) {\n    h.tick();\n    const word = low(params[\"w\" + i]), says = String(params[\"s\" + i] == null ? \"\" : params[\"s\" + i]).trim();\n    if (word && word !== \"-\" && says && says !== \"-\") lines.push({ word: word, says: says });\n  }\n  const own = w => lines.find(l => l.word === w);\n  const pairs = text => String(text == null ? \"\" : text).split(\",\").map(p => p.split(\"=\").map(low)).filter(p => p.length === 2 && p[0] && p[1]);\n  const same = pairs(params.same1).concat(pairs(params.same2));\n  const opposite = pairs(params.opp1).concat(pairs(params.opp2));\n  const bringer = low(params.bw), brought = low(params.bt);\n  const suggestions = [], knew = {}, unknown = {}, said = [];\n  for (const c of (input.data || {}).choose || []) {\n    h.tick();\n    const words = (c.words || []).map(low);\n    const all = words.concat(bringer !== \"-\" && words.indexOf(bringer) >= 0 && words.indexOf(brought) < 0 ? [brought] : []);\n    const told = [];\n    knew[c.name] = [];\n    unknown[c.name] = [];\n    for (const w of all) {\n      h.tick();\n      const from = words.indexOf(w) < 0 ? bringer : \"\";\n      let known = w === bringer && own(brought) !== undefined;\n      const mine = own(w);\n      if (mine) {\n        suggestions.push({ who: c.name, word: w, kind: \"own\", from: from, says: mine.says });\n        told.push(w + (from ? \" (\" + from + \" brings it)\" : \"\") + \" → \" + mine.says);\n        known = true;\n      }\n      for (const p of same) {\n        h.tick();\n        if (p[0] !== w || !own(p[1])) continue;\n        suggestions.push({ who: c.name, word: w, kind: \"same\", like: p[1], says: own(p[1]).says });\n        told.push(w + \", like \" + p[1] + \" → \" + own(p[1]).says);\n        known = true;\n      }\n      for (const p of opposite) {\n        h.tick();\n        if (p[0] !== w || !own(p[1])) continue;\n        suggestions.push({ who: c.name, word: w, kind: \"opposite\", like: p[1], turn: true, says: own(p[1]).says });\n        told.push(w + \", the opposite of \" + p[1] + \" → \" + own(p[1]).says + \", turned around\");\n        known = true;\n      }\n      if (!from) (known ? knew : unknown)[c.name].push(w);\n    }\n    said.push(\"- **\" + (((input.data || {}).called || {})[c.name] || c.name) + \"**: \" + (told.length ? told.join(\" · \") : \"nothing\"));\n  }\n  let say = said.length ? said.join(\"\\n\") : \"Nobody's words changed, so I have nothing new to suggest.\";\n  if (say.length > 1900) say = said.map(t => t.split(\" → \")[0]).join(\"\\n\").slice(0, 1900);\n  return { count: suggestions.length, suggestions: suggestions, knew: knew, unknown: unknown, say: say };\n}",
+          "js": "function run(input, params, h) {\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const lines = [];\n  for (let i = 1; i <= 11; i++) {\n    h.tick();\n    const word = low(params[\"w\" + i]), says = String(params[\"s\" + i] == null ? \"\" : params[\"s\" + i]).trim();\n    if (word && word !== \"-\" && says && says !== \"-\") lines.push({ word: word, says: says });\n  }\n  const own = w => lines.find(l => l.word === w);\n  const pairs = text => String(text == null ? \"\" : text).split(\",\").map(p => p.split(\"=\").map(low)).filter(p => p.length === 2 && p[0] && p[1]);\n  const same = pairs(params.same1).concat(pairs(params.same2));\n  const opposite = pairs(params.opp1).concat(pairs(params.opp2));\n  const bringer = low(params.bw), brought = low(params.bt);\n  const suggestions = [], knew = {}, unknown = {}, said = [];\n  for (const c of (input.data || {}).choose || []) {\n    h.tick();\n    const words = (c.words || []).map(low);\n    const all = words.concat(bringer !== \"-\" && words.indexOf(bringer) >= 0 && words.indexOf(brought) < 0 ? [brought] : []);\n    const told = [];\n    knew[c.name] = [];\n    unknown[c.name] = [];\n    for (const w of all) {\n      h.tick();\n      const from = words.indexOf(w) < 0 ? bringer : \"\";\n      let known = w === bringer && own(brought) !== undefined;\n      const mine = own(w);\n      if (mine) {\n        suggestions.push({ who: c.name, word: w, kind: \"own\", from: from, says: mine.says });\n        told.push(w + (from ? \" (\" + from + \" brings it)\" : \"\") + \" → \" + mine.says);\n        known = true;\n      }\n      for (const p of same) {\n        h.tick();\n        if (p[0] !== w || !own(p[1])) continue;\n        suggestions.push({ who: c.name, word: w, kind: \"same\", like: p[1], says: own(p[1]).says });\n        told.push(w + \", like \" + p[1] + \" → \" + own(p[1]).says);\n        known = true;\n      }\n      for (const p of opposite) {\n        h.tick();\n        if (p[0] !== w || !own(p[1])) continue;\n        suggestions.push({ who: c.name, word: w, kind: \"opposite\", like: p[1], turn: true, says: own(p[1]).says });\n        told.push(w + \", the opposite of \" + p[1] + \" → the opposite of “\" + own(p[1]).says + \"” (weaker)\");\n        known = true;\n      }\n      if (!from) (known ? knew : unknown)[c.name].push(w);\n    }\n    said.push(\"- **\" + (((input.data || {}).called || {})[c.name] || c.name) + \"**: \" + (told.length ? told.join(\" · \") : \"nothing\"));\n  }\n  let say = said.length ? said.join(\"\\n\") : \"Nobody's words changed, so I have nothing new to suggest.\";\n  if (say.length > 1900) say = said.map(t => t.split(\" → \")[0]).join(\"\\n\").slice(0, 1900);\n  return { count: suggestions.length, suggestions: suggestions, knew: knew, unknown: unknown, say: say };\n}",
           "lineMap": [
             {
               "pseudo": [
@@ -2967,7 +2967,7 @@
               ]
             }
           ],
-          "hash": "c5604586e91bb197"
+          "hash": "92b2af4552989d34"
         },
         "lastGood": null,
         "status": "ok",
@@ -5678,7 +5678,7 @@
         "note": "picks a way to show each thing that happens, and says what it crossed out",
         "gate": false,
         "collect": false,
-        "pseudocode": "for each thing that happens in the scene, find the ways to show it:\n  someone who is {shy}: {keeps away} from someone on stage who isn't a friend\n  someone who is {mean, evil}: {chases off} someone on stage who isn't a friend\n  A {dominates} B: {looms over, chases off}\n  A {keeps} B from C: {stands guard}\n  A {helps} B: {goes along}\n  A {meets} B: {come together}\n  A {changes} B from X to Y: {goes to and changes}; A changes from X to Y: {comes closer bit by bit}\n  A {becomes} {happy}: {faster, livelier, curvier, brighter}\n  A becomes {sad}: {slower, calmer, straighter, dimmer}\ncross out chases off and stands guard unless A is faster than B, and any way that needs someone who isn't on stage\ncross out keeps away when A is drawn to strangers\nprefer chases off when A is bigger than B, stands guard when A dominates B, and goes along and come together when A is drawn to friends\nprefer a way the film hasn't used yet\na change takes {8} frames (0: at once)\nif no way is left, A moves about in its own way, so its values still show\nsend the plan, in order, to the Director, with the values of everyone on stage",
+        "pseudocode": "for each thing that happens in the scene, find the ways to show it:\n  someone who is {shy}: {keeps away} from someone on stage who isn't a friend\n  someone who is {mean, evil}: {chases off} someone on stage who isn't a friend\n  A {dominates} B: {looms over, chases off}\n  A {keeps} B from C: {stands guard}\n  A {helps} B: {goes along}\n  A {meets} B: {come together}\n  A {changes} B from X to Y: {goes to and changes}; A changes from X to Y: {comes closer bit by bit}\n  A {becomes} {happy}: {faster, livelier, curvier, brighter}\n  A becomes {sad}: {slower, calmer, straighter, dimmer}\ncross out chases off and stands guard unless A is faster than B, and any way that needs someone who isn't on stage\ncross out keeps away when A is drawn to strangers\nprefer chases off when A is bigger than B, stands guard when A dominates B, and goes along and come together when A is drawn to friends\nprefer a way the film hasn't used yet\na change takes {8} frames (0: at once)\nif no way is left, A moves about in its own way, so its values still show; a word with no ways at all is named, for teaching\nsend the plan, in order, to the Director, with the values of everyone on stage",
         "params": {
           "shyWords": "shy",
           "shyWays": "keeps away",
@@ -6341,8 +6341,8 @@
           }
         ],
         "code": {
-          "pseudocode": "for each thing that happens in the scene, find the ways to show it:\n  someone who is {shy}: {keeps away} from someone on stage who isn't a friend\n  someone who is {mean, evil}: {chases off} someone on stage who isn't a friend\n  A {dominates} B: {looms over, chases off}\n  A {keeps} B from C: {stands guard}\n  A {helps} B: {goes along}\n  A {meets} B: {come together}\n  A {changes} B from X to Y: {goes to and changes}; A changes from X to Y: {comes closer bit by bit}\n  A {becomes} {happy}: {faster, livelier, curvier, brighter}\n  A becomes {sad}: {slower, calmer, straighter, dimmer}\ncross out chases off and stands guard unless A is faster than B, and any way that needs someone who isn't on stage\ncross out keeps away when A is drawn to strangers\nprefer chases off when A is bigger than B, stands guard when A dominates B, and goes along and come together when A is drawn to friends\nprefer a way the film hasn't used yet\na change takes {8} frames (0: at once)\nif no way is left, A moves about in its own way, so its values still show\nsend the plan, in order, to the Director, with the values of everyone on stage",
-          "js": "function run(input, params, h) {\n  const WAYS = [\"keeps away\", \"chases off\", \"looms over\", \"stands guard\", \"goes along\", \"come together\", \"goes to and changes\", \"comes closer bit by bit\"];\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const listOf = s => String(s == null ? \"\" : s).split(\",\").map(low).filter(w => w && w !== \"-\");\n  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);\n  const d = input.data || {};\n  const memory = input.memory || { used: [] };\n  const choices = d.choices || {}, onStage = d.onStage || [];\n  const call = n => (d.called || {})[n] || n;\n  const value = (who, el) => (choices[who] || {})[el] || 2;\n  const friends = (a, b) => (d.friends || []).some(p => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a));\n  const standIn = who => ((d.standIns || []).find(s => s.of === who) || {}).name || \"\";\n  const verbWays = [[low(params.dominates), listOf(params.dominatesWays)], [low(params.keeps), listOf(params.keepsWays)], [low(params.helps), listOf(params.helpsWays)], [low(params.meets), listOf(params.meetsWays)]];\n  const plan = [], notes = [], unknown = [];\n  const says = s => {\n    const a = call(s.who), b = call(s.whom || \"\"), c = call(s.third || \"\");\n    return cap(s.way === \"keeps away\" ? a + \" keeps away from \" + b : s.way === \"chases off\" ? a + \" chases \" + b + \" off\" : s.way === \"looms over\" ? a + \" looms over \" + b\n      : s.way === \"stands guard\" ? a + \" stands guard between \" + b + \" and \" + c : s.way === \"goes along\" ? a + \" goes along with \" + b : s.way === \"come together\" ? a + \" and \" + b + \" come together\"\n      : s.way === \"goes to and changes\" ? a + \" goes to \" + b + \" and changes \" + b : s.way === \"comes closer bit by bit\" ? a + \" comes closer, bit by bit\" : a + \" moves about in its own way\");\n  };\n  const crossedOut = (way, task) => {\n    const needs = way === \"stands guard\" ? [task.whom, task.third] : way === \"comes closer bit by bit\" ? [] : [task.whom];\n    const away = needs.find(n => !n || onStage.indexOf(n) < 0);\n    if (away !== undefined) return way + \" needs \" + (away ? call(away) + \" on stage\" : \"someone else on stage who isn't a friend\");\n    if ((way === \"chases off\" || way === \"stands guard\") && !(value(task.who, \"speed\") > value(task.whom, \"speed\"))) return way + \": \" + call(task.who) + \" isn't faster than \" + call(task.whom);\n    if (way === \"keeps away\" && value(task.who, \"strangers\") === 3) return way + \": \" + call(task.who) + \" is drawn to strangers\";\n    return \"\";\n  };\n  const bestWhen = (way, task) => {\n    if (way === \"chases off\" && value(task.who, \"size\") > value(task.whom, \"size\")) return \"best when \" + call(task.who) + \" is bigger than \" + call(task.whom);\n    if (way === \"stands guard\" && (d.relations || []).some(r => r.who === task.who && r.whom === task.whom && low(r.verb) === low(params.dominates))) return \"best when \" + call(task.who) + \" dominates \" + call(task.whom);\n    if ((way === \"goes along\" || way === \"come together\") && value(task.who, \"friends\") === 3) return \"best when \" + call(task.who) + \" is drawn to friends\";\n    return \"\";\n  };\n  const pick = (task, ways) => {\n    const ok = [];\n    for (const way of ways) {\n      h.tick();\n      if (WAYS.indexOf(way) < 0) {\n        if (unknown.indexOf(way) < 0) unknown.push(way);\n        continue;\n      }\n      const no = crossedOut(way, task);\n      if (no) {\n        notes.push(\"crossed out \" + no);\n        continue;\n      }\n      ok.push({ way: way, best: bestWhen(way, task), fresh: memory.used.indexOf(way) < 0 });\n    }\n    ok.sort((x, y) => (y.best ? 2 : 0) + (y.fresh ? 1 : 0) - (x.best ? 2 : 0) - (x.fresh ? 1 : 0));\n    if (!ok.length) return { way: \"moves about\", who: task.who, because: task.because + (ways.length ? \"; no way was left\" : \"\") };\n    for (const other of ok.slice(1)) {\n      h.tick();\n      notes.push(other.way + \" was passed over for \" + ok[0].way + (ok[0].best ? \" (\" + ok[0].best + \")\" : ok[0].fresh && !other.fresh ? \" (the film hasn't used it yet)\" : \"\"));\n    }\n    return { way: ok[0].way, who: task.who, whom: task.whom || \"\", third: task.third || \"\", because: task.because + (ok[0].best ? \"; \" + ok[0].best : \"\") };\n  };\n  const shy = listOf(params.shyWords), mean = listOf(params.meanWords);\n  for (const e of d.events || []) {\n    h.tick();\n    const verb = low(e.verb);\n    if (verb === low(params.becomes) && (e.what || []).length) {\n      const feeling = low(e.what[0]), words = feeling === low(params.happy) ? listOf(params.happyWays) : feeling === low(params.sad) ? listOf(params.sadWays) : [];\n      const changes = {};\n      for (const w of words) {\n        h.tick();\n        const el = Object.keys(d.words || {}).find(id => d.words[id][3] === w || d.words[id][2] === w);\n        if (el) changes[el] = d.words[el][3] === w ? 1 : -1;\n        else if (unknown.indexOf(w) < 0) unknown.push(w);\n      }\n      plan.push({ way: \"feels\", who: e.who, feeling: feeling, changes: changes, because: \"\", says: cap(call(e.who)) + \" becomes \" + feeling + \": \" + words.join(\", \") });\n      continue;\n    }\n    if (verb === low(params.changes)) {\n      const step = e.whom ? pick({ who: e.who, whom: e.whom, because: (e.from || []).join(\" \") + \" → \" + (e.to || []).join(\" \") }, listOf(params.changesWays)) : pick({ who: e.who, because: (e.from || []).join(\" \") + \" → \" + (e.to || []).join(\" \") }, listOf(params.selfWays));\n      step.standIn = standIn(e.whom || e.who);\n      plan.push(step);\n      continue;\n    }\n    const others = onStage.filter(n => n !== e.who && !friends(n, e.who));\n    let ways = [], task = { who: e.who, whom: e.whom, third: e.also, because: e.verb };\n    if ((e.what || []).length) {\n      const word = e.what.find(w => shy.indexOf(low(w)) >= 0 || mean.indexOf(low(w)) >= 0);\n      ways = !word ? [] : shy.indexOf(low(word)) >= 0 ? listOf(params.shyWays) : listOf(params.meanWays);\n      task = { who: e.who, whom: others[0] || \"\", because: word || e.what.join(\", \") };\n    } else {\n      const vw = verbWays.find(x => x[0] === verb);\n      if (vw) ways = vw[1];\n      else if (unknown.indexOf(verb) < 0) unknown.push(verb);\n    }\n    plan.push(pick(task, ways));\n  }\n  for (const s of plan) {\n    h.tick();\n    if (!s.says) s.says = says(s);\n    if (memory.used.indexOf(s.way) < 0 && s.way !== \"moves about\" && s.way !== \"feels\") memory.used.push(s.way);\n  }\n  const shown = {}, strengths = {};\n  for (const name of onStage.concat((d.standIns || []).map(s => s.name))) {\n    h.tick();\n    if (choices[name]) shown[name] = choices[name];\n    if ((d.strengths || {})[name]) strengths[name] = d.strengths[name];\n  }\n  const say = \"**Scene \" + d.scene + \"'s plan:**\\n\" + plan.map((s, i) => (i + 1) + \". \" + s.says + (s.because ? \" (\" + s.because + \")\" : \"\") + \".\").join(\"\\n\") +\n    (notes.length ? \"\\n\\n\" + cap(notes.join(\"; \")) + \".\" : \"\") + (unknown.length ? \"\\n\\nNobody has taught me a way to show these yet: \" + unknown.join(\", \") + \".\" : \"\");\n  return { scene: d.scene, of: d.of, title: d.title, cast: d.cast, called: d.called, onStage: onStage, plan: plan, ways: plan.map(s => s.way), choices: shown, strengths: strengths, standIns: d.standIns || [],\n    summary: d.summary, looksFrom: d.looksFrom || [], tasteLevel: d.tasteLevel || {}, changeFrames: +params.changeFrames || 0, notes: notes, say: say, memory: memory };\n}",
+          "pseudocode": "for each thing that happens in the scene, find the ways to show it:\n  someone who is {shy}: {keeps away} from someone on stage who isn't a friend\n  someone who is {mean, evil}: {chases off} someone on stage who isn't a friend\n  A {dominates} B: {looms over, chases off}\n  A {keeps} B from C: {stands guard}\n  A {helps} B: {goes along}\n  A {meets} B: {come together}\n  A {changes} B from X to Y: {goes to and changes}; A changes from X to Y: {comes closer bit by bit}\n  A {becomes} {happy}: {faster, livelier, curvier, brighter}\n  A becomes {sad}: {slower, calmer, straighter, dimmer}\ncross out chases off and stands guard unless A is faster than B, and any way that needs someone who isn't on stage\ncross out keeps away when A is drawn to strangers\nprefer chases off when A is bigger than B, stands guard when A dominates B, and goes along and come together when A is drawn to friends\nprefer a way the film hasn't used yet\na change takes {8} frames (0: at once)\nif no way is left, A moves about in its own way, so its values still show; a word with no ways at all is named, for teaching\nsend the plan, in order, to the Director, with the values of everyone on stage",
+          "js": "function run(input, params, h) {\n  const WAYS = [\"keeps away\", \"chases off\", \"looms over\", \"stands guard\", \"goes along\", \"come together\", \"goes to and changes\", \"comes closer bit by bit\"];\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const listOf = s => String(s == null ? \"\" : s).split(\",\").map(low).filter(w => w && w !== \"-\");\n  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);\n  const d = input.data || {};\n  const memory = input.memory || { used: [] };\n  const choices = d.choices || {}, onStage = d.onStage || [];\n  const call = n => (d.called || {})[n] || n;\n  const value = (who, el) => (choices[who] || {})[el] || 2;\n  const friends = (a, b) => (d.friends || []).some(p => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a));\n  const standIn = who => ((d.standIns || []).find(s => s.of === who) || {}).name || \"\";\n  const verbWays = [[low(params.dominates), listOf(params.dominatesWays)], [low(params.keeps), listOf(params.keepsWays)], [low(params.helps), listOf(params.helpsWays)], [low(params.meets), listOf(params.meetsWays)]];\n  const plan = [], notes = [], unknown = [];\n  const says = s => {\n    const a = call(s.who), b = call(s.whom || \"\"), c = call(s.third || \"\");\n    return cap(s.way === \"keeps away\" ? a + \" keeps away from \" + b : s.way === \"chases off\" ? a + \" chases \" + b + \" off\" : s.way === \"looms over\" ? a + \" looms over \" + b\n      : s.way === \"stands guard\" ? a + \" stands guard between \" + b + \" and \" + c : s.way === \"goes along\" ? a + \" goes along with \" + b : s.way === \"come together\" ? a + \" and \" + b + \" come together\"\n      : s.way === \"goes to and changes\" ? a + \" goes to \" + b + \" and changes \" + b : s.way === \"comes closer bit by bit\" ? a + \" comes closer, bit by bit\" : a + \" moves about in its own way\");\n  };\n  const crossedOut = (way, task) => {\n    const needs = way === \"stands guard\" ? [task.whom, task.third] : way === \"comes closer bit by bit\" ? [] : [task.whom];\n    const away = needs.find(n => !n || onStage.indexOf(n) < 0);\n    if (away !== undefined) return way + \" needs \" + (away ? call(away) + \" on stage\" : \"someone else on stage who isn't a friend\");\n    if ((way === \"chases off\" || way === \"stands guard\") && !(value(task.who, \"speed\") > value(task.whom, \"speed\"))) return way + \": \" + call(task.who) + \" isn't faster than \" + call(task.whom);\n    if (way === \"keeps away\" && value(task.who, \"strangers\") === 3) return way + \": \" + call(task.who) + \" is drawn to strangers\";\n    return \"\";\n  };\n  const bestWhen = (way, task) => {\n    if (way === \"chases off\" && value(task.who, \"size\") > value(task.whom, \"size\")) return \"best when \" + call(task.who) + \" is bigger than \" + call(task.whom);\n    if (way === \"stands guard\" && (d.relations || []).some(r => r.who === task.who && r.whom === task.whom && low(r.verb) === low(params.dominates))) return \"best when \" + call(task.who) + \" dominates \" + call(task.whom);\n    if ((way === \"goes along\" || way === \"come together\") && value(task.who, \"friends\") === 3) return \"best when \" + call(task.who) + \" is drawn to friends\";\n    return \"\";\n  };\n  const pick = (task, ways) => {\n    const ok = [];\n    for (const way of ways) {\n      h.tick();\n      if (WAYS.indexOf(way) < 0) {\n        if (unknown.indexOf(way) < 0) unknown.push(way);\n        continue;\n      }\n      const no = crossedOut(way, task);\n      if (no) {\n        notes.push(\"crossed out \" + no);\n        continue;\n      }\n      ok.push({ way: way, best: bestWhen(way, task), fresh: memory.used.indexOf(way) < 0 });\n    }\n    ok.sort((x, y) => (y.best ? 2 : 0) + (y.fresh ? 1 : 0) - (x.best ? 2 : 0) - (x.fresh ? 1 : 0));\n    if (!ok.length) return { way: \"moves about\", who: task.who, because: task.because + (ways.length ? \"; no way was left\" : \"\") };\n    for (const other of ok.slice(1)) {\n      h.tick();\n      notes.push(other.way + \" was passed over for \" + ok[0].way + (ok[0].best ? \" (\" + ok[0].best + \")\" : ok[0].fresh && !other.fresh ? \" (the film hasn't used it yet)\" : \"\"));\n    }\n    return { way: ok[0].way, who: task.who, whom: task.whom || \"\", third: task.third || \"\", because: task.because + (ok[0].best ? \"; \" + ok[0].best : \"\") };\n  };\n  const shy = listOf(params.shyWords), mean = listOf(params.meanWords);\n  for (const e of d.events || []) {\n    h.tick();\n    const verb = low(e.verb);\n    if (verb === low(params.becomes) && (e.what || []).length) {\n      const feeling = low(e.what[0]), words = feeling === low(params.happy) ? listOf(params.happyWays) : feeling === low(params.sad) ? listOf(params.sadWays) : [];\n      const changes = {};\n      for (const w of words) {\n        h.tick();\n        const el = Object.keys(d.words || {}).find(id => d.words[id][3] === w || d.words[id][2] === w);\n        if (el) changes[el] = d.words[el][3] === w ? 1 : -1;\n        else if (unknown.indexOf(w) < 0) unknown.push(w);\n      }\n      plan.push({ way: \"feels\", who: e.who, feeling: feeling, changes: changes, because: \"\", says: cap(call(e.who)) + \" becomes \" + feeling + \": \" + words.join(\", \") });\n      continue;\n    }\n    if (verb === low(params.changes)) {\n      if (!listOf(e.whom ? params.changesWays : params.selfWays).length && unknown.indexOf(e.verb) < 0) unknown.push(e.verb);\n      const step = e.whom ? pick({ who: e.who, whom: e.whom, because: (e.from || []).join(\" \") + \" → \" + (e.to || []).join(\" \") }, listOf(params.changesWays)) : pick({ who: e.who, because: (e.from || []).join(\" \") + \" → \" + (e.to || []).join(\" \") }, listOf(params.selfWays));\n      step.standIn = standIn(e.whom || e.who);\n      plan.push(step);\n      continue;\n    }\n    const others = onStage.filter(n => n !== e.who && !friends(n, e.who));\n    let ways = [], task = { who: e.who, whom: e.whom, third: e.also, because: e.verb };\n    if ((e.what || []).length) {\n      const word = e.what.find(w => shy.indexOf(low(w)) >= 0 || mean.indexOf(low(w)) >= 0);\n      ways = !word ? [] : shy.indexOf(low(word)) >= 0 ? listOf(params.shyWays) : listOf(params.meanWays);\n      if (word && !ways.length && unknown.indexOf(word) < 0) unknown.push(word);\n      task = { who: e.who, whom: others[0] || \"\", because: word || e.what.join(\", \") };\n    } else {\n      const vw = verbWays.find(x => x[0] === verb);\n      if (vw && vw[1].length) ways = vw[1];\n      else if (unknown.indexOf(verb) < 0) unknown.push(verb);\n    }\n    plan.push(pick(task, ways));\n  }\n  for (const s of plan) {\n    h.tick();\n    if (!s.says) s.says = says(s);\n    if (memory.used.indexOf(s.way) < 0 && s.way !== \"moves about\" && s.way !== \"feels\") memory.used.push(s.way);\n  }\n  const shown = {}, strengths = {};\n  for (const name of onStage.concat((d.standIns || []).map(s => s.name))) {\n    h.tick();\n    if (choices[name]) shown[name] = choices[name];\n    if ((d.strengths || {})[name]) strengths[name] = d.strengths[name];\n  }\n  const say = \"**Scene \" + d.scene + \"'s plan:**\\n\" + plan.map((s, i) => (i + 1) + \". \" + s.says + (s.because ? \" (\" + s.because + \")\" : \"\") + \".\").join(\"\\n\") +\n    (notes.length ? \"\\n\\n\" + cap(notes.join(\"; \")) + \".\" : \"\") + (unknown.length ? \"\\n\\nNobody has taught me a way to show these yet: \" + unknown.join(\", \") + \".\" : \"\");\n  return { scene: d.scene, of: d.of, title: d.title, cast: d.cast, called: d.called, onStage: onStage, plan: plan, ways: plan.map(s => s.way), choices: shown, strengths: strengths, standIns: d.standIns || [],\n    summary: d.summary, looksFrom: d.looksFrom || [], tasteLevel: d.tasteLevel || {}, changeFrames: +params.changeFrames || 0, notes: notes, say: say, memory: memory };\n}",
           "lineMap": [
             {
               "pseudo": [
@@ -6400,8 +6400,8 @@
                 1
               ],
               "js": [
-                81,
-                81
+                82,
+                82
               ]
             },
             {
@@ -6410,152 +6410,152 @@
                 1
               ],
               "js": [
-                91,
+                93,
+                94
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                4,
+                4
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                11,
+                11
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                58,
+                58
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                81,
+                81
+              ]
+            },
+            {
+              "pseudo": [
+                2,
+                2
+              ],
+              "js": [
+                83,
+                87
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                4,
+                4
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                11,
+                11
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                58,
+                58
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                81,
+                81
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                83,
+                87
+              ]
+            },
+            {
+              "pseudo": [
+                4,
+                4
+              ],
+              "js": [
+                4,
+                4
+              ]
+            },
+            {
+              "pseudo": [
+                4,
+                4
+              ],
+              "js": [
+                13,
+                13
+              ]
+            },
+            {
+              "pseudo": [
+                4,
+                4
+              ],
+              "js": [
+                88,
+                90
+              ]
+            },
+            {
+              "pseudo": [
+                4,
+                4
+              ],
+              "js": [
+                92,
                 92
               ]
             },
             {
               "pseudo": [
-                2,
-                2
-              ],
-              "js": [
-                4,
-                4
-              ]
-            },
-            {
-              "pseudo": [
-                2,
-                2
-              ],
-              "js": [
-                11,
-                11
-              ]
-            },
-            {
-              "pseudo": [
-                2,
-                2
-              ],
-              "js": [
-                58,
-                58
-              ]
-            },
-            {
-              "pseudo": [
-                2,
-                2
-              ],
-              "js": [
-                80,
-                80
-              ]
-            },
-            {
-              "pseudo": [
-                2,
-                2
-              ],
-              "js": [
-                82,
-                85
-              ]
-            },
-            {
-              "pseudo": [
-                3,
-                3
-              ],
-              "js": [
-                4,
-                4
-              ]
-            },
-            {
-              "pseudo": [
-                3,
-                3
-              ],
-              "js": [
-                11,
-                11
-              ]
-            },
-            {
-              "pseudo": [
-                3,
-                3
-              ],
-              "js": [
-                58,
-                58
-              ]
-            },
-            {
-              "pseudo": [
-                3,
-                3
-              ],
-              "js": [
-                80,
-                80
-              ]
-            },
-            {
-              "pseudo": [
-                3,
-                3
-              ],
-              "js": [
-                82,
-                85
-              ]
-            },
-            {
-              "pseudo": [
-                4,
-                4
-              ],
-              "js": [
-                4,
-                4
-              ]
-            },
-            {
-              "pseudo": [
-                4,
-                4
-              ],
-              "js": [
-                13,
-                13
-              ]
-            },
-            {
-              "pseudo": [
-                4,
-                4
-              ],
-              "js": [
-                86,
-                88
-              ]
-            },
-            {
-              "pseudo": [
-                4,
-                4
-              ],
-              "js": [
-                90,
-                90
-              ]
-            },
-            {
-              "pseudo": [
                 5,
                 5
               ],
@@ -6580,8 +6580,8 @@
                 5
               ],
               "js": [
-                86,
-                88
+                88,
+                90
               ]
             },
             {
@@ -6590,8 +6590,8 @@
                 5
               ],
               "js": [
-                90,
-                90
+                92,
+                92
               ]
             },
             {
@@ -6620,8 +6620,8 @@
                 6
               ],
               "js": [
-                86,
-                88
+                88,
+                90
               ]
             },
             {
@@ -6630,8 +6630,8 @@
                 6
               ],
               "js": [
-                90,
-                90
+                92,
+                92
               ]
             },
             {
@@ -6660,8 +6660,8 @@
                 7
               ],
               "js": [
-                86,
-                88
+                88,
+                90
               ]
             },
             {
@@ -6670,8 +6670,8 @@
                 7
               ],
               "js": [
-                90,
-                90
+                92,
+                92
               ]
             },
             {
@@ -6701,7 +6701,7 @@
               ],
               "js": [
                 74,
-                79
+                80
               ]
             },
             {
@@ -6970,8 +6970,8 @@
                 14
               ],
               "js": [
-                96,
-                96
+                98,
+                98
               ]
             },
             {
@@ -6980,8 +6980,8 @@
                 15
               ],
               "js": [
-                107,
-                107
+                109,
+                109
               ]
             },
             {
@@ -7010,8 +7010,8 @@
                 16
               ],
               "js": [
-                89,
-                89
+                91,
+                91
               ]
             },
             {
@@ -7020,8 +7020,8 @@
                 16
               ],
               "js": [
-                105,
-                105
+                107,
+                107
               ]
             },
             {
@@ -7060,8 +7060,8 @@
                 17
               ],
               "js": [
-                93,
-                95
+                95,
+                97
               ]
             },
             {
@@ -7070,12 +7070,12 @@
                 17
               ],
               "js": [
-                97,
-                108
+                99,
+                110
               ]
             }
           ],
-          "hash": "3a82806f83b358a8"
+          "hash": "2f5b50b1a8a5f3b4"
         },
         "lastGood": null,
         "status": "ok",
@@ -7092,7 +7092,7 @@
         "note": "turns the plan into a Logo film, and says which frames show what",
         "gate": false,
         "collect": false,
-        "pseudocode": "each character's shape comes from its shape and detail, in Ken's classes of shapes (simple, medium, fancy; - is an empty cell):\n  smooth: {circle, -, flower} · medium: {square, pentagon, -} · pointed: {triangle, star, nine-point star}\nif its cell is empty, the weaker of the two choices is made again: its next strongest value that has a shape\na shape has {1, 2, 3} outlines, one inside another, when its detail is simple, medium or fancy\nsize: {14, 22, 32} steps across from the middle; brightness is {55, 80, 100} percent of its color\nwarmth picks the color: cool {blue, purple}, medium {green, gray}, warm {orange, yellow, red, pink}, and each character keeps the first one that nobody else in the film has\nwhen no expert said anything about looks, use Ken's 1978 shapes and colors, in the Cast's order: {star, square, circle, triangle} in {green, red, orange, yellow}\na character moves {5, 10, 16} steps a frame; curves wave its path up to {0, 10, 22} steps; jerkiness jolts it {0, 3, 8} steps\nliveliness turns it {3, 12, 30} degrees a frame; height puts it {-50, 0, 50} steps up; one that moves about turns {3, 2, 1} times, from aimless to purposeful\nshow the plan's steps one after another, but when complexity isn't low, a feeling shows during the step before\nat most {32} frames, {4} a second: when the steps need more, each gets fewer\nthe guard stops {2} tries to get past, and the last one almost works\nnames under the characters: {yes} · the screen is {black}, like Ani's television\nwrite one Logo program: a TO procedure for each character's look, and a FOR loop for each step, with a comment saying what it shows\nkeep the program under 3,900 characters: when it is longer, leave out the comments, then the names, then the last steps, and say so\nsay which frames show what, and how each character looks",
+        "pseudocode": "each character's shape comes from its shape and detail, in Ken's classes of shapes (simple, medium, fancy; - is an empty cell):\n  smooth: {circle, -, flower} · medium: {square, pentagon, -} · pointed: {triangle, star, nine-point star}\nif its cell is empty, the weaker of the two choices is made again: its next strongest value that has a shape\na shape has {1, 2, 3} outlines, one inside another, when its detail is simple, medium or fancy\nsize: {24, 36, 52} steps across from the middle; brightness is {55, 80, 100} percent of its color\nwarmth picks the color: cool {blue, purple}, medium {green, gray}, warm {orange, yellow, red, pink}, and each character keeps the first one that nobody else in the film has\nwhen no expert said anything about looks, use Ken's 1978 shapes and colors, in the Cast's order: {star, square, circle, triangle} in {green, red, orange, yellow}\na character moves {5, 10, 16} steps a frame; curves wave its path up to {0, 10, 22} steps; jerkiness jolts it {0, 3, 8} steps\nliveliness turns it {3, 12, 30} degrees a frame; height puts it {-50, 0, 50} steps up; one that moves about turns {3, 2, 1} times, from aimless to purposeful\nshow the plan's steps one after another, but when complexity isn't low, a feeling shows during the step before\nat most {32} frames, {4} a second: when the steps need more, each gets fewer\nthe guard stops {2} tries to get past, and the last one almost works\nnames under the characters: {yes} · the screen is {black}, like Ani's television\nwrite one Logo program: a TO procedure for each character's look, and a FOR loop for each step, with a comment saying what it shows\nkeep the program under 3,900 characters: when it is longer, leave out the comments, then the names, then the last steps, and say so\nsay which frames show what, and how each character looks",
         "params": {
           "smooth": "circle, -, flower",
           "middle": "square, pentagon, -",
@@ -7103,9 +7103,9 @@
             3
           ],
           "sizes": [
-            14,
-            22,
-            32
+            24,
+            36,
+            52
           ],
           "lights": [
             55,
@@ -7176,7 +7176,7 @@
           },
           {
             "line": 5,
-            "text": "14, 22, 32",
+            "text": "24, 36, 52",
             "param": "sizes"
           },
           {
@@ -7883,8 +7883,8 @@
           }
         ],
         "code": {
-          "pseudocode": "each character's shape comes from its shape and detail, in Ken's classes of shapes (simple, medium, fancy; - is an empty cell):\n  smooth: {circle, -, flower} · medium: {square, pentagon, -} · pointed: {triangle, star, nine-point star}\nif its cell is empty, the weaker of the two choices is made again: its next strongest value that has a shape\na shape has {1, 2, 3} outlines, one inside another, when its detail is simple, medium or fancy\nsize: {14, 22, 32} steps across from the middle; brightness is {55, 80, 100} percent of its color\nwarmth picks the color: cool {blue, purple}, medium {green, gray}, warm {orange, yellow, red, pink}, and each character keeps the first one that nobody else in the film has\nwhen no expert said anything about looks, use Ken's 1978 shapes and colors, in the Cast's order: {star, square, circle, triangle} in {green, red, orange, yellow}\na character moves {5, 10, 16} steps a frame; curves wave its path up to {0, 10, 22} steps; jerkiness jolts it {0, 3, 8} steps\nliveliness turns it {3, 12, 30} degrees a frame; height puts it {-50, 0, 50} steps up; one that moves about turns {3, 2, 1} times, from aimless to purposeful\nshow the plan's steps one after another, but when complexity isn't low, a feeling shows during the step before\nat most {32} frames, {4} a second: when the steps need more, each gets fewer\nthe guard stops {2} tries to get past, and the last one almost works\nnames under the characters: {yes} · the screen is {black}, like Ani's television\nwrite one Logo program: a TO procedure for each character's look, and a FOR loop for each step, with a comment saying what it shows\nkeep the program under 3,900 characters: when it is longer, leave out the comments, then the names, then the last steps, and say so\nsay which frames show what, and how each character looks",
-          "js": "function run(input, params, h) {\n  const d = input.data || {};\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const listOf = s => String(s == null ? \"\" : s).split(\",\").map(low);\n  const three = (v, x) => (Array.isArray(v) && v.length === 3 ? v.map(Number) : x);\n  const r1 = v => Math.round(v * 10) / 10;\n  const call = n => (d.called || {})[n] || n;\n  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);\n  const SHAPES = { circle: [16, 22.5], square: [4, 90], pentagon: [5, 72], triangle: [3, 120], star: [5, 144], \"nine-point star\": [9, 160], flower: [6, 60] };\n  const HUES = { red: [255, 70, 60], orange: [255, 150, 40], yellow: [250, 220, 50], green: [70, 210, 80], blue: [100, 160, 255], purple: [180, 100, 240], pink: [255, 130, 200], white: [240, 240, 240], gray: [160, 160, 160], brown: [190, 120, 60] };\n  const table = [listOf(params.smooth), listOf(params.middle), listOf(params.pointed)];\n  const outlines = three(params.outlines, [1, 2, 3]), sizes = three(params.sizes, [14, 22, 32]), lights = three(params.lights, [55, 80, 100]);\n  const hues = [listOf(params.cool), listOf(params.mild), listOf(params.warm)], kens = listOf(params.kens), kensColors = listOf(params.kensColors);\n  const speeds = three(params.speeds, [5, 10, 16]), waves = three(params.waves, [0, 10, 22]), jolts = three(params.jolts, [0, 3, 8]);\n  const spins = three(params.spins, [3, 12, 30]), heights = three(params.heights, [-50, 0, 50]), turns = three(params.turns, [3, 2, 1]);\n  const choices = d.choices || {}, strengths = d.strengths || {}, ken = (d.looksFrom || []).length === 0;\n  const screen = low(params.screen) === \"black\";\n  const color = (hue, light) => \"[\" + (HUES[hue] || HUES.gray).map(c => Math.round(c * light / 100)).join(\" \") + \"]\";\n  const nameOf = (shape, detail) => (table[shape - 1] || [])[detail - 1] || \"-\";\n  const notes = [], figures = [], current = {}, pos = {};\n  const memory = input.memory || {};\n  memory.colors = memory.colors || {};\n  const hueFor = (of, list) => {\n    if (list.indexOf(memory.colors[of]) >= 0) return memory.colors[of];\n    const taken = Object.keys(memory.colors).filter(n => n !== of).map(n => memory.colors[n]);\n    const hue = list.find(c => taken.indexOf(c) < 0) || list.slice().sort((a, b) => taken.filter(c => c === a).length - taken.filter(c => c === b).length)[0] || \"gray\";\n    memory.colors[of] = hue;\n    return hue;\n  };\n  const level = (v, el, by) => Math.max(1, Math.min(3, (v[el] || 2) + (by || 0))) - 1;\n  const figure = (name, of) => {\n    const v = choices[name] || {};\n    const f = { name: name, of: of, id: figures.length + 1, v: v, proc: \"C_\" + Array.from(name.toUpperCase()).map(c => (c.toLowerCase() !== c.toUpperCase() || (c >= \"0\" && c <= \"9\") ? c : \"_\")).join(\"\") };\n    let shape = v.shape || 2, detail = v.detail || 2, kind = nameOf(shape, detail);\n    if (ken) {\n      const i = Math.max(0, (d.cast || []).indexOf(of)) % Math.max(1, kens.length);\n      f.kind = SHAPES[kens[i]] ? kens[i] : \"star\";\n      f.outlines = outlines[0];\n      f.r = sizes[1];\n      f.hue = kensColors[i % Math.max(1, kensColors.length)];\n      f.light = 100;\n      f.looks = f.hue + \" \" + f.kind;\n    } else {\n      if (!SHAPES[kind]) {\n        const s = strengths[name] || {};\n        const margin = (nets, val) => (nets ? nets[val - 1] - nets.filter((x, j) => j !== val - 1).reduce((a, b) => Math.max(a, b), -1e9) : 0);\n        const order = (nets, val) => [1, 2, 3].filter(x => x !== val).sort((a, b) => (nets ? nets[b - 1] - nets[a - 1] : 0));\n        const tries = margin(s.detail, detail) <= margin(s.shape, shape) ? [[\"detail\", order(s.detail, detail)], [\"shape\", order(s.shape, shape)]] : [[\"shape\", order(s.shape, shape)], [\"detail\", order(s.detail, detail)]];\n        for (const t of tries) {\n          h.tick();\n          const again = t[1].find(x => SHAPES[t[0] === \"detail\" ? nameOf(shape, x) : nameOf(x, detail)]);\n          if (again === undefined || SHAPES[kind]) continue;\n          if (t[0] === \"detail\") detail = again;\n          else shape = again;\n          kind = nameOf(shape, detail);\n          notes.push(cap(call(of)) + (of !== name ? \" after the change\" : \"\") + \" is \" + [\"smooth\", \"medium\", \"pointed\"][(v.shape || 2) - 1] + \" with \" + [\"simple\", \"medium\", \"fancy\"][(v.detail || 2) - 1] + \" detail, and no shape is both, so the weaker choice, \" + t[0] + \", was made again: \" + kind + \".\");\n        }\n      }\n      f.kind = SHAPES[kind] ? kind : \"circle\";\n      f.outlines = outlines[detail - 1];\n      f.r = sizes[level(v, \"size\")];\n      f.hue = hueFor(of, hues[level(v, \"warmth\")]);\n      f.light = lights[level(v, \"brightness\")];\n      f.looks = [\"small\", \"medium-sized\", \"big\"][level(v, \"size\")] + \" \" + [\"dim \", \"\", \"bright \"][level(v, \"brightness\")] + f.hue + \" \" + f.kind;\n    }\n    f.speed = speeds[level(v, \"speed\")];\n    f.wave = waves[level(v, \"curves\")];\n    f.jolt = jolts[level(v, \"jerkiness\")];\n    f.spin = spins[level(v, \"liveliness\")];\n    f.turns = turns[level(v, \"purpose\")];\n    f.color = color(f.hue, f.light);\n    figures.push(f);\n    return f;\n  };\n  const onStage = (d.onStage || []).filter(n => choices[n]);\n  onStage.forEach((n, i) => {\n    const f = figure(n, n);\n    current[n] = f;\n    pos[f.id] = { x: onStage.length === 1 ? 0 : -160 + 320 * i / (onStage.length - 1), y: heights[level(f.v, \"height\")] };\n  });\n  const afterOf = {};\n  for (const s of d.standIns || []) {\n    h.tick();\n    if (choices[s.name] && current[s.of]) afterOf[s.of] = figure(s.name, s.of);\n  }\n  const segs = [];\n  const side = (a, b) => (pos[a.id].x <= pos[b.id].x ? 1 : -1);\n  const clampX = x => Math.max(-225, Math.min(225, x));\n  const frames = (dist, speed) => Math.max(3, Math.min(24, Math.round(dist / Math.max(1, speed))));\n  const line = (f, x1, y1) => ({ x0: pos[f.id].x, y0: pos[f.id].y, x1: clampX(x1), y1: y1 });\n  const dist = (f, x1, y1) => Math.sqrt((pos[f.id].x - x1) * (pos[f.id].x - x1) + (pos[f.id].y - y1) * (pos[f.id].y - y1));\n  const seg = (step, n, moves, extra) => {\n    const from = {};\n    for (const f of figures) {\n      h.tick();\n      if (pos[f.id]) from[f.id] = { x0: pos[f.id].x, y0: pos[f.id].y, x1: pos[f.id].x, y1: pos[f.id].y };\n    }\n    for (const id of Object.keys(moves)) {\n      h.tick();\n      const mv = moves[id];\n      if (mv.x1 === undefined) continue;\n      from[id] = mv;\n      pos[id] = { x: mv.x1, y: mv.y1 };\n    }\n    const s = { step: step, n: n, moves: moves, from: from, makes: \"\", before: [], after: [] };\n    for (const k of Object.keys(extra || {})) {\n      h.tick();\n      s[k] = extra[k];\n    }\n    segs.push(s);\n    return s;\n  };\n  const lowLevel = (d.tasteLevel || {}).complexity === 1;\n  (d.plan || []).forEach((p, i) => {\n    const a = current[p.who], b = current[p.whom], c = current[p.third], m = {}, m2 = {};\n    if (!a) return;\n    if (p.way === \"feels\") {\n      const ch = p.changes || {}, v = {};\n      for (const el of Object.keys(a.v)) {\n        h.tick();\n        v[el] = a.v[el];\n      }\n      for (const el of Object.keys(ch)) {\n        h.tick();\n        v[el] = level(v, el, ch[el]) + 1;\n      }\n      a.v = v;\n      a.speed = speeds[level(v, \"speed\")];\n      const makes = \"MAKE \\\"S\" + a.id + \" \" + spins[level(v, \"liveliness\")] + \" MAKE \\\"W\" + a.id + \" \" + waves[level(v, \"curves\")] + \" MAKE \\\"J\" + a.id + \" \" + jolts[level(v, \"jerkiness\")] + (ken || !ch.brightness ? \"\" : \" MAKE \\\"C\" + a.id + \" \" + color(a.hue, lights[level(v, \"brightness\")]));\n      if (!lowLevel && segs.length) {\n        const first = segs.find(s => s.step === segs[segs.length - 1].step);\n        first.makes += (first.makes ? \" \" : \"\") + makes;\n        first.also = (first.also || []).concat([i]);\n        return;\n      }\n      m[a.id] = { orbit: true };\n      seg(i, frames(110, a.speed), m, { makes: makes });\n      return;\n    }\n    if (p.way === \"keeps away\" && b) {\n      m[a.id] = line(a, pos[a.id].x - side(a, b) * 100, pos[a.id].y + 15);\n      seg(i, frames(100, a.speed), m);\n    } else if (p.way === \"chases off\" && b) {\n      const s = side(a, b), n1 = frames(Math.abs(pos[b.id].x - pos[a.id].x), Math.max(2, a.speed - b.speed));\n      m[b.id] = line(b, pos[b.id].x + s * b.speed * n1, pos[b.id].y);\n      m[a.id] = line(a, m[b.id].x1 - s * 45, pos[b.id].y);\n      seg(i, n1, m);\n      m2[a.id] = line(a, s * 190, pos[b.id].y);\n      m2[b.id] = line(b, s * 235, pos[b.id].y);\n      seg(i, frames(Math.abs(s * 190 - pos[a.id].x), a.speed), m2);\n    } else if (p.way === \"looms over\" && b) {\n      m[a.id] = line(a, pos[b.id].x, pos[b.id].y + 70);\n      seg(i, frames(dist(a, pos[b.id].x, pos[b.id].y + 70), a.speed), m);\n    } else if (p.way === \"stands guard\" && b && c) {\n      const mx = (pos[b.id].x + pos[c.id].x) / 2, my = (pos[b.id].y + pos[c.id].y) / 2;\n      m[a.id] = line(a, mx, my);\n      seg(i, frames(dist(a, mx, my), a.speed), m);\n      const dir = pos[b.id].x <= mx ? 1 : -1, gap = Math.abs(mx - pos[b.id].x), tries = Math.max(1, Math.min(5, +params.tries || 2));\n      for (let t = 1; t <= tries; t++) {\n        h.tick();\n        const mt = {};\n        mt[b.id] = { tryX: dir * (t === tries ? gap - 14 : gap - 42) };\n        mt[a.id] = { tryX: -dir * 10 };\n        seg(i, 6, mt);\n      }\n    } else if (p.way === \"goes along\" && b) {\n      const s = side(a, b), dx = pos[b.id].x > 0 ? -60 : 60;\n      m[a.id] = line(a, pos[b.id].x - s * 50, pos[b.id].y);\n      seg(i, frames(dist(a, pos[b.id].x - s * 50, pos[b.id].y), a.speed), m);\n      m2[a.id] = line(a, pos[a.id].x + dx, pos[a.id].y);\n      m2[b.id] = line(b, pos[b.id].x + dx, pos[b.id].y);\n      seg(i, 6, m2);\n    } else if (p.way === \"come together\" && b) {\n      const s = side(a, b), mx = (pos[a.id].x + pos[b.id].x) / 2, my = (pos[a.id].y + pos[b.id].y) / 2;\n      const n = Math.max(frames(dist(a, mx, my), a.speed), frames(dist(b, mx, my), b.speed));\n      m[a.id] = line(a, mx - s * 28, my);\n      m[b.id] = line(b, mx + s * 28, my);\n      seg(i, n, m);\n      m2[a.id] = { pulse: true };\n      m2[b.id] = { pulse: true };\n      seg(i, 2, m2);\n    } else if (p.way === \"goes to and changes\" && b) {\n      const s = side(a, b), g = afterOf[p.whom];\n      m[a.id] = line(a, pos[b.id].x - s * 55, pos[b.id].y);\n      const s1 = seg(i, frames(dist(a, pos[b.id].x - s * 55, pos[b.id].y), a.speed), m);\n      if (g) {\n        pos[g.id] = pos[b.id];\n        if (+d.changeFrames > 0) {\n          m2[b.id] = { morph: g.id };\n          seg(i, Math.max(2, +d.changeFrames), m2);\n        } else s1.after.push([p.whom, g]);\n        current[p.whom] = g;\n      }\n    } else if (p.way === \"comes closer bit by bit\") {\n      const g = afterOf[p.who];\n      const near = onStage.map(n => current[n]).filter(f => f && f.of !== a.of).sort((x, y) => Math.abs(pos[x.id].x - pos[a.id].x) - Math.abs(pos[y.id].x - pos[a.id].x))[0];\n      const tx = near ? (pos[a.id].x + pos[near.id].x) / 2 : pos[a.id].x, ty = near ? (pos[a.id].y + pos[near.id].y) / 2 : pos[a.id].y;\n      m[a.id] = line(a, tx, ty);\n      if (g && +d.changeFrames > 0) m[a.id].morph = g.id;\n      const s1 = seg(i, g && +d.changeFrames > 0 ? Math.max(4, +d.changeFrames) : frames(dist(a, tx, ty), a.speed), m);\n      if (g) {\n        if (!(+d.changeFrames > 0)) s1.before.push([p.who, g]);\n        pos[g.id] = pos[a.id];\n        current[p.who] = g;\n      }\n    } else {\n      m[a.id] = { orbit: true };\n      seg(i, frames(110, a.speed), m);\n    }\n  });\n  const most = Math.max(4, +params.maxFrames || 32), wanted = segs.reduce((t, s) => t + s.n, 0);\n  if (wanted > most) {\n    for (const s of segs) {\n      h.tick();\n      s.n = Math.max(2, Math.floor(s.n * most / wanted));\n    }\n  }\n  const num = v => String(r1(v));\n  const lin = (a, b, n) => (r1(a) === r1(b) ? num(a) : num(a) + (b >= a ? \" + \" : \" - \") + num(Math.abs(b - a) / n) + \" * :T\");\n  const wait = Math.max(1, Math.round(60 / Math.max(1, +params.perSecond || 4)));\n  const write = (comments, names, keep) => {\n    let logo = comments ? \"; Scene \" + d.scene + \" of \" + d.of + \": \" + d.title + \"\\n; Each TO draws one character: :T counts the frames, and :F is its size (1 is normal).\\n\" : \"\";\n    logo += \"SETLABELHEIGHT 11\\n\";\n    if (screen) logo += \"TO SCREEN\\nSETPC \\\"black SETPENSIZE 100 REPEAT 4 [PU SETXY -256 96 * REPCOUNT - 240 PD SETXY 256 96 * REPCOUNT - 240] SETPENSIZE 3\\nEND\\n\";\n    logo += \"TO SHAPE :X :Y :R :K :N :A :D\\nMAKE \\\"S 2 * :R * SIN (:A / 2)\\nREPEAT :D [PU SETXY :X + :R * SIN :K :Y + :R * COS :K SETH :K + 90 + :A / 2 PD REPEAT :N [FD :S RT :A] MAKE \\\"R :R * 0.7 MAKE \\\"S :S * 0.7]\\nEND\\n\";\n    if (figures.some(f => f.kind === \"flower\")) logo += \"TO FLOWER :X :Y :R :K :D\\nREPEAT 6 [SHAPE :X + :R / 2 * SIN (:K + 60 * REPCOUNT) :Y + :R / 2 * COS (:K + 60 * REPCOUNT) :R / 2 :K 6 60 1] SHAPE :X :Y :R / 3 :K 6 60 :D\\nEND\\n\";\n    for (const f of figures) {\n      h.tick();\n      const at = \":X + :J\" + f.id + \" * REMAINDER :T 2 :Y \" + f.r + \" * :F :S\" + f.id + \" * :T \";\n      logo += \"TO \" + f.proc + \" :X :Y :T :F\\n\" + (comments ? \"; \" + f.name + \": \" + f.looks + \"\\n\" : \"\") + \"MAKE \\\"Y :Y + :W\" + f.id + \" * SIN (40 * :T)\\nSETPC :C\" + f.id + \" \" + (f.kind === \"flower\" ? \"FLOWER \" + at + f.outlines : \"SHAPE \" + at + SHAPES[f.kind].join(\" \") + \" \" + f.outlines) + \"\\n\" +\n        (names && params.names !== false ? \"PU SETXY :X - \" + 3 * f.of.length + \" :Y - \" + (f.r + 18) + \" SETPC \\\"\" + (screen ? \"silver\" : \"gray\") + \" LABEL [\" + f.of + \"]\\n\" : \"\") + \"END\\n\";\n    }\n    logo += figures.map(f => \"MAKE \\\"C\" + f.id + \" \" + f.color + \" MAKE \\\"W\" + f.id + \" \" + f.wave + \" MAKE \\\"J\" + f.id + \" \" + f.jolt + \" MAKE \\\"S\" + f.id + \" \" + f.spin).join(\"\\n\") + \"\\n\";\n    const shown = new Map(onStage.map(n => [n, figures.find(f => f.name === n)]));\n    let at = 0;\n    for (const s of segs.slice(0, keep)) {\n      h.tick();\n      for (const sw of s.before) {\n        h.tick();\n        shown.set(sw[0], sw[1]);\n      }\n      const step = (d.plan || [])[s.step] || {};\n      if (comments) logo += \"; frames \" + (at + 1) + \"-\" + (at + s.n) + \": \" + step.says + (s.also ? \"; \" + s.also.map(j => (d.plan[j] || {}).says).join(\"; \") : \"\") + \"\\n\";\n      if (s.makes) logo += s.makes + \"\\n\";\n      let body = \"CS\" + (screen ? \" SCREEN\" : \"\");\n      const t = at ? \":T + \" + at : \":T\";\n      for (const n of onStage) {\n        h.tick();\n        const f = shown.get(n), mv = s.moves[f.id] || {}, p = s.from[f.id] || { x0: 0, y0: 0, x1: 0, y1: 0 };\n        const x = lin(p.x0, p.x1, s.n), y = lin(p.y0, p.y1, s.n);\n        if (mv.morph) {\n          const g = figures.find(e => e.id === mv.morph), half = Math.ceil(s.n / 2);\n          body += \" IFELSE :T < \" + (half + 1) + \" [\" + f.proc + \" \" + x + \" \" + y + \" \" + t + \" 1 - \" + r1(0.7 / half) + \" * :T] [\" + g.proc + \" \" + x + \" \" + y + \" \" + t + \" 0.3 + \" + r1(0.7 / Math.max(1, s.n - half)) + \" * (:T - \" + half + \")]\";\n          shown.set(n, g);\n        } else if (mv.orbit) body += \" \" + f.proc + \" \" + num(p.x0) + \" + 40 * SIN (\" + r1(360 * f.turns / s.n) + \" * :T) \" + num(p.y0) + \" + 25 * SIN (\" + r1(720 * f.turns / s.n) + \" * :T) \" + t + \" 1\";\n        else if (mv.tryX !== undefined) body += \" \" + f.proc + \" \" + num(p.x0) + \" + \" + num(mv.tryX) + \" * SIN (\" + r1(180 / s.n) + \" * :T) \" + num(p.y0) + \" \" + t + \" 1\";\n        else body += \" \" + f.proc + \" \" + x + \" \" + y + \" \" + t + (mv.pulse ? \" 1 + 0.3 * (2 - :T)\" : \" 1\");\n      }\n      logo += \"FOR [T 1 \" + s.n + \"] [\" + body + \" WAIT \" + wait + \"]\\n\";\n      for (const sw of s.after) {\n        h.tick();\n        shown.set(sw[0], sw[1]);\n      }\n      at += s.n;\n    }\n    return logo;\n  };\n  let keep = segs.length, logo = write(true, true, keep);\n  const left = [];\n  if (logo.length > 3900) {\n    logo = write(false, true, keep);\n    left.push(\"the comments\");\n  }\n  if (logo.length > 3900) {\n    logo = write(false, false, keep);\n    left.push(\"the names\");\n  }\n  while (logo.length > 3900 && keep > 1) {\n    h.tick();\n    keep--;\n    logo = write(false, false, keep);\n  }\n  if (keep < segs.length) left.push(\"the last \" + (segs.length - keep) + \" parts of the plan\");\n  const steps = [];\n  let at = 0;\n  for (const s of segs.slice(0, keep)) {\n    h.tick();\n    const what = ((d.plan || [])[s.step] || {}).says + (s.also ? \"; \" + s.also.map(j => (d.plan[j] || {}).says).join(\"; \") : \"\");\n    if (steps.length && steps[steps.length - 1].step === s.step) steps[steps.length - 1].to = at + s.n;\n    else steps.push({ step: s.step, from: at + 1, to: at + s.n, what: what });\n    at += s.n;\n  }\n  const perSecond = Math.max(1, +params.perSecond || 4), looks = {};\n  for (const f of figures) {\n    h.tick();\n    looks[f.name] = f.looks;\n  }\n  let say = \"**Scene \" + d.scene + \" of \" + d.of + \": \" + at + \" frames, \" + perSecond + \" a second (\" + r1(at / perSecond) + \" seconds).**\\n\" + steps.map(s => \"- frames \" + s.from + \"–\" + s.to + \": \" + s.what).join(\"\\n\");\n  say += ken ? \"\\n\\nNo expert said anything about looks, so they look as Ken drew them in 1978, in the Cast's order: \" + figures.filter(f => f.name === f.of).map(f => call(f.name) + \" a \" + f.looks).join(\", \") + \".\"\n    : \"\\n\\n**How they look:** \" + figures.map(f => call(f.name) + \": \" + f.looks + (f.outlines > 1 ? \" (\" + f.outlines + \" outlines)\" : \"\")).join(\"; \") + \".\";\n  if (notes.length) say += \"\\n\\n\" + notes.join(\" \");\n  if (wanted > most) say += \"\\n\\nThe plan needed \" + wanted + \" frames, so each part got fewer, to stay within \" + most + \".\";\n  if (left.length) say += \"\\n\\nThe program was too long, so I left out \" + left.join(\", \") + \".\";\n  return { program: logo, fits: logo.length <= 3900, frames: at, seconds: r1(at / perSecond), steps: steps.map(s => ({ from: s.from, to: s.to, what: s.what })), looks: looks, say: say, memory: memory };\n}",
+          "pseudocode": "each character's shape comes from its shape and detail, in Ken's classes of shapes (simple, medium, fancy; - is an empty cell):\n  smooth: {circle, -, flower} · medium: {square, pentagon, -} · pointed: {triangle, star, nine-point star}\nif its cell is empty, the weaker of the two choices is made again: its next strongest value that has a shape\na shape has {1, 2, 3} outlines, one inside another, when its detail is simple, medium or fancy\nsize: {24, 36, 52} steps across from the middle; brightness is {55, 80, 100} percent of its color\nwarmth picks the color: cool {blue, purple}, medium {green, gray}, warm {orange, yellow, red, pink}, and each character keeps the first one that nobody else in the film has\nwhen no expert said anything about looks, use Ken's 1978 shapes and colors, in the Cast's order: {star, square, circle, triangle} in {green, red, orange, yellow}\na character moves {5, 10, 16} steps a frame; curves wave its path up to {0, 10, 22} steps; jerkiness jolts it {0, 3, 8} steps\nliveliness turns it {3, 12, 30} degrees a frame; height puts it {-50, 0, 50} steps up; one that moves about turns {3, 2, 1} times, from aimless to purposeful\nshow the plan's steps one after another, but when complexity isn't low, a feeling shows during the step before\nat most {32} frames, {4} a second: when the steps need more, each gets fewer\nthe guard stops {2} tries to get past, and the last one almost works\nnames under the characters: {yes} · the screen is {black}, like Ani's television\nwrite one Logo program: a TO procedure for each character's look, and a FOR loop for each step, with a comment saying what it shows\nkeep the program under 3,900 characters: when it is longer, leave out the comments, then the names, then the last steps, and say so\nsay which frames show what, and how each character looks",
+          "js": "function run(input, params, h) {\n  const d = input.data || {};\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const listOf = s => String(s == null ? \"\" : s).split(\",\").map(low);\n  const three = (v, x) => (Array.isArray(v) && v.length === 3 ? v.map(Number) : x);\n  const r1 = v => Math.round(v * 10) / 10;\n  const call = n => (d.called || {})[n] || n;\n  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);\n  const SHAPES = { circle: [16, 22.5], square: [4, 90], pentagon: [5, 72], triangle: [3, 120], star: [5, 144], \"nine-point star\": [9, 160], flower: [6, 60] };\n  const HUES = { red: [255, 70, 60], orange: [255, 150, 40], yellow: [250, 220, 50], green: [70, 210, 80], blue: [100, 160, 255], purple: [180, 100, 240], pink: [255, 130, 200], white: [240, 240, 240], gray: [160, 160, 160], brown: [190, 120, 60] };\n  const table = [listOf(params.smooth), listOf(params.middle), listOf(params.pointed)];\n  const outlines = three(params.outlines, [1, 2, 3]), sizes = three(params.sizes, [14, 22, 32]), lights = three(params.lights, [55, 80, 100]);\n  const hues = [listOf(params.cool), listOf(params.mild), listOf(params.warm)], kens = listOf(params.kens), kensColors = listOf(params.kensColors);\n  const speeds = three(params.speeds, [5, 10, 16]), waves = three(params.waves, [0, 10, 22]), jolts = three(params.jolts, [0, 3, 8]);\n  const spins = three(params.spins, [3, 12, 30]), heights = three(params.heights, [-50, 0, 50]), turns = three(params.turns, [3, 2, 1]);\n  const choices = d.choices || {}, strengths = d.strengths || {}, ken = (d.looksFrom || []).length === 0;\n  const screen = low(params.screen) === \"black\";\n  const color = (hue, light) => \"[\" + (HUES[hue] || HUES.gray).map(c => Math.round(c * light / 100)).join(\" \") + \"]\";\n  const nameOf = (shape, detail) => (table[shape - 1] || [])[detail - 1] || \"-\";\n  const notes = [], figures = [], current = {}, pos = {};\n  const memory = input.memory || {};\n  memory.colors = memory.colors || {};\n  const hueFor = (of, list) => {\n    if (list.indexOf(memory.colors[of]) >= 0) return memory.colors[of];\n    const taken = Object.keys(memory.colors).filter(n => n !== of).map(n => memory.colors[n]);\n    const hue = list.find(c => taken.indexOf(c) < 0) || list.slice().sort((a, b) => taken.filter(c => c === a).length - taken.filter(c => c === b).length)[0] || \"gray\";\n    memory.colors[of] = hue;\n    return hue;\n  };\n  const level = (v, el, by) => Math.max(1, Math.min(3, (v[el] || 2) + (by || 0))) - 1;\n  const figure = (name, of) => {\n    const v = choices[name] || {};\n    const f = { name: name, of: of, id: figures.length + 1, v: v, proc: \"C_\" + Array.from(name.toUpperCase()).map(c => (c.toLowerCase() !== c.toUpperCase() || (c >= \"0\" && c <= \"9\") ? c : \"_\")).join(\"\") };\n    let shape = v.shape || 2, detail = v.detail || 2, kind = nameOf(shape, detail);\n    if (ken) {\n      const i = Math.max(0, (d.cast || []).indexOf(of)) % Math.max(1, kens.length);\n      f.kind = SHAPES[kens[i]] ? kens[i] : \"star\";\n      f.outlines = outlines[0];\n      f.r = sizes[1];\n      f.hue = kensColors[i % Math.max(1, kensColors.length)];\n      f.light = 100;\n      f.looks = f.hue + \" \" + f.kind;\n    } else {\n      if (!SHAPES[kind]) {\n        const s = strengths[name] || {};\n        const margin = (nets, val) => (nets ? nets[val - 1] - nets.filter((x, j) => j !== val - 1).reduce((a, b) => Math.max(a, b), -1e9) : 0);\n        const order = (nets, val) => [1, 2, 3].filter(x => x !== val).sort((a, b) => (nets ? nets[b - 1] - nets[a - 1] : 0));\n        const tries = margin(s.detail, detail) <= margin(s.shape, shape) ? [[\"detail\", order(s.detail, detail)], [\"shape\", order(s.shape, shape)]] : [[\"shape\", order(s.shape, shape)], [\"detail\", order(s.detail, detail)]];\n        for (const t of tries) {\n          h.tick();\n          const again = t[1].find(x => SHAPES[t[0] === \"detail\" ? nameOf(shape, x) : nameOf(x, detail)]);\n          if (again === undefined || SHAPES[kind]) continue;\n          if (t[0] === \"detail\") detail = again;\n          else shape = again;\n          kind = nameOf(shape, detail);\n          notes.push(cap(call(of)) + (of !== name ? \" after the change\" : \"\") + \" is \" + [\"smooth\", \"medium\", \"pointed\"][(v.shape || 2) - 1] + \" with \" + [\"simple\", \"medium\", \"fancy\"][(v.detail || 2) - 1] + \" detail, and no shape is both, so the weaker choice, \" + t[0] + \", was made again: \" + kind + \".\");\n        }\n      }\n      f.kind = SHAPES[kind] ? kind : \"circle\";\n      f.outlines = outlines[detail - 1];\n      f.r = sizes[level(v, \"size\")];\n      f.hue = hueFor(of, hues[level(v, \"warmth\")]);\n      f.light = lights[level(v, \"brightness\")];\n      f.looks = [\"small\", \"medium-sized\", \"big\"][level(v, \"size\")] + \" \" + [\"dim \", \"\", \"bright \"][level(v, \"brightness\")] + f.hue + \" \" + f.kind;\n    }\n    f.speed = speeds[level(v, \"speed\")];\n    f.wave = waves[level(v, \"curves\")];\n    f.jolt = jolts[level(v, \"jerkiness\")];\n    f.spin = spins[level(v, \"liveliness\")];\n    f.turns = turns[level(v, \"purpose\")];\n    f.color = color(f.hue, f.light);\n    figures.push(f);\n    return f;\n  };\n  const onStage = (d.onStage || []).filter(n => choices[n]);\n  onStage.forEach((n, i) => {\n    const f = figure(n, n);\n    current[n] = f;\n    pos[f.id] = { x: onStage.length === 1 ? 0 : -160 + 320 * i / (onStage.length - 1), y: heights[level(f.v, \"height\")] };\n  });\n  const afterOf = {};\n  for (const s of d.standIns || []) {\n    h.tick();\n    if (choices[s.name] && current[s.of]) afterOf[s.of] = figure(s.name, s.of);\n  }\n  const segs = [];\n  const side = (a, b) => (pos[a.id].x <= pos[b.id].x ? 1 : -1);\n  const clampX = x => Math.max(-225, Math.min(225, x));\n  const frames = (dist, speed) => Math.max(3, Math.min(24, Math.round(dist / Math.max(1, speed))));\n  const line = (f, x1, y1) => ({ x0: pos[f.id].x, y0: pos[f.id].y, x1: clampX(x1), y1: y1 });\n  const dist = (f, x1, y1) => Math.sqrt((pos[f.id].x - x1) * (pos[f.id].x - x1) + (pos[f.id].y - y1) * (pos[f.id].y - y1));\n  const seg = (step, n, moves, extra) => {\n    const from = {};\n    for (const f of figures) {\n      h.tick();\n      if (pos[f.id]) from[f.id] = { x0: pos[f.id].x, y0: pos[f.id].y, x1: pos[f.id].x, y1: pos[f.id].y };\n    }\n    for (const id of Object.keys(moves)) {\n      h.tick();\n      const mv = moves[id];\n      if (mv.x1 === undefined) continue;\n      from[id] = mv;\n      pos[id] = { x: mv.x1, y: mv.y1 };\n    }\n    const s = { step: step, n: n, moves: moves, from: from, makes: \"\", before: [], after: [] };\n    for (const k of Object.keys(extra || {})) {\n      h.tick();\n      s[k] = extra[k];\n    }\n    segs.push(s);\n    return s;\n  };\n  const lowLevel = (d.tasteLevel || {}).complexity === 1;\n  (d.plan || []).forEach((p, i) => {\n    const a = current[p.who], b = current[p.whom], c = current[p.third], m = {}, m2 = {};\n    if (!a) return;\n    if (p.way === \"feels\") {\n      const ch = p.changes || {}, v = {};\n      for (const el of Object.keys(a.v)) {\n        h.tick();\n        v[el] = a.v[el];\n      }\n      for (const el of Object.keys(ch)) {\n        h.tick();\n        v[el] = level(v, el, ch[el]) + 1;\n      }\n      a.v = v;\n      a.speed = speeds[level(v, \"speed\")];\n      const makes = \"MAKE \\\"S\" + a.id + \" \" + spins[level(v, \"liveliness\")] + \" MAKE \\\"W\" + a.id + \" \" + waves[level(v, \"curves\")] + \" MAKE \\\"J\" + a.id + \" \" + jolts[level(v, \"jerkiness\")] + (ken || !ch.brightness ? \"\" : \" MAKE \\\"C\" + a.id + \" \" + color(a.hue, lights[level(v, \"brightness\")]));\n      if (!lowLevel && segs.length) {\n        const first = segs.find(s => s.step === segs[segs.length - 1].step);\n        first.makes += (first.makes ? \" \" : \"\") + makes;\n        first.also = (first.also || []).concat([i]);\n        return;\n      }\n      m[a.id] = { orbit: true };\n      seg(i, frames(110, a.speed), m, { makes: makes });\n      return;\n    }\n    if (p.way === \"keeps away\" && b) {\n      m[a.id] = line(a, pos[a.id].x - side(a, b) * 100, pos[a.id].y + 15);\n      seg(i, frames(100, a.speed), m);\n    } else if (p.way === \"chases off\" && b) {\n      const s = side(a, b), n1 = frames(Math.abs(pos[b.id].x - pos[a.id].x), Math.max(2, a.speed - b.speed));\n      m[b.id] = line(b, pos[b.id].x + s * b.speed * n1, pos[b.id].y);\n      m[a.id] = line(a, m[b.id].x1 - s * 45, pos[b.id].y);\n      seg(i, n1, m);\n      m2[a.id] = line(a, s * 190, pos[b.id].y);\n      m2[b.id] = line(b, s * 235, pos[b.id].y);\n      seg(i, frames(Math.abs(s * 190 - pos[a.id].x), a.speed), m2);\n    } else if (p.way === \"looms over\" && b) {\n      m[a.id] = line(a, pos[b.id].x, pos[b.id].y + 70);\n      seg(i, frames(dist(a, pos[b.id].x, pos[b.id].y + 70), a.speed), m);\n    } else if (p.way === \"stands guard\" && b && c) {\n      const mx = (pos[b.id].x + pos[c.id].x) / 2, my = (pos[b.id].y + pos[c.id].y) / 2;\n      m[a.id] = line(a, mx, my);\n      seg(i, frames(dist(a, mx, my), a.speed), m);\n      const dir = pos[b.id].x <= mx ? 1 : -1, gap = Math.abs(mx - pos[b.id].x), tries = Math.max(1, Math.min(5, +params.tries || 2));\n      for (let t = 1; t <= tries; t++) {\n        h.tick();\n        const mt = {};\n        mt[b.id] = { tryX: dir * (t === tries ? gap - 14 : gap - 42) };\n        mt[a.id] = { tryX: -dir * 10 };\n        seg(i, 6, mt);\n      }\n    } else if (p.way === \"goes along\" && b) {\n      const s = side(a, b), dx = pos[b.id].x > 0 ? -60 : 60;\n      m[a.id] = line(a, pos[b.id].x - s * 50, pos[b.id].y);\n      seg(i, frames(dist(a, pos[b.id].x - s * 50, pos[b.id].y), a.speed), m);\n      m2[a.id] = line(a, pos[a.id].x + dx, pos[a.id].y);\n      m2[b.id] = line(b, pos[b.id].x + dx, pos[b.id].y);\n      seg(i, 6, m2);\n    } else if (p.way === \"come together\" && b) {\n      const s = side(a, b), mx = (pos[a.id].x + pos[b.id].x) / 2, my = (pos[a.id].y + pos[b.id].y) / 2;\n      const n = Math.max(frames(dist(a, mx, my), a.speed), frames(dist(b, mx, my), b.speed));\n      m[a.id] = line(a, mx - s * 28, my);\n      m[b.id] = line(b, mx + s * 28, my);\n      seg(i, n, m);\n      m2[a.id] = { pulse: true };\n      m2[b.id] = { pulse: true };\n      seg(i, 2, m2);\n    } else if (p.way === \"goes to and changes\" && b) {\n      const s = side(a, b), g = afterOf[p.whom];\n      m[a.id] = line(a, pos[b.id].x - s * 55, pos[b.id].y);\n      const s1 = seg(i, frames(dist(a, pos[b.id].x - s * 55, pos[b.id].y), a.speed), m);\n      if (g) {\n        pos[g.id] = pos[b.id];\n        if (+d.changeFrames > 0) {\n          m2[b.id] = { morph: g.id };\n          seg(i, Math.max(2, +d.changeFrames), m2);\n        } else s1.after.push([p.whom, g]);\n        current[p.whom] = g;\n      }\n    } else if (p.way === \"comes closer bit by bit\") {\n      const g = afterOf[p.who];\n      const near = onStage.map(n => current[n]).filter(f => f && f.of !== a.of).sort((x, y) => Math.abs(pos[x.id].x - pos[a.id].x) - Math.abs(pos[y.id].x - pos[a.id].x))[0];\n      const tx = near ? (pos[a.id].x + pos[near.id].x) / 2 : pos[a.id].x, ty = near ? (pos[a.id].y + pos[near.id].y) / 2 : pos[a.id].y;\n      m[a.id] = line(a, tx, ty);\n      if (g && +d.changeFrames > 0) m[a.id].morph = g.id;\n      const s1 = seg(i, g && +d.changeFrames > 0 ? Math.max(4, +d.changeFrames) : frames(dist(a, tx, ty), a.speed), m);\n      if (g) {\n        if (!(+d.changeFrames > 0)) s1.before.push([p.who, g]);\n        pos[g.id] = pos[a.id];\n        current[p.who] = g;\n      }\n    } else {\n      m[a.id] = { orbit: true };\n      seg(i, frames(110, a.speed), m);\n    }\n  });\n  const most = Math.max(4, +params.maxFrames || 32), wanted = segs.reduce((t, s) => t + s.n, 0);\n  if (wanted > most) {\n    for (const s of segs) {\n      h.tick();\n      s.n = Math.max(2, Math.floor(s.n * most / wanted));\n    }\n  }\n  const num = v => String(r1(v));\n  const lin = (a, b, n) => (r1(a) === r1(b) ? num(a) : num(a) + (b >= a ? \" + \" : \" - \") + num(Math.abs(b - a) / n) + \" * :T\");\n  const wait = Math.max(1, Math.round(60 / Math.max(1, +params.perSecond || 4)));\n  const write = (comments, names, keep) => {\n    let logo = comments ? \"; Scene \" + d.scene + \" of \" + d.of + \": \" + d.title + \"\\n; Each TO draws one character: :T counts the frames, and :F is its size (1 is normal).\\n\" : \"\";\n    logo += \"SETLABELHEIGHT 14\\n\";\n    if (screen) logo += \"TO SCREEN\\nSETPC \\\"black SETPENSIZE 100 REPEAT 4 [PU SETXY -256 96 * REPCOUNT - 240 PD SETXY 256 96 * REPCOUNT - 240] SETPENSIZE 3\\nEND\\n\";\n    logo += \"TO SHAPE :X :Y :R :K :N :A :D\\nMAKE \\\"S 2 * :R * SIN (:A / 2)\\nREPEAT :D [PU SETXY :X + :R * SIN :K :Y + :R * COS :K SETH :K + 90 + :A / 2 PD REPEAT :N [FD :S RT :A] MAKE \\\"R :R * 0.7 MAKE \\\"S :S * 0.7]\\nEND\\n\";\n    if (figures.some(f => f.kind === \"flower\")) logo += \"TO FLOWER :X :Y :R :K :D\\nREPEAT 6 [SHAPE :X + :R / 2 * SIN (:K + 60 * REPCOUNT) :Y + :R / 2 * COS (:K + 60 * REPCOUNT) :R / 2 :K 6 60 1] SHAPE :X :Y :R / 3 :K 6 60 :D\\nEND\\n\";\n    for (const f of figures) {\n      h.tick();\n      const at = \":X + :J\" + f.id + \" * REMAINDER :T 2 :Y \" + f.r + \" * :F :S\" + f.id + \" * :T \";\n      logo += \"TO \" + f.proc + \" :X :Y :T :F\\n\" + (comments ? \"; \" + f.name + \": \" + f.looks + \"\\n\" : \"\") + \"MAKE \\\"Y :Y + :W\" + f.id + \" * SIN (40 * :T)\\nSETPC :C\" + f.id + \" \" + (f.kind === \"flower\" ? \"FLOWER \" + at + f.outlines : \"SHAPE \" + at + SHAPES[f.kind].join(\" \") + \" \" + f.outlines) + \"\\n\" +\n        (names && params.names !== false ? \"PU SETXY :X - \" + 3 * f.of.length + \" :Y - \" + (f.r + 18) + \" SETPC \\\"\" + (screen ? \"silver\" : \"gray\") + \" LABEL [\" + f.of + \"]\\n\" : \"\") + \"END\\n\";\n    }\n    logo += figures.map(f => \"MAKE \\\"C\" + f.id + \" \" + f.color + \" MAKE \\\"W\" + f.id + \" \" + f.wave + \" MAKE \\\"J\" + f.id + \" \" + f.jolt + \" MAKE \\\"S\" + f.id + \" \" + f.spin).join(\"\\n\") + \"\\n\";\n    const shown = new Map(onStage.map(n => [n, figures.find(f => f.name === n)]));\n    let at = 0;\n    for (const s of segs.slice(0, keep)) {\n      h.tick();\n      for (const sw of s.before) {\n        h.tick();\n        shown.set(sw[0], sw[1]);\n      }\n      const step = (d.plan || [])[s.step] || {};\n      if (comments) logo += \"; frames \" + (at + 1) + \"-\" + (at + s.n) + \": \" + step.says + (s.also ? \"; \" + s.also.map(j => (d.plan[j] || {}).says).join(\"; \") : \"\") + \"\\n\";\n      if (s.makes) logo += s.makes + \"\\n\";\n      let body = \"CS\" + (screen ? \" SCREEN\" : \"\");\n      const t = at ? \":T + \" + at : \":T\";\n      for (const n of onStage) {\n        h.tick();\n        const f = shown.get(n), mv = s.moves[f.id] || {}, p = s.from[f.id] || { x0: 0, y0: 0, x1: 0, y1: 0 };\n        const x = lin(p.x0, p.x1, s.n), y = lin(p.y0, p.y1, s.n);\n        if (mv.morph) {\n          const g = figures.find(e => e.id === mv.morph), half = Math.ceil(s.n / 2);\n          body += \" IFELSE :T < \" + (half + 1) + \" [\" + f.proc + \" \" + x + \" \" + y + \" \" + t + \" 1 - \" + r1(0.7 / half) + \" * :T] [\" + g.proc + \" \" + x + \" \" + y + \" \" + t + \" 0.3 + \" + r1(0.7 / Math.max(1, s.n - half)) + \" * (:T - \" + half + \")]\";\n          shown.set(n, g);\n        } else if (mv.orbit) body += \" \" + f.proc + \" \" + num(p.x0) + \" + 40 * SIN (\" + r1(360 * f.turns / s.n) + \" * :T) \" + num(p.y0) + \" + 25 * SIN (\" + r1(720 * f.turns / s.n) + \" * :T) \" + t + \" 1\";\n        else if (mv.tryX !== undefined) body += \" \" + f.proc + \" \" + num(p.x0) + \" + \" + num(mv.tryX) + \" * SIN (\" + r1(180 / s.n) + \" * :T) \" + num(p.y0) + \" \" + t + \" 1\";\n        else body += \" \" + f.proc + \" \" + x + \" \" + y + \" \" + t + (mv.pulse ? \" 1 + 0.3 * (2 - :T)\" : \" 1\");\n      }\n      logo += \"FOR [T 1 \" + s.n + \"] [\" + body + \" WAIT \" + wait + \"]\\n\";\n      for (const sw of s.after) {\n        h.tick();\n        shown.set(sw[0], sw[1]);\n      }\n      at += s.n;\n    }\n    return logo;\n  };\n  let keep = segs.length, logo = write(true, true, keep);\n  const left = [];\n  if (logo.length > 3900) {\n    logo = write(false, true, keep);\n    left.push(\"the comments\");\n  }\n  if (logo.length > 3900) {\n    logo = write(false, false, keep);\n    left.push(\"the names\");\n  }\n  while (logo.length > 3900 && keep > 1) {\n    h.tick();\n    keep--;\n    logo = write(false, false, keep);\n  }\n  if (keep < segs.length) left.push(\"the last \" + (segs.length - keep) + \" parts of the plan\");\n  const steps = [];\n  let at = 0;\n  for (const s of segs.slice(0, keep)) {\n    h.tick();\n    const what = ((d.plan || [])[s.step] || {}).says + (s.also ? \"; \" + s.also.map(j => (d.plan[j] || {}).says).join(\"; \") : \"\");\n    if (steps.length && steps[steps.length - 1].step === s.step) steps[steps.length - 1].to = at + s.n;\n    else steps.push({ step: s.step, from: at + 1, to: at + s.n, what: what });\n    at += s.n;\n  }\n  const perSecond = Math.max(1, +params.perSecond || 4), looks = {};\n  for (const f of figures) {\n    h.tick();\n    looks[f.name] = f.looks;\n  }\n  let say = \"**Scene \" + d.scene + \" of \" + d.of + \": \" + at + \" frames, \" + perSecond + \" a second (\" + r1(at / perSecond) + \" seconds).**\\n\" + steps.map(s => \"- frames \" + s.from + \"–\" + s.to + \": \" + s.what).join(\"\\n\");\n  say += ken ? \"\\n\\nNo expert said anything about looks, so they look as Ken drew them in 1978, in the Cast's order: \" + figures.filter(f => f.name === f.of).map(f => call(f.name) + \" a \" + f.looks).join(\", \") + \".\"\n    : \"\\n\\n**How they look:** \" + figures.map(f => call(f.name) + \": \" + f.looks + (f.outlines > 1 ? \" (\" + f.outlines + \" outlines)\" : \"\")).join(\"; \") + \".\";\n  if (notes.length) say += \"\\n\\n\" + notes.join(\" \");\n  if (wanted > most) say += \"\\n\\nThe plan needed \" + wanted + \" frames, so each part got fewer, to stay within \" + most + \".\";\n  if (left.length) say += \"\\n\\nThe program was too long, so I left out \" + left.join(\", \") + \".\";\n  return { program: logo, fits: logo.length <= 3900, frames: at, seconds: r1(at / perSecond), steps: steps.map(s => ({ from: s.from, to: s.to, what: s.what })), looks: looks, say: say, memory: memory };\n}",
           "lineMap": [
             {
               "pseudo": [
@@ -9097,7 +9097,7 @@
               ]
             }
           ],
-          "hash": "c3e69faf7f1c578e"
+          "hash": "02ad072800157ccd"
         },
         "lastGood": null,
         "status": "ok",

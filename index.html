@@ -435,7 +435,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.16.0";
+AK.VERSION = "1.17.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -4117,7 +4117,7 @@ libAgent({
     "        h.tick();",
     "        if (p[0] !== w || !own(p[1])) continue;",
     "        suggestions.push({ who: c.name, word: w, kind: \"opposite\", like: p[1], turn: true, says: own(p[1]).says });",
-    "        told.push(w + \", the opposite of \" + p[1] + \" → \" + own(p[1]).says + \", turned around\");",
+    "        told.push(w + \", the opposite of \" + p[1] + \" → the opposite of “\" + own(p[1]).says + \"” (weaker)\");",
     "        known = true;",
     "      }",
     "      if (!from) (known ? knew : unknown)[c.name].push(w);",
@@ -4688,7 +4688,7 @@ libAgent({
     "prefer chases off when A is bigger than B, stands guard when A dominates B, and goes along and come together when A is drawn to friends",
     "prefer a way the film hasn't used yet",
     "a change takes {8} frames (0: at once)",
-    "if no way is left, A moves about in its own way, so its values still show",
+    "if no way is left, A moves about in its own way, so its values still show; a word with no ways at all is named, for teaching",
     "send the plan, in order, to the Director, with the values of everyone on stage"
   ],
   code: [
@@ -4766,6 +4766,7 @@ libAgent({
     "      continue;",
     "    }",
     "    if (verb === low(params.changes)) {",
+    "      if (!listOf(e.whom ? params.changesWays : params.selfWays).length && unknown.indexOf(e.verb) < 0) unknown.push(e.verb);",
     "      const step = e.whom ? pick({ who: e.who, whom: e.whom, because: (e.from || []).join(\" \") + \" → \" + (e.to || []).join(\" \") }, listOf(params.changesWays)) : pick({ who: e.who, because: (e.from || []).join(\" \") + \" → \" + (e.to || []).join(\" \") }, listOf(params.selfWays));",
     "      step.standIn = standIn(e.whom || e.who);",
     "      plan.push(step);",
@@ -4776,10 +4777,11 @@ libAgent({
     "    if ((e.what || []).length) {",
     "      const word = e.what.find(w => shy.indexOf(low(w)) >= 0 || mean.indexOf(low(w)) >= 0);",
     "      ways = !word ? [] : shy.indexOf(low(word)) >= 0 ? listOf(params.shyWays) : listOf(params.meanWays);",
+    "      if (word && !ways.length && unknown.indexOf(word) < 0) unknown.push(word);",
     "      task = { who: e.who, whom: others[0] || \"\", because: word || e.what.join(\", \") };",
     "    } else {",
     "      const vw = verbWays.find(x => x[0] === verb);",
-    "      if (vw) ways = vw[1];",
+    "      if (vw && vw[1].length) ways = vw[1];",
     "      else if (unknown.indexOf(verb) < 0) unknown.push(verb);",
     "    }",
     "    plan.push(pick(task, ways));",
@@ -4801,7 +4803,7 @@ libAgent({
     "    summary: d.summary, looksFrom: d.looksFrom || [], tasteLevel: d.tasteLevel || {}, changeFrames: +params.changeFrames || 0, notes: notes, say: say, memory: memory };",
     "}"
   ],
-  lineMap: [{ pseudo: [1, 1], js: [2, 4] }, { pseudo: [1, 1], js: [6, 6] }, { pseudo: [1, 1], js: [35, 35] }, { pseudo: [1, 1], js: [56, 57] }, { pseudo: [1, 1], js: [59, 61] }, { pseudo: [1, 1], js: [81, 81] }, { pseudo: [1, 1], js: [91, 92] }, { pseudo: [2, 2], js: [4, 4] }, { pseudo: [2, 2], js: [11, 11] }, { pseudo: [2, 2], js: [58, 58] }, { pseudo: [2, 2], js: [80, 80] }, { pseudo: [2, 2], js: [82, 85] }, { pseudo: [3, 3], js: [4, 4] }, { pseudo: [3, 3], js: [11, 11] }, { pseudo: [3, 3], js: [58, 58] }, { pseudo: [3, 3], js: [80, 80] }, { pseudo: [3, 3], js: [82, 85] }, { pseudo: [4, 4], js: [4, 4] }, { pseudo: [4, 4], js: [13, 13] }, { pseudo: [4, 4], js: [86, 88] }, { pseudo: [4, 4], js: [90, 90] }, { pseudo: [5, 5], js: [4, 4] }, { pseudo: [5, 5], js: [13, 13] }, { pseudo: [5, 5], js: [86, 88] }, { pseudo: [5, 5], js: [90, 90] }, { pseudo: [6, 6], js: [4, 4] }, { pseudo: [6, 6], js: [13, 13] }, { pseudo: [6, 6], js: [86, 88] }, { pseudo: [6, 6], js: [90, 90] }, { pseudo: [7, 7], js: [4, 4] }, { pseudo: [7, 7], js: [13, 13] }, { pseudo: [7, 7], js: [86, 88] }, { pseudo: [7, 7], js: [90, 90] }, { pseudo: [8, 8], js: [4, 4] }, { pseudo: [8, 8], js: [12, 12] }, { pseudo: [8, 8], js: [74, 79] }, { pseudo: [9, 9], js: [4, 4] }, { pseudo: [9, 9], js: [62, 73] }, { pseudo: [10, 10], js: [4, 4] }, { pseudo: [10, 10], js: [62, 73] }, { pseudo: [11, 11], js: [8, 8] }, { pseudo: [11, 11], js: [10, 10] }, { pseudo: [11, 11], js: [21, 25] }, { pseudo: [11, 11], js: [27, 28] }, { pseudo: [11, 11], js: [36, 38] }, { pseudo: [11, 11], js: [43, 47] }, { pseudo: [11, 11], js: [49, 49] }, { pseudo: [12, 12], js: [10, 10] }, { pseudo: [12, 12], js: [21, 21] }, { pseudo: [12, 12], js: [26, 28] }, { pseudo: [12, 12], js: [36, 38] }, { pseudo: [12, 12], js: [43, 47] }, { pseudo: [12, 12], js: [49, 49] }, { pseudo: [13, 13], js: [10, 10] }, { pseudo: [13, 13], js: [29, 34] }, { pseudo: [13, 13], js: [36, 38] }, { pseudo: [13, 13], js: [48, 50] }, { pseudo: [13, 13], js: [52, 55] }, { pseudo: [14, 14], js: [7, 7] }, { pseudo: [14, 14], js: [36, 38] }, { pseudo: [14, 14], js: [48, 50] }, { pseudo: [14, 14], js: [52, 55] }, { pseudo: [14, 14], js: [96, 96] }, { pseudo: [15, 15], js: [107, 107] }, { pseudo: [16, 16], js: [39, 42] }, { pseudo: [16, 16], js: [51, 51] }, { pseudo: [16, 16], js: [89, 89] }, { pseudo: [16, 16], js: [105, 105] }, { pseudo: [17, 17], js: [5, 5] }, { pseudo: [17, 17], js: [9, 9] }, { pseudo: [17, 17], js: [14, 20] }, { pseudo: [17, 17], js: [93, 95] }, { pseudo: [17, 17], js: [97, 108] }],
+  lineMap: [{ pseudo: [1, 1], js: [2, 4] }, { pseudo: [1, 1], js: [6, 6] }, { pseudo: [1, 1], js: [35, 35] }, { pseudo: [1, 1], js: [56, 57] }, { pseudo: [1, 1], js: [59, 61] }, { pseudo: [1, 1], js: [82, 82] }, { pseudo: [1, 1], js: [93, 94] }, { pseudo: [2, 2], js: [4, 4] }, { pseudo: [2, 2], js: [11, 11] }, { pseudo: [2, 2], js: [58, 58] }, { pseudo: [2, 2], js: [81, 81] }, { pseudo: [2, 2], js: [83, 87] }, { pseudo: [3, 3], js: [4, 4] }, { pseudo: [3, 3], js: [11, 11] }, { pseudo: [3, 3], js: [58, 58] }, { pseudo: [3, 3], js: [81, 81] }, { pseudo: [3, 3], js: [83, 87] }, { pseudo: [4, 4], js: [4, 4] }, { pseudo: [4, 4], js: [13, 13] }, { pseudo: [4, 4], js: [88, 90] }, { pseudo: [4, 4], js: [92, 92] }, { pseudo: [5, 5], js: [4, 4] }, { pseudo: [5, 5], js: [13, 13] }, { pseudo: [5, 5], js: [88, 90] }, { pseudo: [5, 5], js: [92, 92] }, { pseudo: [6, 6], js: [4, 4] }, { pseudo: [6, 6], js: [13, 13] }, { pseudo: [6, 6], js: [88, 90] }, { pseudo: [6, 6], js: [92, 92] }, { pseudo: [7, 7], js: [4, 4] }, { pseudo: [7, 7], js: [13, 13] }, { pseudo: [7, 7], js: [88, 90] }, { pseudo: [7, 7], js: [92, 92] }, { pseudo: [8, 8], js: [4, 4] }, { pseudo: [8, 8], js: [12, 12] }, { pseudo: [8, 8], js: [74, 80] }, { pseudo: [9, 9], js: [4, 4] }, { pseudo: [9, 9], js: [62, 73] }, { pseudo: [10, 10], js: [4, 4] }, { pseudo: [10, 10], js: [62, 73] }, { pseudo: [11, 11], js: [8, 8] }, { pseudo: [11, 11], js: [10, 10] }, { pseudo: [11, 11], js: [21, 25] }, { pseudo: [11, 11], js: [27, 28] }, { pseudo: [11, 11], js: [36, 38] }, { pseudo: [11, 11], js: [43, 47] }, { pseudo: [11, 11], js: [49, 49] }, { pseudo: [12, 12], js: [10, 10] }, { pseudo: [12, 12], js: [21, 21] }, { pseudo: [12, 12], js: [26, 28] }, { pseudo: [12, 12], js: [36, 38] }, { pseudo: [12, 12], js: [43, 47] }, { pseudo: [12, 12], js: [49, 49] }, { pseudo: [13, 13], js: [10, 10] }, { pseudo: [13, 13], js: [29, 34] }, { pseudo: [13, 13], js: [36, 38] }, { pseudo: [13, 13], js: [48, 50] }, { pseudo: [13, 13], js: [52, 55] }, { pseudo: [14, 14], js: [7, 7] }, { pseudo: [14, 14], js: [36, 38] }, { pseudo: [14, 14], js: [48, 50] }, { pseudo: [14, 14], js: [52, 55] }, { pseudo: [14, 14], js: [98, 98] }, { pseudo: [15, 15], js: [109, 109] }, { pseudo: [16, 16], js: [39, 42] }, { pseudo: [16, 16], js: [51, 51] }, { pseudo: [16, 16], js: [91, 91] }, { pseudo: [16, 16], js: [107, 107] }, { pseudo: [17, 17], js: [5, 5] }, { pseudo: [17, 17], js: [9, 9] }, { pseudo: [17, 17], js: [14, 20] }, { pseudo: [17, 17], js: [95, 97] }, { pseudo: [17, 17], js: [99, 110] }],
   params: { shyWords: "shy", shyWays: "keeps away", meanWords: "mean, evil", meanWays: "chases off", dominates: "dominates", dominatesWays: "looms over, chases off", keeps: "keeps", keepsWays: "stands guard", helps: "helps", helpsWays: "goes along", meets: "meets", meetsWays: "come together", changes: "changes", changesWays: "goes to and changes", selfWays: "comes closer bit by bit", becomes: "becomes", happy: "happy", happyWays: "faster, livelier, curvier, brighter", sad: "sad", sadWays: "slower, calmer, straighter, dimmer", changeFrames: 8 },
   slots: [{ line: 2, text: "shy", param: "shyWords" }, { line: 2, text: "keeps away", param: "shyWays" }, { line: 3, text: "mean, evil", param: "meanWords" }, { line: 3, text: "chases off", param: "meanWays" }, { line: 4, text: "dominates", param: "dominates" }, { line: 4, text: "looms over, chases off", param: "dominatesWays" }, { line: 5, text: "keeps", param: "keeps" }, { line: 5, text: "stands guard", param: "keepsWays" }, { line: 6, text: "helps", param: "helps" }, { line: 6, text: "goes along", param: "helpsWays" }, { line: 7, text: "meets", param: "meets" }, { line: 7, text: "come together", param: "meetsWays" }, { line: 8, text: "changes", param: "changes" }, { line: 8, text: "goes to and changes", param: "changesWays" }, { line: 8, text: "comes closer bit by bit", param: "selfWays" }, { line: 9, text: "becomes", param: "becomes" }, { line: 9, text: "happy", param: "happy" }, { line: 9, text: "faster, livelier, curvier, brighter", param: "happyWays" }, { line: 10, text: "sad", param: "sad" }, { line: 10, text: "slower, calmer, straighter, dimmer", param: "sadWays" }, { line: 15, text: "8", param: "changeFrames" }],
   scenarios: [
@@ -5057,7 +5059,7 @@ libAgent({
     "  const wait = Math.max(1, Math.round(60 / Math.max(1, +params.perSecond || 4)));",
     "  const write = (comments, names, keep) => {",
     "    let logo = comments ? \"; Scene \" + d.scene + \" of \" + d.of + \": \" + d.title + \"\\n; Each TO draws one character: :T counts the frames, and :F is its size (1 is normal).\\n\" : \"\";",
-    "    logo += \"SETLABELHEIGHT 11\\n\";",
+    "    logo += \"SETLABELHEIGHT 14\\n\";",
     "    if (screen) logo += \"TO SCREEN\\nSETPC \\\"black SETPENSIZE 100 REPEAT 4 [PU SETXY -256 96 * REPCOUNT - 240 PD SETXY 256 96 * REPCOUNT - 240] SETPENSIZE 3\\nEND\\n\";",
     "    logo += \"TO SHAPE :X :Y :R :K :N :A :D\\nMAKE \\\"S 2 * :R * SIN (:A / 2)\\nREPEAT :D [PU SETXY :X + :R * SIN :K :Y + :R * COS :K SETH :K + 90 + :A / 2 PD REPEAT :N [FD :S RT :A] MAKE \\\"R :R * 0.7 MAKE \\\"S :S * 0.7]\\nEND\\n\";",
     "    if (figures.some(f => f.kind === \"flower\")) logo += \"TO FLOWER :X :Y :R :K :D\\nREPEAT 6 [SHAPE :X + :R / 2 * SIN (:K + 60 * REPCOUNT) :Y + :R / 2 * COS (:K + 60 * REPCOUNT) :R / 2 :K 6 60 1] SHAPE :X :Y :R / 3 :K 6 60 :D\\nEND\\n\";",
@@ -5801,6 +5803,8 @@ function makeMiniAni() {
   const r = (id, from, to, extra) => Object.assign({ id, from, when: "always", send: "data", to, prefix: "", enabled: true }, extra || {});
   const looks = programAgent("looks", "ani-expert", { name: "Looks", emoji: "🪞", role: "suggests how someone looks, from the words that describe them", note: "suggests how someone looks, from the words that describe them" });
   setParams(looks, LOOKS_KNOWLEDGE);
+  const director = programAgent("director", "ani-director");
+  setParams(director, { sizes: [24, 36, 52] });   // larger than 1978's, so the shapes can be seen
   looks.scenarios = looks.scenarios.filter(sc => ["s3", "s4", "s5"].indexOf(sc.id) < 0).concat([
     { id: "s3", name: "a word that means the same gets that word's suggestions", input: { data: { choose: [{ name: "Ann", words: ["pretty"] }] } }, expect: { count: 1, sayContains: "pretty, like beautiful" } },
     { id: "s4", name: "a word that means the opposite gets them turned around", input: { data: { choose: [{ name: "Ann", words: ["elegant"] }] } }, expect: { count: 1, sayContains: "elegant, the opposite of shabby" } },
@@ -5814,7 +5818,7 @@ function makeMiniAni() {
       "Why is Cinderella small and slow? Open the Choice Points' answer for scene 1 in the trace: it says why first.",
       "Change the Choice Points' “more than {2} times as strong” to 1, then to 100. Do the characters look more alike, or less?",
       "No expert knows “helps” (the Choice Points say so). Fill Relationships' empty line, “{-} suggests {-}”, to say what helping suggests. What changes?",
-      "Switch on “Like Ani in 1978”. What does the Looks expert add to the film?",
+      "Switch on “No Looks expert”. What does the Looks expert add to the film? (“Mini-Ani, as in 1978”, in New society, is Ani as it was.)",
       "Who made this film: the experts, the Choice Points, the Director, or the people who wrote their knowledge?"
     ],
     openers: ["Which agent decides how big Cinderella is?", "What happens when two experts disagree?", "What would the film be like with no Looks expert?"],
@@ -5825,7 +5829,7 @@ function makeMiniAni() {
       { id: "repents", label: "The grumpy one becomes kind", kind: "text", to: "cast", value: "The Wolf is mean, strong and grumpy.\nThe Lamb is shy, good and graceful.\nThe Owl is good, kind and magical.\nThe Wolf dominates the Lamb. The Owl helps the Lamb.\nScene 1: The Lamb is shy. The Wolf dominates the Lamb.\nScene 2: The Owl changes the Wolf from grumpy to good. The Wolf becomes sad.\nScene 3: The Wolf changes from mean to kind. The Wolf meets the Lamb. The Lamb becomes happy." }
     ],
     variants: [
-      { id: "1978", label: "Like Ani in 1978: no Looks expert; Ken's shapes and colors", disable: ["m2", "m7"], on: false },
+      { id: "1978", label: "No Looks expert: Ken's 1978 shapes and colors", disable: ["m2", "m7"], on: false },
       { id: "norel", label: "No Relationships expert: nobody is compared with anyone", disable: ["m3", "m8"], on: false }
     ],
     agents: [
@@ -5836,7 +5840,7 @@ function makeMiniAni() {
       programAgent("taste", "ani-taste"),
       programAgent("choice-points", "ani-choices"),
       programAgent("methods", "ani-methods"),
-      programAgent("director", "ani-director"),
+      director,
       { id: "renderer", kind: "renderer", name: "Renderer", emoji: "🖼️", role: "runs the Director's Logo, and plays each scene's film" }
     ],
     rules: [
@@ -5846,6 +5850,63 @@ function makeMiniAni() {
       r("m13", "renderer", "cast", { send: "text" }), r("m14", "renderer", "cast", { when: "data", field: "pass", op: "=", value: "false", send: "text+data" })
     ]
   };
+}
+
+// Mini-Ani, as in 1978: the same programs, holding only what Ani's 1978 code knew and did, after an audit of its source
+// (the thesis's Cinderella, DSCRP, RELATE, GLOSUG, DISPLY, CONVEY and ANINIT). The empty lines stay, for teaching.
+// - No Looks expert: Ani's descriptions suggested how characters move, and ANINIT gave their shapes and colors.
+// - Cast: nobody is anyone's friend (1978 had no friends).
+// - Personality: DSCRP's words and opposites only, with the lines Ani ran for friendly and graceful (selfish and grumpy
+//   are new in the Mini-Ani, so they are unknown here).
+// - Relationships: RELATE's dominates is faster, livelier and above ("bigger" was only Ken's comment), and likes is
+//   loves' "same as", weakly.
+// - Taste: CINDY's levels, with medium complexity (feelings play during the step before), and nothing flashy.
+// - Method Chooser: DISPLY's chases off and stands guard, CONVEY's accompanys (goes along) and meets; feelings change
+//   speed, liveliness and curves, at once. Nothing shows shy or dominates (1978's pushes-around isn't a way here).
+// - Director: everyone at one height, the same turns, three tries, no names under the characters.
+// - Story: the 1978 Cinderella in five scenes, as Ani told it.
+const CINDERELLA_1978 = "Cinderella is good, friendly, hardworking, shy, beautiful and shabby.\nThe Stepmother is mean, selfish, strong and evil.\nThe Godmother is good, kind, strong, pretty and magical.\nThe Prince is good, stubborn, determined, beautiful and strong.\nThe Stepmother dominates Cinderella. Cinderella obeys the Stepmother. The Godmother helps Cinderella. Cinderella likes the Prince. The Prince likes Cinderella.\nScene 1: Cinderella is good, friendly, hardworking and shy. The Stepmother is mean, selfish, strong and evil. The Stepmother dominates Cinderella. Cinderella obeys the Stepmother. Cinderella becomes happy. The Stepmother becomes happy.\nScene 2: The Stepmother keeps Cinderella from the Prince. Cinderella becomes sad. The Stepmother becomes happy.\nScene 3: The Godmother helps Cinderella.\nScene 4: Cinderella meets the Prince. The Prince meets Cinderella. Cinderella becomes happy. The Prince becomes happy.\nScene 5: Cinderella meets the Prince. The Stepmother becomes sad.";
+function makeMiniAni1978() {
+  const s = makeMiniAni(), renderer = s.agents.filter(a => a.id === "renderer")[0];
+  const cast = programAgent("cast", "ani-cast");
+  setParams(cast, { friends: "-" });
+  const personality = programAgent("personality", "ani-expert");
+  setParams(personality, { s3: "slow, curvy, steady, a bit medium liveliness", s4: "a bit lively, a bit medium purpose", same2: "bad=evil", opp1: "brazen=shy, forward=shy, lazy=hardworking, clumsy=graceful", opp2: "good=evil, kind=evil, evil=kind, weak=strong" });
+  const relationships = programAgent("relationships", "ani-relations");
+  setParams(relationships, { c1: "faster, livelier, above", c2: "a bit same speed, a bit same liveliness, a bit same curves" });
+  const taste = programAgent("taste", "ani-taste");
+  setParams(taste, { complexity: "medium", flashFor: "-" });
+  const methods = programAgent("methods", "ani-methods");
+  setParams(methods, { shyWays: "-", dominatesWays: "-", changesWays: "-", selfWays: "-", happyWays: "faster, livelier, curvier", sadWays: "slower, calmer, straighter", changeFrames: 0 });
+  const director = programAgent("director", "ani-director");
+  setParams(director, { heights: [0, 0, 0], turns: [2, 2, 2], tries: 3, names: false });
+  // Scenarios about what 1978 didn't have say what these programs do instead; one that can't happen goes.
+  const redo = (a, id, name, expect) => { const sc = a.scenarios.find(x => x.id === id); Object.assign(sc, { name: name(sc.name), expect: expect(sc.expect) }); };
+  redo(cast, "s1", n => n + " (nobody is anyone's friend)", e => Object.assign({}, e, { friends: [] }));
+  redo(taste, "s3", () => "flashiness suggests its level only for what energy is for (size and brightness were only Ken's note)", () => ({ sayContains: "{=flashiness} " + taste.params.energyFor.split(",").pop().trim() + "." }));
+  redo(methods, "s1", () => "{=dominates}: no way yet, so A moves about in its own way, and the word is named for teaching", () => ({ ways: ["moves about"], sayContains: "yet: " + "{=dominates}." }));
+  methods.scenarios = methods.scenarios.filter(x => x.id !== "s3");   // needs a second way for dominates
+  redo(methods, "s5", () => "becoming {=happy} makes someone faster, livelier and curvier", e => { const x = clone(e); delete x.plan[0].changes.brightness; return x; });
+  redo(methods, "s6", () => "a change made by someone else: no way yet, so the word is named for teaching", () => ({ ways: ["moves about"], sayContains: "yet: " + "{=changes}." }));
+  redo(director, "s5", () => "the guard stops {=tries} tries to get past, and the last one almost works", () => ({ frames: 29 }));
+  Object.assign(s, {
+    id: "miniani-1978", title: "Mini-Ani, as in 1978", question: "Why is Cinderella slow?",
+    intro: "Ken Kahn's 1978 program Ani, kept as it was: these programs know only what Ani's own code knew, and plan and draw only as it did. There is no Looks expert, and everyone stands at one height. The empty lines are for you: teach it what it didn't know. Compare it with the Mini-Ani, which has many improvements.",
+    link: { url: "https://toontalk.github.io/ani/", label: "Watch Ani's own 1978 Cinderella film" },
+    questions: [
+      "Why is Cinderella slow? Open the Choice Points' answer for scene 1 in the trace: it says why first.",
+      "No expert knows “helps” or “selfish” (the Choice Points say so), and neither did Ani in 1978. Teach one on an expert's empty line. What changes in the film?",
+      "Play the same story in the Mini-Ani (New society). What do its improvements add: a Looks expert, more ways, heights, names? Which film do you prefer?",
+      "Ani in 1978 also knew about rhythm, acceleration and how long a scene should take, which these programs don't. Which would you teach first, and to which agent?",
+      "Which of this society's knowledge came from Ken in 1978, and which from you?"
+    ],
+    openers: ["What did Ani know about shy characters?", "Why is there no Looks expert?", "What would you teach Ani first?"],
+    starts: [{ id: "cinderella", label: "Cinderella, as Ani told it in 1978", kind: "text", to: "cast", value: CINDERELLA_1978 }],
+    variants: [{ id: "norel", label: "No Relationships expert: nobody is compared with anyone", disable: ["m3", "m8"], on: false }],
+    agents: [cast, personality, relationships, taste, programAgent("choice-points", "ani-choices"), methods, director, renderer],
+    rules: s.rules.filter(r => r.id !== "m2" && r.id !== "m7")
+  });
+  return s;
 }
 
 // The Mini-Ani with AI voices: the same programs, with AI agents where words are needed. Language goes to models,
@@ -5908,6 +5969,7 @@ const EXAMPLES = [
   { id: "barter", make: makeBarter, emoji: "🥜", about: "Three AI traders, each with one trail mix ingredient, take turns to barter. A Ledger program keeps track of who has what and refuses offers that don't add up. Any model that can fill in a few fields; a different model for each trader is more interesting." },
   { id: "artcritic", make: makeArtCritic, emoji: "🧑‍🎨", about: "Ken Kahn's society: an Artist draws in Logo, a Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper keeps the scores. Does it get better? Needs a model that sees pictures well." },
   { id: "miniani", make: makeMiniAni, emoji: "🎬", about: "Ken Kahn's 1978 program Ani in miniature: small programs suggest how each character moves and looks, settle their arguments in the open, and make each scene of a story into a Logo film. It needs no AI model." },
+  { id: "miniani-1978", make: makeMiniAni1978, emoji: "📼", about: "Ken Kahn's 1978 Ani, kept as it was: the same small programs, with only the knowledge and ways Ani's own code had, and the 1978 Cinderella in five scenes. Teach it what it didn't know. It needs no AI model." },
   { id: "miniani-voices", make: makeMiniAniVoices, emoji: "🗣️", about: "The Mini-Ani with AI agents where words are needed: an AI Animator suggests in Ani's words and is weighed like any expert, a Reader turns your own story into the Cast's sentences, and a Narrator tells the film. Any model that writes short lines will do; 4 or 5 calls a run." }
 ];
 // Free play: one AI agent and you. Everything else is added in Look inside.
@@ -5939,7 +6001,7 @@ const V1_TEXTS = [
   ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
   ["a turtle program", "a Logo program"]
 ];
-AK.Seeds = { makeEvolution, makeContemplative, makeTicTacToe, makeBarter, makeArtCritic, makeMiniAni, makeMiniAniVoices, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+AK.Seeds = { makeEvolution, makeContemplative, makeTicTacToe, makeBarter, makeArtCritic, makeMiniAni, makeMiniAni1978, makeMiniAniVoices, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
 const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "collect", "wait", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "contract", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results"] };
@@ -8180,10 +8242,15 @@ function whyBoxHTML(s, shown, trace) {
   return head + w.parts.map(p => '<p class="small"><b>' + esc(WHY_T[p.kind]) + '</b> <span class="muted">(' + esc((p.e.emoji || "") + " " + p.e.agentName + (p.e.round !== w.round ? ", " + WHY_T.round + " " + p.e.round : "")) + ')</span><br>' + esc(p.text) + '</p>').join("") +
     (why ? '<button class="btn tiny" data-act="why-trace" data-i="' + why.e.i + '">' + esc(WHY_T.show) + '</button>' : "") + '</div>';
 }
+// Every film the run (or the last run) made, in order: the films a ▶ All button plays one after another.
+function filmsOf(s) {
+  const rec = app.runs[s.id], trace = rec ? rec.api.run.trace : (app.traces[s.id] || []);
+  return trace.filter(e => e.kind === "activation" && e.render && e.render.frames > 1 && !e.render.error);
+}
 function filmBarHTML(s, render) {
   if (!render || !(render.frames > 1)) return "";
   const f = filmState(s, render), n = render.frames, i = f ? f.i : n - 1, on = !!(f && f.playing);
-  return '<div class="filmbar"><button class="btn tiny" id="filmPlay" data-act="film-play" aria-label="' + (on ? "Pause the film" : "Play the film") + '">' + (on ? "⏸" : "▶") + '</button><input type="range" min="1" max="' + n + '" value="' + (i + 1) + '" data-bind="film-frame" aria-label="Which frame"><span id="filmAt">' + esc(filmAtText(i + 1, n)) + '</span></div>';
+  return '<div class="filmbar"><button class="btn tiny" id="filmPlay" data-act="film-play" aria-label="' + (on ? "Pause the film" : "Play the film") + '">' + (on ? "⏸" : "▶") + '</button><input type="range" min="1" max="' + n + '" value="' + (i + 1) + '" data-bind="film-frame" aria-label="Which frame"><span id="filmAt">' + esc(filmAtText(i + 1, n)) + '</span>' + (filmsOf(s).length > 1 ? '<button class="btn tiny" data-act="film-all">' + esc("▶ All {n} films in a row".split("{n}").join(filmsOf(s).length)) + '</button>' : "") + '</div>';
 }
 // Paint the frame the film is at, and move its slider, without drawing the stage again.
 function filmShow() {
@@ -9469,6 +9536,13 @@ const ACTIONS = {
     renderTrace();
     const b = document.querySelector('[data-act="trace-toggle"][data-i="' + i + '"]');
     if (b && b.scrollIntoView) b.scrollIntoView({ block: "start" });
+  },
+  async "film-all"() {   // every film of the run, one after another, starting now
+    const s = soc(), rec = app.runs[s.id], run = rec ? rec.api.run : null, items = [];
+    for (const e of filmsOf(s)) { const film = await filmOf(e.render, run); if (film) items.push({ soc: s.id, render: e.render, round: e.round, film }); }
+    if (!items.length) return;
+    app.ui.why = null;
+    filmStart(items[0], items.slice(1), true);
   },
   async "film-play"() {   // ▶ plays the film on the stage (from the start, if it is at the end); ⏸ stops it where it is
     const f = await filmHere();

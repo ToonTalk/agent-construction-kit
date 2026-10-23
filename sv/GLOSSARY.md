@@ -156,6 +156,7 @@ Toys / Clothes / Animals / Tools (shelves) → Leksaker / Kläder / Djur / Verkt
   jagar bort · looms over → tornar upp sig · stands guard → står vakt · goes along → följer med · come together → möts ·
   goes to and changes → går fram och ändrar · comes closer bit by bit → närmar sig bit för bit · moves about → rör sig
   fritt · feels → känner.
+- Mini-Ani, as in 1978 (1.17.0) → Mini-Ani, som 1978. “No Looks expert” → “Ingen Utseende-expert”.
 - Mini-Ani with AI voices (1.15.0) → Mini-Ani med AI-röster: AI Animator → AI-animatören · Reader → Läsaren ·
   Narrator → Berättarrösten · You → Du (also the Choice Points' {You} slot). The rules to the AI Animator and to
   You look for the Cast's “suggest values” → “föreslår värden”. “Your own story, in your own words” → “Din egen

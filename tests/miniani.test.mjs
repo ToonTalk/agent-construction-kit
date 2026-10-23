@@ -276,5 +276,51 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const opened = ak.app.ui.expanded.has(ak.app.ui.why.parts.find(p => p.kind === "why").e.i);
     return hint && !!box && /^Cinderella/.test(ak.app.ui.why.name) && kinds.indexOf("looks") >= 0 && kinds.indexOf("why") >= 0 && /Cinderella after is /.test(text) && /round 4/.test(text) && opened;
   });
+  T.test("page: ▶ All 4 films in a row plays the four scenes one after another, as one film", ["Engine"], async () => {
+    const { w: pw } = await pageWindow();
+    const ak = pw.__ak;
+    ak.app.settings.connection = "none"; ak.app.settings.speed = "instant";
+    pw.document.querySelector('[data-act="new-society"]').click();
+    Array.from(pw.document.querySelectorAll(".modal-body")).pop().querySelector('[data-new="example"][data-id="miniani"]').click();
+    await new Promise(r => setTimeout(r, 30));
+    await ak.runNow();
+    ak.app.ui.film = null; ak.renderAll();
+    const btn = pw.document.querySelector('[data-act="film-all"]');
+    const label = btn && btn.textContent;
+    btn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const f = ak.app.ui.film;
+    const ok = /All 4 films in a row/.test(label) && f && f.playing && f.round === 1 && f.queue.length === 3 && f.queue.map(x => x.round).join() === "2,3,4" && f.held;
+    f.playing = false;
+    return ok;
+  });
+  // 1.17.0: two Mini-Anis. “Mini-Ani, as in 1978” keeps only what Ani's own code knew and did; the Mini-Ani has the improvements.
+  T.test("Mini-Ani, as in 1978: the same programs with 1978's settings and no Looks expert, each passing its own scenarios", ["Seeds", "Scenarios"], async () => {
+    const s = Seeds.makeMiniAni1978();
+    const errs = Society.validateSociety(s);
+    if (errs.length) throw new Error(errs.join("; "));
+    const progs = s.agents.filter(a => a.kind === "program");
+    for (const a of progs) {
+      const bad = (await Scenarios.runScenarios(a, Runtime)).filter(x => !x.ok);
+      if (bad.length) throw new Error(a.id + ": " + JSON.stringify(bad[0]).slice(0, 400));
+    }
+    const p = id => agent(s, id).params;
+    return Seeds.EXAMPLES.some(x => x.id === "miniani-1978") && same(progs.map(a => a.id), PROGRAMS.filter(id => id !== "looks")) && !s.rules.some(r => r.id === "m2" || r.id === "m7") &&
+      progs.every(a => a.code.js === Library.LIB[a.typeId].js) && p("cast").friends === "-" && p("personality").same2 === "bad=evil" && p("relationships").c1 === "faster, livelier, above" &&
+      p("taste").flashFor === "-" && p("taste").complexity === "medium" && p("methods").dominatesWays === "-" && p("methods").shyWays === "-" && p("methods").happyWays === "faster, livelier, curvier" &&
+      same(p("director").heights, [0, 0, 0]) && same(p("director").sizes, [14, 22, 32]) && p("director").names === false && p("director").tries === 3 &&
+      same(agent(Seeds.makeMiniAni(), "director").params.sizes, [24, 36, 52]) && s.questions.length === 5 && s.intro.length < 400 && s.starts.length === 1;
+  });
+  T.test("Mini-Ani, as in 1978: the 1978 Cinderella runs to “The end.” in five scenes, and the words Ani had nothing for are named for teaching", ["Engine", "Seeds"], async () => {
+    const s = Seeds.makeMiniAni1978();
+    const api = Engine.createRun(s, { runtime: Runtime, seed: 1 });
+    api.start({ to: s.starts[0].to, text: s.starts[0].value });
+    await api.play();
+    const r = api.run, films = acts(r, "renderer"), cast = acts(r, "cast"), last = cast[cast.length - 1];
+    const cp = at(r, "choice-points", 1).response.text, m1 = at(r, "methods", 1).response.text;
+    return r.status === "done" && same(films.map(e => e.round), [1, 2, 3, 4, 5]) && films.every(e => !e.render.error && e.render.frames >= 16) && last.response.data.end === true &&
+      !r.trace.some(e => e.error || e.call) && /No expert knows these words yet:\*\* shabby \(Cinderella\), selfish \(the Stepmother\), pretty \(the Godmother\), magical \(the Godmother\), helps \(the Godmother\)/.test(cp) &&
+      /Nobody has taught me a way to show these yet: shy, dominates, obeys\./.test(m1) && /The Stepmother chases Cinderella off \(mean\)/.test(m1) && /^Cinderella is slow because of shy/.test(at(r, "choice-points", 1).response.data.explain.Cinderella.replace(/^.*?Cinderella is/, "Cinderella is"));
+  });
 }
 
