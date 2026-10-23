@@ -58,7 +58,8 @@ own (see [Ani's 1978 film](https://toontalk.github.io/ani/)). **Mini-Ani, as in 
 what Ani's 1978 code knew and did, with the 1978 Cinderella, for teaching what it didn't. **Mini-Ani with AI voices** is the same society with
 AI agents where words are needed: an AI Animator suggests in Ani's words and the Choice Points weigh its lines like
 any expert's, a Reader turns a story told in your own words into the Cast's simple sentences, a Narrator tells the
-finished film, and a switch lets you join in as one more expert. All eight are also in `examples/`, to import.
+finished film, and a switch lets you join in as one more expert. **Mini-Ani as a society of mind** splits the Choice Points into thirteen small choosers in agencies (groups of agents a
+rule can speak to at once), with a Gatherer that chooses nothing; it makes the same film. All nine are also in `examples/`, to import.
 
 **How it was made:** [The Making of Agent Kit](https://toontalk.github.io/agent-construction-kit/making-of.html), with
 statistics (lines of code, prompts, tool calls, tests).

@@ -132,7 +132,7 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .status-line .pulse{width:9px;height:9px;border-radius:50%;background:var(--ok);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
 .agent-strip{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}
-.achip{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:4px 10px 4px 7px;font-size:12.5px;font-weight:700;color:var(--ink-soft);transition:transform .15s,box-shadow .15s}
+.agency{grid-column:1/-1;border:1.5px dashed var(--line);border-radius:12px;padding:4px 8px;background:var(--accent-bg)}.agency .agency-head{display:flex;align-items:center;gap:6px;width:100%;background:none;border:0;padding:4px 0;text-align:left;cursor:pointer;font:inherit;flex-wrap:wrap}.agency .agency-body{padding:4px 0 6px}.agency .agency-edit{gap:6px;align-items:center;margin:2px 0 6px}.agency .agency-edit .field{max-width:220px}.achip.agency{border-style:dashed;background:var(--accent-bg)}.achip.agency .cnt{font-size:11px;background:#fff;border-radius:8px;padding:0 5px;margin-left:2px}.agency-members{display:contents}.agency-fold .fold-btn{background:none;border:0;padding:0;text-align:left;cursor:pointer;font:inherit}.agency-fold .fold-names{margin-top:2px}.agency-unfold{margin:2px 0}.agency-pick{gap:6px;align-items:center;margin:0 0 6px}.achip{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:4px 10px 4px 7px;font-size:12.5px;font-weight:700;color:var(--ink-soft);transition:transform .15s,box-shadow .15s}
 .achip .e{font-size:15px}
 .achip.kind-model{border-color:#D8D2FF}
 .achip.kind-program{border-color:#BFE8D8}
@@ -435,7 +435,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.19.0";
+AK.VERSION = "1.20.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -5216,6 +5216,407 @@ libExtend({
     ];
   })()
 });
+// Mini-Ani as a society of mind (1.20.0): instead of one Choice Points, thirteen small choosers, each choosing one thing
+// about everyone (speed, size …) by the same rules, and a Gatherer that puts their answers together and chooses nothing.
+libAgent({
+  typeId: "ani-quality", name: "Chooser", emoji: "🔹", gate: false, collect: true, group: "The Mini-Ani's programs, which make a story into a film together", note: "collects · chooses one thing about everyone, from the suggestions about it",
+  about: "Chooses one thing about everyone being chosen, like their speed, from the experts' suggestions about it, by the Choice Points' rules: more than twice as strong wins, low and high meet in the middle, comparisons wait for the other's value. It ignores suggestions about other things: they are for the other choosers.",
+  pseudo: [
+    "wait for the scene and the experts' suggestions: {5} messages, or until nobody else has anything to say",
+    "I choose one thing about everyone the Cast says is being chosen: {speed}, which is {slow/fast}, compared as {slower/faster}",
+    "the levels are {low, medium, high}; “{same} …” means the same as someone else's",
+    "a suggestion is a word with {a bit} (weaker), {very} (stronger) or {not} (rules it out) before it",
+    "a suggestion counts its strength (a bit 1, plain 2, very 3) times where it came from:",
+    "  the character's own word {3}, a word meaning the same {2}, the opposite of a word {1}, a comparison {4}, the film's taste {1}",
+    "I listen only to suggestions about my thing: the rest are for the other choosers",
+    "choose for the film's focus first, then in the Cast's order:",
+    "  a comparison like “faster than X” waits for X's value, then rules out X's value and below",
+    "  if two choices wait for each other, the first goes without its comparison (Ani's “deadly embrace”)",
+    "  the film's variety adds a weak suggestion: low variety my value used most so far, high the least, medium the middle one",
+    "  a value is ruled out if what is against it is at least as strong as what is for it",
+    "  if one value is more than {2} times as strong as the next, it wins",
+    "  if not, low and high meet in the middle, unless the middle is ruled out; then the stronger wins, or the one said first",
+    "  if nobody suggested anything, it is medium; if everything is ruled out, a comparison keeps its own direction",
+    "remember the values; a stand-in gets the variety and comparisons its character had, and then its value becomes the character's",
+    "send everyone's value and why, and the suggestions I understood, for the Gatherer"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();",
+    "  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);",
+    "  const joinAnd = list => (list.length < 2 ? list.join(\"\") : list.slice(0, -1).join(\", \") + \" and \" + list[list.length - 1]);",
+    "  const levels = String(params.levels).split(\",\").map(low);",
+    "  const el = low(params.thing) || \"thing\";",
+    "  const pair = t => String(t == null ? \"\" : t).split(\"/\").map(low).map(w => (w === \"-\" ? \"\" : w));",
+    "  const plain = pair(params.words), compare = pair(params.compare);",
+    "  const words = [plain[0] || \"\", plain[1] || \"\", compare[0] || \"\", compare[1] || \"\"];",
+    "  const vocab = new Map();",
+    "  if (words[0]) vocab.set(words[0], { v: 1 });",
+    "  if (words[1]) vocab.set(words[1], { v: 3 });",
+    "  if (words[2]) vocab.set(words[2], { dir: -1 });",
+    "  if (words[3]) vocab.set(words[3], { dir: 1 });",
+    "  levels.forEach((l, i) => vocab.set(l + \" \" + el, { v: i + 1 }));",
+    "  vocab.set(low(params.same) + \" \" + el, { dir: 0 });",
+    "  const valueWord = v => (v === 1 && words[0] ? words[0] : v === 3 && words[1] ? words[1] : (levels[v - 1] || \"medium\") + \" \" + el);",
+    "  const ABIT = low(params.abit), VERY = low(params.very), NOT = low(params.not);",
+    "  const read = phrase => {",
+    "    let p = low(phrase), s = 2, not = false;",
+    "    if (ABIT && p.indexOf(ABIT + \" \") === 0) {",
+    "      s = 1;",
+    "      p = p.slice(ABIT.length + 1).trim();",
+    "    } else if (VERY && p.indexOf(VERY + \" \") === 0) {",
+    "      s = 3;",
+    "      p = p.slice(VERY.length + 1).trim();",
+    "    }",
+    "    if (NOT && p.indexOf(NOT + \" \") === 0) {",
+    "      not = true;",
+    "      p = p.slice(NOT.length + 1).trim();",
+    "    }",
+    "    const hit = vocab.get(p);",
+    "    return hit ? { v: hit.v, dir: hit.dir, s: s, not: not } : null;",
+    "  };",
+    "  const weights = { own: +params.own || 0, same: +params.alike || 0, opposite: +params.opposite || 0, comparison: +params.comparison || 0, taste: +params.taste || 0 };",
+    "  const memory = input.memory || {};",
+    "  for (const k of [\"values\", \"nets\", \"variety\", \"without\"]) {",
+    "    memory[k] = memory[k] || {};",
+    "  }",
+    "  memory.counts = memory.counts || [0, 0, 0];",
+    "  let scene = null, taste = {};",
+    "  const raw = [];",
+    "  for (const m of input.messages || []) {",
+    "    h.tick();",
+    "    const d = m.data || {};",
+    "    if (Array.isArray(d.choose)) scene = d;",
+    "    if (d.taste) taste = d.taste;",
+    "    for (const x of d.suggestions || []) {",
+    "      h.tick();",
+    "      raw.push({ by: m.from, x: x });",
+    "    }",
+    "  }",
+    "  if (!scene) return { thing: el, count: 0, say: \"I didn't get the scene from the Cast, so I chose no \" + el + \".\", memory: memory };",
+    "  const call = n => (scene.called || {})[n] || n;",
+    "  const tasteLevel = {};",
+    "  for (const k of Object.keys(taste)) {",
+    "    h.tick();",
+    "    tasteLevel[k] = levels.indexOf(low(taste[k])) + 1;",
+    "  }",
+    "  const focus = low(taste.focus);",
+    "  const choose = (scene.choose || []).filter(c => low(c.of || c.name) === focus).concat((scene.choose || []).filter(c => low(c.of || c.name) !== focus));",
+    "  const beingChosen = new Set(choose.map(c => c.name));",
+    "  const sugs = new Map(), used = [], from = [];",
+    "  let n = 0;",
+    "  for (const r of raw) {",
+    "    h.tick();",
+    "    const x = r.x;",
+    "    const targets = x.who === \"*\" ? choose.map(c => c.name) : [x.who];",
+    "    for (const phrase of String(x.says || \"\").split(\",\")) {",
+    "      h.tick();",
+    "      if (!phrase.trim()) continue;",
+    "      const p = read(phrase);",
+    "      if (!p || (p.dir !== undefined && !x.of)) continue;",
+    "      if (used.indexOf(low(phrase) + \" (\" + r.by + \")\") < 0) used.push(low(phrase) + \" (\" + r.by + \")\");",
+    "      const kind = p.dir !== undefined ? \"comparison\" : x.kind;",
+    "      const turn = !!x.turn;",
+    "      const v = p.v === undefined ? undefined : turn ? 4 - p.v : p.v, dir = p.dir === undefined ? undefined : turn ? -p.dir : p.dir;",
+    "      const said = p.dir !== undefined ? (dir === 0 ? low(params.same) + \" \" + el + \" as \" : words[dir > 0 ? 3 : 2] + \" than \") + call(x.of) + \" (\" + x.word + \")\"",
+    "        : kind === \"taste\" ? \"the film's \" + x.word",
+    "        : x.word + (x.from ? \" (\" + x.from + \" brings it)\" : \"\") + (kind === \"same\" ? \" (like \" + x.like + \")\" : \"\") + (kind === \"opposite\" ? \" (the opposite of \" + x.like + \")\" : \"\");",
+    "      for (const who of targets) {",
+    "        h.tick();",
+    "        if (!beingChosen.has(who)) continue;",
+    "        if (!sugs.has(who)) sugs.set(who, []);",
+    "        sugs.get(who).push({ n: n++, v: v, dir: dir, of: x.of, not: p.not, w: p.s * (weights[kind] || 0), src: p.not ? \"“\" + NOT + \" \" + valueWord(v) + \"” (\" + said + \")\" : said });",
+    "        if (kind !== \"taste\" && kind !== \"comparison\" && from.indexOf(r.by) < 0) from.push(r.by);",
+    "      }",
+    "    }",
+    "  }",
+    "  const frozen = Object.keys(memory.values).length > 0;",
+    "  const counts = memory.counts.slice(), chosen = {}, nets = {}, why = {};",
+    "  const valueFor = who => (chosen[who] !== undefined ? chosen[who] : beingChosen.has(who) ? undefined : memory.values[who]);",
+    "  const ofName = {};",
+    "  for (const c of choose) {",
+    "    h.tick();",
+    "    ofName[c.name] = c.of || c.name;",
+    "  }",
+    "  const stillWithout = who => frozen && memory.without[ofName[who]] === true;",
+    "  const variety = () => {",
+    "    const lv = tasteLevel.variety || 0;",
+    "    const most = [1, 2, 3].sort((a, b) => counts[b - 1] - counts[a - 1]), least = [1, 2, 3].sort((a, b) => counts[a - 1] - counts[b - 1]);",
+    "    return lv === 1 ? most[0] : lv === 3 ? least[0] : lv === 2 ? most[1] : 0;",
+    "  };",
+    "  const tally = { more: 0, middle: 0, stronger: 0, first: 0, alone: 0, nobody: 0, self: 0, waited: 0, without: 0 };",
+    "  const ratio = +params.ratio || 2;",
+    "  const left = choose.map(c => c.name);",
+    "  while (left.length) {",
+    "    h.tick();",
+    "    const waits = who => (sugs.get(who) || []).filter(s => s.dir !== undefined && valueFor(s.of) === undefined && beingChosen.has(s.of));",
+    "    let k = left.findIndex(who => waits(who).length === 0);",
+    "    const embrace = k < 0;",
+    "    if (embrace) k = 0;",
+    "    const who = left.splice(k, 1)[0];",
+    "    const pro = [0, 0, 0], con = [0, 0, 0], first = [1e9, 1e9, 1e9], forV = [[], [], []], against = [[], [], []], without = [];",
+    "    let pull = 0;",
+    "    for (const s of sugs.get(who) || []) {",
+    "      h.tick();",
+    "      if (s.dir !== undefined) {",
+    "        const x = valueFor(s.of);",
+    "        if (x === undefined || stillWithout(who)) {",
+    "          without.push(s.src);",
+    "          continue;",
+    "        }",
+    "        if (beingChosen.has(s.of)) tally.waited++;",
+    "        if (s.dir === 0) {",
+    "          pro[x - 1] += s.w;",
+    "          forV[x - 1].push(s.src);",
+    "          first[x - 1] = Math.min(first[x - 1], s.n);",
+    "          continue;",
+    "        }",
+    "        pull += s.dir * s.w;",
+    "        for (let v = 1; v <= 3; v++) {",
+    "          if (s.dir > 0 ? v <= x : v >= x) {",
+    "            con[v - 1] += s.w;",
+    "            against[v - 1].push(\"“\" + s.src.split(\" (\")[0] + \"” (\" + s.src.split(\" (\").slice(1).join(\" (\"));",
+    "          }",
+    "        }",
+    "        continue;",
+    "      }",
+    "      if (s.not) {",
+    "        con[s.v - 1] += s.w;",
+    "        against[s.v - 1].push(s.src);",
+    "        continue;",
+    "      }",
+    "      pro[s.v - 1] += s.w;",
+    "      forV[s.v - 1].push(s.src);",
+    "      first[s.v - 1] = Math.min(first[s.v - 1], s.n);",
+    "    }",
+    "    if (without.length) tally.without++;",
+    "    const vv = frozen && memory.variety[ofName[who]] !== undefined ? memory.variety[ofName[who]] : variety();",
+    "    if (!frozen) memory.variety[who] = vv;",
+    "    if (vv && weights.taste) {",
+    "      pro[vv - 1] += weights.taste;",
+    "      forV[vv - 1].push(\"the film's variety\");",
+    "      first[vv - 1] = Math.min(first[vv - 1], n + 1);",
+    "    }",
+    "    const net = [0, 1, 2].map(i => pro[i] - con[i]);",
+    "    const out = [0, 1, 2].map(i => con[i] > 0 && con[i] >= pro[i]);",
+    "    const standing = [1, 2, 3].filter(v => !out[v - 1]);",
+    "    const backed = standing.filter(v => pro[v - 1] > 0).sort((a, b) => net[b - 1] - net[a - 1] || first[a - 1] - first[b - 1]);",
+    "    let v = 2, how = \"\";",
+    "    if (!standing.length) {",
+    "      v = pull > 0 ? 3 : pull < 0 ? 1 : [1, 2, 3].sort((a, b) => net[b - 1] - net[a - 1])[0];",
+    "      how = pull ? \"everything was ruled out, so the comparison kept its own direction\" : \"everything was ruled out, so the least ruled out won\";",
+    "      tally.self++;",
+    "    } else if (!backed.length) {",
+    "      v = standing.indexOf(2) >= 0 ? 2 : standing[0];",
+    "      how = \"nobody suggested anything that wasn't ruled out\";",
+    "      tally.nobody++;",
+    "    } else if (backed.length === 1) {",
+    "      v = backed[0];",
+    "      how = [1, 2, 3].some(x => x !== v && pro[x - 1] > 0) ? \"everything else was ruled out\" : \"nobody suggested anything else\";",
+    "      tally.alone++;",
+    "    } else if (net[backed[0] - 1] > ratio * net[backed[1] - 1]) {",
+    "      v = backed[0];",
+    "      how = \"more than \" + ratio + \" times as strong\";",
+    "      tally.more++;",
+    "    } else if (backed[0] + backed[1] === 4 && !out[1]) {",
+    "      v = 2;",
+    "      how = valueWord(1) + \" and \" + valueWord(3) + \" met in the middle\";",
+    "      tally.middle++;",
+    "    } else {",
+    "      v = backed[0];",
+    "      how = net[backed[0] - 1] > net[backed[1] - 1] ? \"stronger\" : \"said first\";",
+    "      tally[net[backed[0] - 1] > net[backed[1] - 1] ? \"stronger\" : \"first\"]++;",
+    "    }",
+    "    chosen[who] = v;",
+    "    nets[who] = net;",
+    "    if (!frozen) counts[v - 1]++;",
+    "    why[who] = { value: valueWord(v), how: how, because: forV[v - 1], against: against[v - 1] };",
+    "    if (without.length) why[who].without = without;",
+    "    if (embrace && without.length) why[who].embrace = true;",
+    "  }",
+    "  const values = {}, strengths = {};   // as the scene began: someone who changes now shows the change in a stand-in",
+    "  for (const name of (scene.onStage || []).concat(choose.filter(c => c.of).map(c => c.name))) {",
+    "    h.tick();",
+    "    const x = beingChosen.has(name) ? chosen[name] : memory.values[name];",
+    "    if (x === undefined) continue;",
+    "    values[name] = x;",
+    "    strengths[name] = beingChosen.has(name) ? nets[name] : memory.nets[name];",
+    "  }",
+    "  for (const c of choose) {",
+    "    h.tick();",
+    "    memory.values[c.of || c.name] = chosen[c.name];",
+    "    memory.nets[c.of || c.name] = nets[c.name];",
+    "    if (!frozen) memory.without[c.of || c.name] = !!why[c.name].without;",
+    "  }",
+    "  if (!frozen) memory.counts = counts;",
+    "  const STRONG = \"more than \" + ratio + \" times as strong\";",
+    "  const line = c => call(c.name) + \" \" + why[c.name].value + (why[c.name].how === STRONG ? \"\" : \" (\" + why[c.name].how + \")\") + (why[c.name].embrace ? \", without its comparison: two choices waited for each other (Ani's “deadly embrace”)\" : \"\");",
+    "  const say = \"**\" + cap(el) + \":** \" + (choose.length ? choose.map(line).join(\"; \") + \".\" : \"nobody's words changed, so everyone keeps the \" + el + \" chosen before.\");",
+    "  return { thing: el, words: words, count: choose.length, scene: scene.scene, of: scene.of, title: scene.title, cast: scene.cast, called: scene.called, onStage: scene.onStage, events: scene.events, relations: scene.relations, friends: scene.friends,",
+    "    standIns: choose.filter(c => c.of).map(c => ({ name: c.name, of: c.of })), chosen: choose.map(c => c.name), values: values, strengths: strengths, why: why, used: used, suggestedBy: from, taste: taste, tasteLevel: tasteLevel, tally: tally, say: say, memory: memory };",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [43, 52] }, { pseudo: [2, 2], js: [6, 14] }, { pseudo: [3, 3], js: [5, 5] }, { pseudo: [3, 3], js: [15, 16] }, { pseudo: [4, 4], js: [18, 34] }, { pseudo: [5, 6], js: [35, 35] }, { pseudo: [7, 7], js: [73, 73] }, { pseudo: [8, 8], js: [60, 62] }, { pseudo: [9, 9], js: [118, 138] }, { pseudo: [10, 10], js: [110, 112] }, { pseudo: [11, 11], js: [99, 102] }, { pseudo: [11, 11], js: [150, 156] }, { pseudo: [12, 12], js: [158, 158] }, { pseudo: [13, 13], js: [174, 177] }, { pseudo: [14, 14], js: [178, 186] }, { pseudo: [15, 15], js: [162, 173] }, { pseudo: [16, 16], js: [202, 208] }, { pseudo: [17, 17], js: [194, 201] }, { pseudo: [17, 17], js: [209, 213] }],
+  params: { wait: 5, thing: "speed", words: "slow/fast", compare: "slower/faster", levels: "low, medium, high", same: "same", abit: "a bit", very: "very", not: "not", own: 3, alike: 2, opposite: 1, comparison: 4, taste: 1, ratio: 2 },
+  slots: [{ line: 1, text: "5", param: "wait" }, { line: 2, text: "speed", param: "thing" }, { line: 2, text: "slow/fast", param: "words" }, { line: 2, text: "slower/faster", param: "compare" }, { line: 3, text: "low, medium, high", param: "levels" }, { line: 3, text: "same", param: "same" }, { line: 4, text: "a bit", param: "abit" }, { line: 4, text: "very", param: "very" }, { line: 4, text: "not", param: "not" }, { line: 6, text: "3", param: "own" }, { line: 6, text: "2", param: "alike" }, { line: 6, text: "1", param: "opposite" }, { line: 6, text: "4", param: "comparison" }, { line: 6, text: "1", param: "taste" }, { line: 13, text: "2", param: "ratio" }],
+  scenarios: [
+    {"id": "s1", "name": "it chooses its thing for everyone being chosen, and leaves the rest to the other choosers", "input": {"messages": [{"from": "Cast", "text": "", "data": {"scene": 1, "of": 1, "title": "A scene.", "cast": ["Ann", "Bob"], "called": {}, "choose": [{"name": "Ann", "words": ["shy"]}, {"name": "Bob", "words": []}], "onStage": ["Ann", "Bob"], "events": [], "relations": [], "friends": []}}, {"from": "Personality", "text": "", "data": {"suggestions": [{"who": "Ann", "word": "shy", "kind": "own", "says": "a bit slow, sparkly"}]}}]}, "expect": {"values": {"Ann": 1, "Bob": 2}, "used": ["a bit slow (Personality)"], "sayContains": "Ann slow"}},
+    {"id": "s2", "name": "a comparison waits for the other's value: faster than Bob, who is slow", "input": {"messages": [{"from": "Cast", "text": "", "data": {"scene": 1, "of": 1, "title": "A scene.", "cast": ["Ann", "Bob"], "called": {}, "choose": [{"name": "Ann", "words": []}, {"name": "Bob", "words": []}], "onStage": ["Ann", "Bob"], "events": [], "relations": [], "friends": []}}, {"from": "Personality", "text": "", "data": {"suggestions": [{"who": "Bob", "word": "lazy", "kind": "own", "says": "slow"}, {"who": "Ann", "word": "brave", "kind": "own", "says": "a bit fast"}]}}, {"from": "Relationships", "text": "", "data": {"suggestions": [{"who": "Ann", "of": "Bob", "word": "dominates", "kind": "comparison", "says": "faster"}]}}]}, "expect": {"values": {"Ann": 3, "Bob": 1}}},
+    {"id": "s3", "name": "two choices that wait for each other: the first goes without its comparison (Ani's “deadly embrace”)", "input": {"messages": [{"from": "Cast", "text": "", "data": {"scene": 1, "of": 1, "title": "A scene.", "cast": ["Ann", "Bob"], "called": {}, "choose": [{"name": "Ann", "words": []}, {"name": "Bob", "words": []}], "onStage": ["Ann", "Bob"], "events": [], "relations": [], "friends": []}}, {"from": "Relationships", "text": "", "data": {"suggestions": [{"who": "Ann", "of": "Bob", "word": "dominates", "kind": "comparison", "says": "faster"}, {"who": "Bob", "of": "Ann", "word": "dominates", "kind": "comparison", "says": "faster"}]}}]}, "expect": {"sayContains": "deadly embrace"}},
+    {"id": "s4", "name": "when nobody is being chosen, everyone keeps what was chosen before", "input": {"memory": {"values": {"Ann": 3}, "nets": {"Ann": [0, 0, 6]}, "variety": {}, "without": {}, "counts": [0, 0, 1]}, "messages": [{"from": "Cast", "text": "", "data": {"scene": 1, "of": 1, "title": "A scene.", "cast": ["Ann", "Bob"], "called": {}, "choose": [], "onStage": ["Ann"], "events": [], "relations": [], "friends": []}}]}, "expect": {"count": 0, "values": {"Ann": 3}, "sayContains": "keeps the {=thing}"}}
+  ]
+});
+libAgent({
+  typeId: "ani-gather", name: "Gatherer", emoji: "🧺", gate: false, collect: true, group: "The Mini-Ani's programs, which make a story into a film together", note: "collects · puts the choosers' answers together, and chooses nothing",
+  about: "Waits for every chooser's answer and the experts' words, and puts them together as the Choice Points would: each character's values, why, the words no expert knows, and any suggestion no chooser understood. It chooses nothing itself.",
+  pseudo: [
+    "wait for the choosers' answers and the experts' words: up to {17} messages, or until nobody else has anything to say",
+    "I choose nothing: each chooser has chosen one thing about everyone, and I put their answers together",
+    "for each character, gather what every chooser chose, and why; the levels are {low, medium, high}",
+    "the experts who said something about {size, shape, detail, brightness, warmth} chose the looks; with none, the Director draws Ken's 1978 shapes",
+    "name the words no expert knows, once, and any suggestion no chooser understood",
+    "a subtle film keeps only each one's strongest differences: that needs someone who sees all of a character at once, and nobody here does",
+    "explain {Cinderella} in full first (or the first one chosen), then say everyone's values and how the choosers settled their arguments (more than {2} times as strong wins)",
+    "send it all on, as the Choice Points would, for the Method Chooser and the Director"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();",
+    "  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);",
+    "  const joinAnd = list => (list.length < 2 ? list.join(\"\") : list.slice(0, -1).join(\", \") + \" and \" + list[list.length - 1]);",
+    "  const levels = String(params.levels).split(\",\").map(low);",
+    "  const LOOKS = String(params.looks).split(\",\").map(low).filter(Boolean);",
+    "  const memory = input.memory || {};",
+    "  memory.told = memory.told || [];",
+    "  memory.looksFrom = memory.looksFrom || [];",
+    "  const things = [], knew = {}, unknown = {}, said = [];",
+    "  let scene = null;",
+    "  for (const m of input.messages || []) {",
+    "    h.tick();",
+    "    const d = m.data || {};",
+    "    if (d.thing) {",
+    "      if (d.scene !== undefined) things.push({ by: m.from, d: d });",
+    "      if (!scene && d.scene !== undefined) scene = d;",
+    "      continue;",
+    "    }",
+    "    for (const x of d.suggestions || []) {",
+    "      h.tick();",
+    "      for (const phrase of String(x.says || \"\").split(\",\")) {",
+    "        h.tick();",
+    "        if (phrase.trim() && x.who !== \"*\" && said.indexOf(low(phrase) + \" (\" + m.from + \")\") < 0) said.push(low(phrase) + \" (\" + m.from + \")\");",
+    "      }",
+    "    }",
+    "    for (const who of Object.keys(d.knew || {})) {",
+    "      h.tick();",
+    "      knew[who] = (knew[who] || []).concat(d.knew[who]);",
+    "    }",
+    "    for (const who of Object.keys(d.unknown || {})) {",
+    "      h.tick();",
+    "      unknown[who] = (unknown[who] || []).concat(d.unknown[who]);",
+    "    }",
+    "  }",
+    "  if (!scene) return { count: 0, say: \"No chooser sent me a scene, so there is nothing to gather.\", memory: memory };",
+    "  const call = n => (scene.called || {})[n] || n;",
+    "  const choices = {}, strengths = {}, why = {}, words = {}, tally = { more: 0, middle: 0, stronger: 0, first: 0, alone: 0, nobody: 0, self: 0, waited: 0, without: 0 };",
+    "  const chosenNow = [], used = [];",
+    "  for (const t of things) {",
+    "    h.tick();",
+    "    const el = t.d.thing;",
+    "    words[el] = t.d.words;",
+    "    for (const name of Object.keys(t.d.values || {})) {",
+    "      h.tick();",
+    "      choices[name] = choices[name] || {};",
+    "      choices[name][el] = t.d.values[name];",
+    "      if (el === \"shape\" || el === \"detail\") {",
+    "        strengths[name] = strengths[name] || {};",
+    "        strengths[name][el] = t.d.strengths[name];",
+    "      }",
+    "    }",
+    "    for (const name of t.d.chosen || []) {",
+    "      h.tick();",
+    "      if (chosenNow.indexOf(name) < 0) chosenNow.push(name);",
+    "      why[name] = why[name] || {};",
+    "      why[name][el] = t.d.why[name];",
+    "    }",
+    "    for (const k of Object.keys(tally)) {",
+    "      tally[k] += (t.d.tally || {})[k] || 0;",
+    "    }",
+    "    for (const u of t.d.used || []) {",
+    "      h.tick();",
+    "      if (used.indexOf(u) < 0) used.push(u);",
+    "    }",
+    "    if (LOOKS.indexOf(low(el)) >= 0) {",
+    "      for (const b of t.d.suggestedBy || []) {",
+    "        h.tick();",
+    "        if (memory.looksFrom.indexOf(b) < 0) memory.looksFrom.push(b);",
+    "      }",
+    "    }",
+    "  }",
+    "  const order = things.map(t => t.d.thing);",
+    "  const valueWord = (el, v) => {",
+    "    const w = words[el] || [];",
+    "    return v === 1 && w[0] ? w[0] : v === 3 && w[1] ? w[1] : (levels[v - 1] || \"medium\") + \" \" + el;",
+    "  };",
+    "  const describe = vals => {",
+    "    const shown = order.filter(el => vals[el] !== undefined && vals[el] !== 2).map(el => valueWord(el, vals[el])), mid = order.filter(el => vals[el] === 2);",
+    "    return (shown.join(\", \") || levels[1] + \" in everything\") + (shown.length && mid.length ? \" (\" + levels[1] + \": \" + mid.join(\", \") + \")\" : \"\");",
+    "  };",
+    "  const summary = {};",
+    "  for (const name of Object.keys(choices)) {",
+    "    h.tick();",
+    "    summary[name] = describe(choices[name]);",
+    "  }",
+    "  const lost = [];",
+    "  for (const who of Object.keys(unknown)) {",
+    "    h.tick();",
+    "    for (const w of unknown[who]) {",
+    "      h.tick();",
+    "      const tag = w + \" (\" + call(who) + \")\";",
+    "      if (lost.indexOf(tag) < 0 && memory.told.indexOf(tag) < 0 && (knew[who] || []).indexOf(w) < 0) lost.push(tag);",
+    "    }",
+    "  }",
+    "  memory.told = memory.told.concat(lost);",
+    "  const nobody = said.filter(p => used.indexOf(p) < 0);",
+    "  const FILM = \"the film's \", STRONG = \"more than \" + (+params.ratio || 2) + \" times as strong\";",
+    "  const explain = {};",
+    "  for (const name of chosenNow) {",
+    "    h.tick();",
+    "    const list = [], mid = [];",
+    "    for (const el of order) {",
+    "      h.tick();",
+    "      const w = (why[name] || {})[el];",
+    "      if (!w) continue;",
+    "      if (choices[name] && choices[name][el] === 2) {",
+    "        mid.push(el);",
+    "        continue;",
+    "      }",
+    "      const film = w.because.filter(x => x.indexOf(FILM) === 0).map(x => x.slice(FILM.length)), own = w.because.filter(x => x.indexOf(FILM) !== 0);",
+    "      list.push(w.value + \" because of \" + joinAnd(own.concat(film.length ? [FILM + joinAnd(film)] : [])) + (w.against.length ? \", against \" + joinAnd(w.against) : \"\") + (w.how === STRONG ? \"\" : \" (\" + w.how + \")\"));",
+    "    }",
+    "    explain[name] = cap(call(name)) + (list.length ? \" is \" + list.join(\"; \") + \".\" : \"\") + (mid.length ? \" \" + cap(levels[1]) + \": \" + joinAnd(mid) + \".\" : \"\");",
+    "  }",
+    "  const target = chosenNow.find(nm => low(nm) === low(params.explain)) || chosenNow[0];",
+    "  let say = \"**Scene \" + scene.scene + \" of \" + scene.of + \".** \" + (target ? \"**Why \" + call(target) + \" is like that:** \" + explain[target] + \"\\n\\n\" : \"\");",
+    "  say += (chosenNow.length ? \"The \" + things.length + \" choosers chose for \" + joinAnd(chosenNow.map(call)) + \"; I only put their answers together:\\n\" : \"Nobody's words changed, so everyone keeps the values chosen before:\\n\") +",
+    "    Object.keys(summary).map(nm => \"- **\" + call(nm) + \"**: \" + summary[nm]).join(\"\\n\");",
+    "  const parts = [[tally.more, STRONG], [tally.middle, \"met in the middle\"], [tally.stronger, \"stronger\"], [tally.first, \"said first\"], [tally.alone, \"unopposed\"], [tally.nobody, \"nothing suggested\"], [tally.self, \"kept a comparison's own direction\"]].filter(x => x[0] > 0);",
+    "  if (chosenNow.length) say += \"\\n\\n**Settled, by the choosers:** \" + parts.map(x => x[0] + \" \" + x[1]).join(\", \") + \". \" + tally.waited + (tally.waited === 1 ? \" comparison\" : \" comparisons\") + \" waited for another's value\" + (tally.without ? \"; \" + tally.without + \" went without, because two choices waited for each other (Ani's “deadly embrace”)\" : \"\") + \".\";",
+    "  if (lost.length) say += \"\\n\\n**No expert knows these words yet:** \" + lost.join(\", \") + \". Teach one on an expert's empty line (Look inside).\";",
+    "  if (nobody.length) say += \"\\n\\n**No chooser understood:** \" + nobody.slice(0, 8).join(\", \") + \".\";",
+    "  return { count: chosenNow.length, scene: scene.scene, of: scene.of, title: scene.title, cast: scene.cast, called: scene.called, onStage: scene.onStage, events: scene.events, relations: scene.relations, friends: scene.friends,",
+    "    standIns: scene.standIns || [], choices: choices, strengths: strengths, summary: summary, words: words, looksFrom: memory.looksFrom, taste: scene.taste, tasteLevel: scene.tasteLevel, why: why, explain: explain, unknown: lost, say: say, memory: memory };",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [12, 19] }, { pseudo: [2, 2], js: [40, 40] }, { pseudo: [3, 3], js: [42, 57] }, { pseudo: [3, 3], js: [5, 5] }, { pseudo: [3, 3], js: [78, 85] }, { pseudo: [4, 4], js: [66, 69] }, { pseudo: [5, 5], js: [87, 97] }, { pseudo: [6, 6], js: [47, 47] }, { pseudo: [7, 7], js: [99, 123] }, { pseudo: [8, 8], js: [125, 125] }],
+  params: { wait: 17, levels: "low, medium, high", looks: "size, shape, detail, brightness, warmth", explain: "Cinderella", ratio: 2 },
+  slots: [{ line: 1, text: "17", param: "wait" }, { line: 3, text: "low, medium, high", param: "levels" }, { line: 4, text: "size, shape, detail, brightness, warmth", param: "looks" }, { line: 7, text: "Cinderella", param: "explain" }, { line: 7, text: "2", param: "ratio" }],
+  scenarios: [
+    {"id": "s1", "name": "it puts the choosers' answers together and chooses nothing; a word no expert knows and a suggestion no chooser understood are named", "input": {"messages": [{"from": "Speed", "text": "", "data": {"thing": "speed", "words": ["slow", "fast", "slower", "faster"], "scene": 1, "of": 1, "title": "A scene.", "cast": ["Ann"], "called": {}, "onStage": ["Ann"], "events": [], "relations": [], "friends": [], "standIns": [], "chosen": ["Ann"], "values": {"Ann": 1}, "strengths": {"Ann": [0, 0, 0]}, "why": {"Ann": {"value": "slow", "how": "nobody suggested anything else", "because": ["shy"], "against": []}}, "used": ["a bit slow (Personality)"], "suggestedBy": ["Personality"], "taste": {}, "tasteLevel": {}, "tally": {"alone": 1}}}, {"from": "Size", "text": "", "data": {"thing": "size", "words": ["small", "big", "smaller", "bigger"], "scene": 1, "of": 1, "title": "A scene.", "cast": ["Ann"], "called": {}, "onStage": ["Ann"], "events": [], "relations": [], "friends": [], "standIns": [], "chosen": ["Ann"], "values": {"Ann": 3}, "strengths": {"Ann": [0, 0, 0]}, "why": {"Ann": {"value": "big", "how": "nobody suggested anything else", "because": ["strong"], "against": []}}, "used": ["big (Looks)"], "suggestedBy": ["Looks"], "taste": {}, "tasteLevel": {}, "tally": {"alone": 1}}}, {"from": "Personality", "text": "", "data": {"suggestions": [{"who": "Ann", "word": "shy", "kind": "own", "says": "a bit slow, sparkly"}], "unknown": {"Ann": ["magical"]}, "knew": {}}}]}, "expect": {"choices": {"Ann": {"speed": 1, "size": 3}}, "looksFrom": ["Looks"], "unknown": ["magical (Ann)"], "sayContains": "No chooser understood:** sparkly (personality)"}},
+    {"id": "s2", "name": "with no chooser's answer, there is nothing to gather", "input": {"messages": []}, "expect": {"count": 0}},
+    {"id": "s3", "name": "when nobody is being chosen, it gathers the values chosen before, and explains no one", "input": {"messages": [{"from": "Speed", "text": "", "data": {"thing": "speed", "words": ["slow", "fast", "slower", "faster"], "scene": 1, "of": 1, "title": "A scene.", "cast": ["Ann"], "called": {}, "onStage": ["Ann"], "events": [], "relations": [], "friends": [], "standIns": [], "chosen": [], "values": {"Ann": 1}, "strengths": {"Ann": [0, 0, 0]}, "why": {}, "used": [], "suggestedBy": [], "taste": {}, "tasteLevel": {}, "tally": {"alone": 1}}}]}, "expect": {"count": 0, "choices": {"Ann": {"speed": 1}}, "sayContains": "Nobody's words changed"}},
+    {"id": "s4", "name": "a word one expert didn't know but another did isn't named", "input": {"messages": [{"from": "Speed", "text": "", "data": {"thing": "speed", "words": ["slow", "fast", "slower", "faster"], "scene": 1, "of": 1, "title": "A scene.", "cast": ["Ann"], "called": {}, "onStage": ["Ann"], "events": [], "relations": [], "friends": [], "standIns": [], "chosen": ["Ann"], "values": {"Ann": 2}, "strengths": {"Ann": [0, 0, 0]}, "why": {"Ann": {"value": "medium speed", "how": "nobody suggested anything that wasn't ruled out", "because": [], "against": []}}, "used": [], "suggestedBy": [], "taste": {}, "tasteLevel": {}, "tally": {"alone": 1}}}, {"from": "Looks", "text": "", "data": {"suggestions": [], "unknown": {"Ann": ["hardworking"]}, "knew": {}}}, {"from": "Personality", "text": "", "data": {"suggestions": [], "unknown": {}, "knew": {"Ann": ["hardworking"]}}}]}, "expect": {"unknown": []}}
+  ]
+});
 const VARIANT_TRANSLATIONS = [
   { pseudo: ["if rows is {3} and columns is {5}, or rows is {5} and columns is {3}", "  pass, and say \"done\"", "otherwise", "  block, and say \"You drew {rows} by {columns}. I need {3} by {5}.\""],
     code: ["function run(input, params, h) {", "  const rows = input.data.rows;", "  const columns = input.data.cols;", "  if ((rows === params.rowsNeeded && columns === params.columnsNeeded) || (rows === params.columnsNeeded && columns === params.rowsNeeded)) {", "    return { pass: true, say: \"done\" };", "  } else {", "    return { pass: false, say: \"You drew \" + rows + \" by \" + columns + \". I need \" + params.rowsNeeded + \" by \" + params.columnsNeeded + \".\" };", "  }", "}"],
@@ -5969,6 +6370,59 @@ function makeMiniAni1978() {
   return s;
 }
 
+// Mini-Ani as a society of mind (1.20.0): the Mini-Ani with its Choice Points split into thirteen small choosers, one for
+// each thing about a character, as in Minsky's Society of Mind: nobody chooses everything. They are in three agencies
+// (how they move, how they get on, how they look) inside a Choosers agency; the experts are an agency too, so one rule
+// can speak to a whole agency. A Gatherer puts the choosers' answers together and chooses nothing. The choosers use the
+// Choice Points' words and rules, one thing each, so the same story makes the same film.
+const QUALITY_AGENCIES = [
+  ["moving", "How they move", "🏃", [["speed", "⏩"], ["liveliness", "🎈"], ["curves", "〰️"], ["jerkiness", "⚡"], ["purpose", "🎯"]]],
+  ["getting-on", "How they get on", "🤝", [["friends", "🤗"], ["strangers", "🚪"]]],
+  ["looking", "How they look", "👀", [["size", "📏"], ["shape", "🔷"], ["detail", "✨"], ["brightness", "💡"], ["warmth", "🔥"], ["height", "⬆️"]]]
+];
+function makeMiniAniSoM() {
+  const s = makeMiniAni(), r = (id, from, to, extra) => Object.assign({ id, from, when: "always", send: "data", to, prefix: "", enabled: true }, extra || {});
+  const cp = LIB["ani-choices"].params, choosers = [], agencies = [];
+  const swap = (sc, w, c) => JSON.parse(JSON.stringify(sc).replace(/\bslower\b/g, "@@1@@").replace(/\bfaster\b/g, "@@2@@").replace(/\bslow\b/g, "@@3@@").replace(/\bfast\b/g, "@@4@@")
+    .split("@@1@@").join(c[0]).split("@@2@@").join(c[1]).split("@@3@@").join(w[0]).split("@@4@@").join(w[1]));
+  for (const [gid, gname, gemoji, list] of QUALITY_AGENCIES) {
+    for (const [id, emoji] of list) {
+      const text = String(cp[id]), parts = text.slice(text.indexOf(":") + 1).split(",").map(x => x.trim());
+      const w = parts[0].split("/"), c = parts[1] ? parts[1].split("/") : null;
+      const a = programAgent(id, "ani-quality", { name: id.charAt(0).toUpperCase() + id.slice(1), emoji, role: "chooses everyone's " + id, note: "chooses everyone's " + id + ", from the suggestions about it" });
+      setParams(a, { thing: id, words: parts[0], compare: c ? parts[1] : "-" });
+      a.scenarios = a.scenarios.filter(sc => c || ["s2", "s3"].indexOf(sc.id) < 0).map(sc => swap(sc, w, c || ["", ""]));
+      choosers.push(a);
+    }
+    agencies.push({ id: gid, name: gname, emoji: gemoji, about: "chooses " + list.map(x => x[0]).join(", ").replace(/, (?=[^,]*$)/, " and "), members: list.map(x => x[0]) });
+  }
+  const keep = id => s.agents.find(a => a.id === id);
+  Object.assign(s, {
+    id: "miniani-som", title: "Mini-Ani as a society of mind", question: "Who decides how fast Cinderella is?",
+    intro: "The Mini-Ani as Minsky's Society of Mind: its Choice Points are split into thirteen small choosers, each choosing one thing about everyone, like their speed. Nobody chooses everything. The choosers work in agencies, and a Gatherer puts their answers together. Same rules, same story: is it the same film?",
+    questions: [
+      "Who decides how fast Cinderella is? Open the Choosers agency, then Speed (Look inside).",
+      "Play the same story in the Mini-Ani. Is the film the same? Why might it be?",
+      "Find Ani's “deadly embrace” in a chooser's answer: which two choices waited for each other?",
+      "The Gatherer says a subtle film needs someone who sees all of a character at once. Which agent in the Mini-Ani does? Does it matter that nobody here does?",
+      "Some rules speak to a whole agency. Which ones? How many messages does one of them send?"
+    ],
+    openers: ["Who is in charge here?", "What does the Speed chooser know about Cinderella?", "Why might a society have no boss?"],
+    variants: [],
+    agents: [keep("cast"), keep("personality"), keep("looks"), keep("relationships"), keep("taste")].concat(choosers, [programAgent("gatherer", "ani-gather"), keep("methods"), keep("director"), keep("renderer")]),
+    agencies: [
+      { id: "experts", name: "Experts", emoji: "🧠", about: "suggest how each character moves and looks", members: ["personality", "looks", "relationships", "taste"] },
+      { id: "choosers", name: "Choosers", emoji: "🧩", about: "thirteen small agents, each choosing one thing about everyone", members: agencies.map(g => g.id) }
+    ].concat(agencies),
+    rules: [
+      r("g1", "cast", "experts"), r("g2", "cast", "choosers"), r("g3", "experts", "choosers"), r("g4", "experts", "gatherer"), r("g5", "choosers", "gatherer"),
+      r("g6", "gatherer", "methods"), r("g7", "methods", "director"), r("g8", "director", "renderer"),
+      r("g9", "renderer", "cast", { send: "text" }), r("g10", "renderer", "cast", { when: "data", field: "pass", op: "=", value: "false", send: "text+data" })
+    ]
+  });
+  return s;
+}
+
 // The Mini-Ani with AI voices: the same programs, with AI agents where words are needed. Language goes to models,
 // and weighing, planning and drawing stay with programs:
 // - the AI Animator suggests in Ani's words, and the Choice Points weigh its lines like an expert's (and name any word
@@ -6035,6 +6489,7 @@ const EXAMPLES = [
   { id: "artcritic", make: makeArtCritic, emoji: "🧑‍🎨", about: "Ken Kahn's society: an Artist draws in Logo, a Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper keeps the scores. Does it get better? Needs a model that sees pictures well." },
   { id: "miniani", make: makeMiniAni, emoji: "🎬", about: "Ken Kahn's 1978 program Ani in miniature: small programs suggest how each character moves and looks, settle their arguments in the open, and make each scene of a story into a Logo film. It needs no AI model." },
   { id: "miniani-1978", make: makeMiniAni1978, emoji: "📼", about: "Ken Kahn's 1978 Ani, kept as it was: the same small programs, with only the knowledge and ways Ani's own code had, and the 1978 Cinderella in five scenes. Teach it what it didn't know. It needs no AI model." },
+  { id: "miniani-som", make: makeMiniAniSoM, emoji: "🧩", about: "The Mini-Ani as Minsky's Society of Mind: thirteen small choosers, each choosing one thing about everyone, in agencies, and a Gatherer that chooses nothing. Rules speak to whole agencies. It needs no AI model." },
   { id: "miniani-voices", make: makeMiniAniVoices, emoji: "🗣️", about: "The Mini-Ani with AI agents where words are needed: an AI Animator suggests in Ani's words and is weighed like any expert, a Reader turns your own story into the Cast's sentences, an AI Way Finder suggests ways to show what the programs can't, and a Narrator tells the film. Any model that writes short lines will do; 8 to 10 calls a run." }
 ];
 // Free play: one AI agent and you. Everything else is added in Look inside.
@@ -6066,11 +6521,27 @@ const V1_TEXTS = [
   ["fix it. Reply with only the program.", "fix it. Reply with only the Logo program."],
   ["a turtle program", "a Logo program"]
 ];
-AK.Seeds = { makeEvolution, makeContemplative, makeTicTacToe, makeBarter, makeArtCritic, makeMiniAni, makeMiniAni1978, makeMiniAniVoices, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
+AK.Seeds = { makeEvolution, makeContemplative, makeTicTacToe, makeBarter, makeArtCritic, makeMiniAni, makeMiniAni1978, makeMiniAniSoM, makeMiniAniVoices, EXAMPLES, makeBlank, makeTelephone, makePebbles, makeSecretNumber, makeLostAndFound, makeStoryChain, makeThreeEyes, makeFoolTheEyes, makeSmallBig, makeJokeWorkshop, MICROWORLDS, SEED_VERSION, SEED_VERSIONS, WHATS_NEW, MODEL_ADVICE, WORLD_NEEDS, F_ROWS, F_COLS, F_ROWLIST, reporterFieldsFor };
 
 /* ===== SECTION: SOCIETY (ordinary data + the operations the kit performs on it) ===== */
 const AGENT_KEYS = { model: ["id", "kind", "name", "emoji", "role", "instructions", "outputFields", "canSeeImages", "history", "replyKind", "pretend", "model", "human", "collect", "wait", "shipped", "copyOf"], renderer: ["id", "kind", "name", "emoji", "role", "shipped", "copyOf"], program: ["id", "kind", "typeId", "name", "emoji", "role", "note", "gate", "collect", "contract", "pseudocode", "params", "slots", "scenarios", "code", "lastGood", "status", "statusDetail", "shipped", "copyOf", "results", "taught"] };
 const agentById = (soc, id) => (soc && soc.agents || []).find(a => a.id === id) || null;
+// Agencies (1.20.0), as in Minsky's Society of Mind: a named group of agents, or of other agencies. A rule from an agency
+// fires when any agent in it responds; a rule to an agency sends to every agent in it. The kit shows an agency folded,
+// as one, until it is opened.
+const agencyById = (soc, id) => ((soc && soc.agencies) || []).find(g => g.id === id) || null;
+function agencyMembers(soc, id, seen) {   // the agents in an agency, through any agencies inside it, in order
+  if (!agencyById(soc, id)) return agentById(soc, id) ? [id] : [];
+  seen = seen || new Set();
+  if (seen.has(id)) return [];
+  seen.add(id);
+  const out = [];
+  for (const m of agencyById(soc, id).members || []) for (const a of agencyMembers(soc, m, seen)) if (out.indexOf(a) < 0) out.push(a);
+  return out;
+}
+const agencyOf = (soc, id) => ((soc && soc.agencies) || []).find(g => (g.members || []).indexOf(id) >= 0) || null;   // the agency it is directly in
+function topAgencyOf(soc, id) { let g = agencyOf(soc, id); for (let k = 0; g && agencyOf(soc, g.id) && k < 20; k++) g = agencyOf(soc, g.id); return g; }
+const inAgency = (soc, agencyId, agentId) => agencyMembers(soc, agencyId).indexOf(agentId) >= 0;
 const clampInt = (v, lo, hi, d) => { const n = Math.round(+v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 const arr = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
 // A rule sends any of three parts: "text", "data", "image", joined with "+" ("text+data+image").
@@ -6111,9 +6582,22 @@ function validateSociety(soc) {
       if (a.code && typeof a.code.js !== "string") errors.push(a.id + ": code must have js");
     }
   }
+  const gids = new Set(), placed = new Set();
+  for (const g of soc.agencies || []) {
+    if (!g || !g.id || ids.has(g.id) || gids.has(g.id) || g.id === "you" || g.id === "*") errors.push("agency " + (g && g.id) + " needs an id of its own");
+    gids.add(g && g.id);
+    if (!Array.isArray(g && g.members)) { errors.push("agency " + (g && g.id) + " needs a list of members"); continue; }
+  }
+  for (const g of soc.agencies || []) for (const m of (g && g.members) || []) {
+    if (!ids.has(m) && !gids.has(m)) errors.push("agency " + g.id + " has an unknown member " + m);
+    if (placed.has(m)) errors.push(m + " is in two agencies");
+    placed.add(m);
+    if (gids.has(m) && agencyMembers({ agents: soc.agents, agencies: soc.agencies }, m).length === 0 && m === g.id) errors.push("agency " + g.id + " is inside itself");
+  }
+  for (const g of soc.agencies || []) { let k = 0, up = agencyOf(soc, g.id); while (up && k++ < 25) { if (up.id === g.id) { errors.push("agency " + g.id + " is inside itself"); break; } up = agencyOf(soc, up.id); } }
   for (const r of soc.rules) {
-    if (!(r.from === "*" || r.from === "you" || ids.has(r.from))) errors.push("rule " + r.id + " comes from an unknown agent");
-    if (!ids.has(r.to)) errors.push("rule " + r.id + " goes to an unknown agent");
+    if (!(r.from === "*" || r.from === "you" || ids.has(r.from) || gids.has(r.from))) errors.push("rule " + r.id + " comes from an unknown agent");
+    if (!ids.has(r.to) && !gids.has(r.to)) errors.push("rule " + r.id + " goes to an unknown agent");
     if (RULE_WHENS.indexOf(r.when) < 0) errors.push("rule " + r.id + " has a bad condition");
     if (!normSend(r.send)) errors.push("rule " + r.id + " sends something unknown");
     if (r.when === "data" && ["=", "!=", "<", ">", "<=", ">="].indexOf(r.op) < 0) errors.push("rule " + r.id + " has a bad comparison");
@@ -6206,6 +6690,7 @@ function deleteAgent(soc, id) {
   if (!a || a.shipped) return false;
   soc.agents = soc.agents.filter(x => x.id !== id);
   soc.rules = soc.rules.filter(r => r.from !== id && r.to !== id);
+  for (const g of soc.agencies || []) g.members = g.members.filter(m => m !== id);
   return true;
 }
 function newRuleId(soc) { let n = soc.rules.length + 1; while (soc.rules.some(r => r.id === "r" + n)) n++; return "r" + n; }
@@ -6366,11 +6851,19 @@ function sanitizeSociety(raw) {
   if (!d || typeof d !== "object" || !Array.isArray(d.agents)) throw new Error("This doesn't look like an Agent Kit society.");
   const soc = { kind: "agent-kit-society", schema: 1, id: cleanId(d.id) || "imported", title: cleanName(d.title, 60) || "Imported society", question: cleanName(d.question, 200), intro: cleanText(d.intro, 600).replace(/\s+/g, " ").trim(), questions: arr(d.questions, 10).map(q => cleanLine(q, 300)).filter(Boolean), openers: arr(d.openers, 6).map(q => cleanLine(q, 300)).filter(Boolean), roundLimit: clampInt(d.roundLimit, 1, 50, 4), agents: [], rules: [] };
   const ids = new Set();
-  for (const a of d.agents.slice(0, 40)) { const s = sanitizeAgent(a, ids); if (s) { soc.agents.push(s); ids.add(s.id); } }
+  for (const a of d.agents.slice(0, 48)) { const s = sanitizeAgent(a, ids); if (s) { soc.agents.push(s); ids.add(s.id); } }
   if (!soc.agents.length) throw new Error("This society has no agents in it.");
   soc.roundAgent = ids.has(d.roundAgent) ? d.roundAgent : soc.agents[0].id;
-  const used = new Set();
-  soc.rules = arr(d.rules, 100).map(r => sanitizeRule(r, ids, used)).filter(Boolean);
+  if (Array.isArray(d.agencies)) {   // agencies: groups of agents, or of agencies; an agent or agency is in one at most
+    const gids = new Set(arr(d.agencies, 12).map(g => g && cleanId(g.id)).filter(g => g && !ids.has(g)));
+    const placed = new Set();
+    soc.agencies = arr(d.agencies, 12).filter(g => g && gids.has(cleanId(g.id))).map(g => ({ id: cleanId(g.id), name: cleanName(g.name, 40) || "Agency", emoji: cleanEmoji(g.emoji || "🧩"), about: cleanName(g.about, 200),
+      members: arr(g.members, 40).map(m => String(m)).filter(m => (ids.has(m) || (gids.has(m) && m !== cleanId(g.id))) && !placed.has(m) && placed.add(m)) }));
+    for (const g of soc.agencies) g.members = g.members.filter(m => { let up = g, k = 0; while (up && k++ < 25) { if (up.id === m) return false; up = agencyOf(soc, up.id); } return true; });
+    if (!soc.agencies.length) delete soc.agencies;
+  }
+  const used = new Set(), targets = new Set(Array.from(ids).concat((soc.agencies || []).map(g => g.id)));
+  soc.rules = arr(d.rules, 100).map(r => sanitizeRule(r, targets, used)).filter(Boolean);
   soc.starts = arr(d.starts, 4).map(s => (s && typeof s === "object" && ids.has(s.to)) ? { id: cleanId(s.id) || "start", label: cleanName(s.label, 40) || "Start", kind: ["text", "program", "challenge"].indexOf(s.kind) >= 0 ? s.kind : "text", to: s.to, value: cleanText(s.value, 20000), examples: arr(s.examples, 12).map(x => cleanName(x, 80)).filter(Boolean) } : null).filter(Boolean);
   if (d.playTemplate) soc.playTemplate = cleanText(d.playTemplate, 4000);
   if (d.link && typeof d.link === "object" && /^https:\/\/[^\s"'<>\\]{1,300}$/.test(String(d.link.url || ""))) {   // shown with the introduction
@@ -6454,7 +6947,7 @@ function importScenarios(text) {
   if (!d || d.kind !== "agent-kit-scenarios" || !Array.isArray(d.scenarios)) throw new Error("This isn't an Agent Kit scenario file.");
   return { typeId: cleanId(d.typeId), agentName: cleanName(d.agentName, 40), scenarios: arr(d.scenarios, 60).map(sanitizeScenario).filter(Boolean) };
 }
-AK.Society = { sendParts, normSend, sendWords, agentById, validateSociety, setParams, applyChallenge, applyVariant, duplicateAgent, deleteAgent, newRuleId, uniqueAgentId, classifyPseudoEdit, installTranslation, revertAgent, sanitizeSociety, sanitizeAgent, sanitizeScenario, exportSociety, importSociety, exportScenarios, importScenarios, migrateSociety, addLibraryAgent, randomSecret, newSecret, AGENT_KEYS };
+AK.Society = { sendParts, normSend, sendWords, agentById, validateSociety, setParams, applyChallenge, applyVariant, duplicateAgent, deleteAgent, newRuleId, uniqueAgentId, classifyPseudoEdit, installTranslation, revertAgent, sanitizeSociety, sanitizeAgent, sanitizeScenario, exportSociety, importSociety, exportScenarios, importScenarios, migrateSociety, addLibraryAgent, randomSecret, newSecret, AGENT_KEYS , agencyById, agencyMembers, agencyOf, topAgencyOf, inAgency};
 
 /* ===== SECTION: TRANSLATOR CLIENT ===== */
 const TRANSLATOR_RULES = [
@@ -6713,7 +7206,7 @@ function createRun(society, deps) {
     seed: clampInt(deps.seed, 1, 2147483647, 1), roundLimit: clampInt(soc.roundLimit, 1, 50, 4),   // the seed only matters to programs that use random numbers
     t0: now(), msgSeq: 0, renderSeq: 0, start: null
   };
-  run.maxDeliveries = run.roundLimit * 25 + 50;
+  run.maxDeliveries = run.roundLimit * Math.max(25, 5 * soc.agents.length) + 50;   // a society of many agents sends many messages
   run.parked = [];   // messages kept back by Stop or the round limit; carryOn() delivers them
   const listeners = [];
   let abort = null, plays = 0, busy = null, stops = 0, wake = null;   // busy: the delivery going on now; wake: ends the pause after one
@@ -6721,7 +7214,9 @@ function createRun(society, deps) {
   const emit = e => { for (const fn of listeners) { try { fn(e, run); } catch (err) { /* a listener's problem is not the run's */ } } };
   const addTrace = e => { e.i = run.trace.length; e.t = Math.round(now() - run.t0); run.trace.push(e); emit(e); return e; };
   const byId = id => agentById(soc, id);
-  const nameOf = id => (id === "you" ? "You" : id === "*" ? "anyone" : (byId(id) || { name: id }).name);
+  const nameOf = id => (id === "you" ? "You" : id === "*" ? "anyone" : (byId(id) || agencyById(soc, id) || { name: id }).name);
+  const targetsOf = (rule, from) => (agencyById(soc, rule.to) ? agencyMembers(soc, rule.to).filter(t => t !== from) : [rule.to]);   // to an agency: to every agent in it but the sender
+  const fromMatches = (rule, id) => rule.from === id || (rule.from === "*" && rule.to !== id) || (!!agencyById(soc, rule.from) && inAgency(soc, rule.from, id));
   const makeMessage = (from, to, f) => Object.assign({ id: "m" + (++run.msgSeq), from, fromName: nameOf(from), to, toName: nameOf(to), round: run.round, text: "", data: {}, renderId: null, send: "text", timestamp: Math.round(now() - run.t0) }, f);
 
   function start(spec) {
@@ -6733,8 +7228,41 @@ function createRun(society, deps) {
     const msg = makeMessage("you", to, { text: cleanText(spec.text || "", 20000), data: safeData(spec.data || {}) || {}, send: spec.data ? "text+data" : "text" });
     run.queue.push(msg);
     const also = [];   // rules from You: the start goes to them too
-    for (const r of soc.rules) if (r.enabled !== false && r.from === "you" && r.when !== "end" && byId(r.to)) { run.queue.push(buildMessage(r, { id: "you", name: "You" }, { text: msg.text, data: msg.data })); also.push(nameOf(r.to)); }
+    for (const r of soc.rules) if (r.enabled !== false && r.from === "you" && r.when !== "end") for (const t of targetsOf(r, "you")) { if (!byId(t)) continue; run.queue.push(buildMessage(r, { id: "you", name: "You" }, { text: msg.text, data: msg.data }, null, t)); also.push(nameOf(r.to)); }
     addTrace({ kind: "run-start", title: soc.title, to, toName: nameOf(to), also, text: msg.text, seed: run.seed, roundLimit: run.roundLimit, adapter: deps.modelsLabel || (deps.adapter ? deps.adapter.label : ""), runtime: runtime.mode, round: 1 });
+  }
+  // Model calls that don't depend on each other run at the same time (deps.parallel; on unless it is false). When a
+  // message waits in the queue for a model agent with no earlier message waiting, and it isn't being asked now, its
+  // call starts at once, built just as it would be at its turn; at its turn the answer is used. The trace keeps the
+  // order of delivery, so a run reads the same either way.
+  const ahead = new Map();   // message id → the call already on its way
+  function lookAhead(busyId) {
+    if (deps.parallel === false || !deps.adapter) return;
+    const seen = new Set([busyId]);
+    for (const m of run.queue) {
+      const a = byId(m.to);
+      if (!a || seen.has(a.id)) continue;
+      seen.add(a.id);
+      if (a.kind !== "model" || a.human || a.collect || (deps.playAs && a.id === deps.playAs) || a.id === soc.roundAgent || ahead.has(m.id) || m.messages) continue;
+      if (ahead.size >= 4) break;
+      const r = modelRequest(a, m);
+      const call = r.adapter.call(r.req);
+      call.catch(() => {});   // its own turn reports any problem
+      ahead.set(m.id, call);
+    }
+  }
+  function modelRequest(agent, msg) {
+    const hist = agent.history === "full" ? (run.histories[agent.id] || []) : [];
+    const ids = msg.renderIds || (msg.renderId ? [msg.renderId] : []);
+    const renders = ids.map(id => run.renders[id]).filter(Boolean);
+    const render = renders[0] || null;
+    const sees = !!(agent.canSeeImages && render);
+    const userText = msg.messages ? composeCollectedText(msg, agent, run.renders) : composeUserText(msg, agent, render);
+    const messages = hist.map(m => ({ role: m.role, content: m.content })).concat([{ role: "user", content: userText }]);
+    const images = sees ? renders.map(r => r.image).filter(Boolean) : [];
+    const req = { system: PREAMBLE + (agent.instructions || ""), messages, images, outputFields: agent.outputFields || [], replyKind: agent.replyKind || "prose", maxTokens: 8000, signal: abort ? abort.signal : undefined,
+      meta: { persona: agent.pretend || "generic", agent, message: msg, history: hist.slice(), render: sees ? render : null, renders: sees ? renders : [], sees, society: soc } };
+    return { req, adapter: (deps.adapterFor && deps.adapterFor(agent)) || deps.adapter, userText, messages, ids, sees };
   }
   async function activateModel(agent, msg, entry) {
     if (!deps.adapter) throw Object.assign(new Error("No model connection is set up."), { kind: "config" });
@@ -6750,7 +7278,10 @@ function createRun(society, deps) {
       meta: { persona: agent.pretend || "generic", agent, message: msg, history: hist.slice(), render: sees ? render : null, renders: sees ? renders : [], sees, society: soc } };
     const adapter = (deps.adapterFor && deps.adapterFor(agent)) || deps.adapter;   // an agent may have its own model
     entry.call = { adapter: adapter.id, adapterLabel: adapter.label, system: req.system, messages: messages.map((m, i) => (i === messages.length - 1 && sees ? Object.assign({}, m, { renderId: ids[0], renderIds: ids }) : m)) };
-    const res = await adapter.call(req);
+    const early = ahead.get(msg.id);
+    ahead.delete(msg.id);
+    if (early) entry.call.early = true;   // asked while earlier messages were being delivered
+    const res = await (early || adapter.call(req));
     Object.assign(entry.call, { model: res.model, persona: res.persona || null, pretend: !!res.pretend, endpoint: res.endpoint, headers: res.headers, system: res.system, request: res.request, reply: res.raw, parsed: { text: res.text, data: res.data }, parseError: res.parseError || null, ms: Math.round(res.ms || 0), stopReason: res.stopReason, warning: res.warning || "", imageRenderId: sees ? ids[0] : null });
     if (agent.history === "full") { hist.push({ role: "user", content: userText }); hist.push({ role: "assistant", content: res.raw }); }
     if (res.parseError) entry.parseError = res.parseError;
@@ -6793,7 +7324,7 @@ function createRun(society, deps) {
   }
   // A message belongs to the round of the work it answers, not to whatever round the run has reached since:
   // if the round agent got two messages in a row, the Renderer may draw round 2's picture after round 3 began.
-  function buildMessage(rule, agent, response, round) {
+  function buildMessage(rule, agent, response, round, to) {
     const prefix = rule.prefix ? String(rule.prefix) : "";
     const join = (p, t) => (p && t ? (/\s$/.test(p) ? p + t : p + " " + t) : (p || t || ""));
     const P = sendParts(rule.send);
@@ -6802,7 +7333,7 @@ function createRun(society, deps) {
     if (P.data) f.data = clone(response.data || {});
     if (P.image) { f.renderId = response.renderId || null; if (!response.renderId) f.text = join(f.text, "(" + agent.name + " had no picture to send.)"); }
     if (round != null) f.round = round;
-    return makeMessage(agent.id, rule.to, f);
+    return makeMessage(agent.id, to || rule.to, f);
   }
   // A person answers only when it's their turn, so what an agent sends to programs, models and the Renderer goes
   // first: the board is drawn before You are asked for your next move.
@@ -6812,14 +7343,17 @@ function createRun(society, deps) {
     const later = [];
     for (const rule of soc.rules) {
       if (rule.enabled === false) continue;
-      if (!(rule.from === agent.id || (rule.from === "*" && rule.to !== agent.id))) continue;
+      if (!fromMatches(rule, agent.id)) continue;
       const cond = ruleMatches(rule, response);
       if (!cond.match) continue;
       if (rule.when === "always" && blocked) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), reason: ended ? agent.name + " says the story is over (end is true), so its rules that don't check for that wait." : agent.name + "'s data says pass is false, so its rules that don't check for that wait." }); continue; }
-      if (!byId(rule.to)) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: rule.to, reason: "There is no agent called “" + rule.to + "”." }); continue; }
-      const msg = buildMessage(rule, agent, response, entry.round);
-      (forPerson(rule.to) ? later : run.queue).push(msg);
-      entry.fired.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), send: rule.send, reason: cond.reason, messageId: msg.id, rule: describeRule(rule, nameOf) });
+      const targets = targetsOf(rule, agent.id).filter(t => byId(t));
+      if (!targets.length) { entry.held.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), reason: agencyById(soc, rule.to) ? "There is nobody else in the " + nameOf(rule.to) + " agency." : "There is no agent called “" + rule.to + "”." }); continue; }
+      for (const t of targets) {
+        const msg = buildMessage(rule, agent, response, entry.round, t);
+        (forPerson(t) ? later : run.queue).push(msg);
+        entry.fired.push({ ruleId: rule.id, to: t, toName: nameOf(t), via: agencyById(soc, rule.to) ? nameOf(rule.to) : undefined, send: rule.send, reason: cond.reason, messageId: msg.id, rule: describeRule(rule, nameOf) });
+      }
     }
     for (const msg of later) run.queue.push(msg);
   }
@@ -6829,13 +7363,14 @@ function createRun(society, deps) {
     run.ending = { reason, note };
     const fired = [];
     for (const rule of soc.rules) {
-      if (rule.enabled === false || rule.when !== "end" || !byId(rule.to)) continue;
+      if (rule.enabled === false || rule.when !== "end" || !targetsOf(rule, null).some(t => byId(t))) continue;
       let last = null;
-      for (let k = run.trace.length - 1; k >= 0 && !last; k--) { const e = run.trace[k]; if (e.kind === "activation" && e.response && (rule.from === "*" || e.agentId === rule.from)) last = e; }
+      for (let k = run.trace.length - 1; k >= 0 && !last; k--) { const e = run.trace[k]; if (e.kind === "activation" && e.response && (rule.from === "*" || e.agentId === rule.from || (!!agencyById(soc, rule.from) && inAgency(soc, rule.from, e.agentId)))) last = e; }
       if (!last) continue;
       const from = byId(last.agentId) || { id: last.agentId, name: last.agentName };
-      const msg = buildMessage(rule, from, last.response);
-      run.queue.push(msg);
+      let msg = null;
+      for (const t of targetsOf(rule, from.id).filter(t => byId(t))) { msg = buildMessage(rule, from, last.response, null, t); run.queue.push(msg); }
+      if (!msg) continue;
       fired.push({ ruleId: rule.id, to: rule.to, toName: nameOf(rule.to), fromName: from.name, send: rule.send, reason: "the run is ending", messageId: msg.id, rule: describeRule(rule, nameOf) });
     }
     if (fired.length) addTrace({ kind: "ending", round: run.round, fired, text: "The run is ending, so " + fired.map(f => f.fromName + "’s last " + sendWords(f.send) + " go to " + f.toName).join("; ") + "." });
@@ -6901,6 +7436,7 @@ function createRun(society, deps) {
       return false;
     }
     emit({ kind: "working", agentId: agent.id, agentName: agent.name, round: run.round });
+    lookAhead(agent.id);
     const stopsBefore = stops;
     let response = null;
     try {
@@ -6992,6 +7528,7 @@ function createRun(society, deps) {
     stop() {
       if (run.status === "done" || run.status === "stopped") return;
       stops++;
+      ahead.clear();   // calls asked early were stopped too: they are asked again if the run carries on
       if (abort) abort.abort();
       if (wake) wake();
       if (run.waiting) { run.parked.push(Object.assign(run.waiting.entry.message, { again: true })); run.waiting = null; }
@@ -7119,13 +7656,14 @@ const HELPER_SYSTEM = PREAMBLE +
   "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
   "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.\n" +
   "- Why: in a picture or film whose agents explain themselves (the Mini-Ani), a click on a character shows why it looks and moves like that: its looks (the Director), what it does (the Method Chooser) and the reasons (the Choice Points), with a button to the whole answer in the Trace. A program can end a story with end: true in its data: its other rules wait, as with pass: false, but it isn't a failure, so nothing gets a ✗.\n" +
+  "- Agencies (as in Minsky's Society of Mind): a named group of agents, or of other agencies. A rule from an agency fires when any agent in it responds; a rule to an agency sends to every agent in it but the sender. Look inside, the stage and the trace show an agency folded into one line until it is opened. “+ Add an agency” in Look inside makes one; an agent's editor has “Its agency”. Mini-Ani as a society of mind uses them: thirteen choosers, each choosing one thing about everyone, and a Gatherer that chooses nothing; it makes the same film as the Mini-Ani.\n" +
   "- AI Way Finder (Mini-Ani with AI voices): for each scene it suggests ways to show what happens (like “loves: come together”), only from the ways the Director can draw. The Method Chooser uses them for words it has no way for (or first, if its slot says yes), says whose way each was, and names any way the Director can't show. “No AI Way Finder” switches it off. A story given to the Cast with no scenes goes to the Reader with the story itself.\n" +
   "- Teaching with a model: in the Mini-Ani, the experts (Personality, Looks, Relationships) and the Method Chooser have a ✨ Teach section in Look inside. A model suggests a line for an empty line, using only words the Choice Points know (or ways the Director can show); the learner decides whether it goes in, and the line remembers which model suggested it. The words the last run didn't know are offered there.\n" +
   "- Films: in Logo, WAIT keeps the picture so far as one frame of a film (WAIT 15 is a quarter of a second), so REPEAT 12 [CLEARSCREEN RIGHT 30 * REPCOUNT FORWARD 100 WAIT 15] is a film of 12 frames. The stage plays a film with ▶ / ⏸ and a frame slider; a film in the trace has “Play the film on the stage”. At slow and normal speed the run waits for a film to end. The Renderer's data says how many frames it has (frames), and a model that sees pictures gets the last one.\n" +
   "- Small Helper, Big Helper needs two models; with only one set up, its button is grayed with a 🔒 and it can't run until a grown-up adds another in Settings, under More models.";
 function describeSociety(soc) {
   if (!soc) return "(no society)";
-  const nameOf = id => (id === "*" ? "anyone" : (agentById(soc, id) || { name: id }).name);
+  const nameOf = id => (id === "*" ? "anyone" : (agentById(soc, id) || agencyById(soc, id) || { name: id }).name);
   const lines = ["Society: " + soc.title + (soc.question ? " — question: " + soc.question : ""), "Round limit: " + soc.roundLimit + ". A new round starts each time " + nameOf(soc.roundAgent) + " gets a message."];
   if (soc.intro) lines.splice(1, 0, "About it: " + soc.intro);
   for (const a of soc.agents) {
@@ -7134,6 +7672,10 @@ function describeSociety(soc) {
     else if (a.kind === "model") lines.push("- " + a.name + " (model agent" + (a.canSeeImages ? ", can see pictures" : "") + ", remembers " + (a.history === "full" ? "the whole run" : "nothing between messages") + "). Instructions: " + String(a.instructions || "").replace(/\s+/g, " ").slice(0, 300) + (a.outputFields && a.outputFields.length ? " Output fields: " + a.outputFields.map(f => f.name).join(", ") + "." : ""));
     else if (a.kind === "program") lines.push("- " + a.name + " (programmed agent" + (a.gate ? ", a gate" : "") + (a.collect ? ", collects: it waits for " + ((a.params || {}).wait || 2) + " messages, then runs once on all of them" : "") + ", status " + a.status + "). Pseudocode:\n" + String(a.pseudocode).split("\n").map(l => "    " + l).join("\n") + "\n  Params: " + JSON.stringify(a.params || {}));
     else lines.push("- " + a.name + " (the Renderer: runs Logo programs and makes pictures)");
+  }
+  if ((soc.agencies || []).length) {
+    lines.push("Agencies (groups of agents, as in Society of Mind; a rule from an agency fires when any agent in it responds, and a rule to an agency sends to every agent in it):");
+    for (const g of soc.agencies) lines.push("- " + g.name + (g.about ? " (" + g.about + ")" : "") + ": " + g.members.map(nameOf).join(", "));
   }
   lines.push("Rules:");
   for (const r of soc.rules) lines.push("- " + (r.enabled === false ? "(off) " : "") + describeRule(r, nameOf));
@@ -7481,7 +8023,7 @@ const app = {
   runs: {}, traces: {}, prevStrips: {}, log: {}, helperChat: {}, used: {},
   banners: [], saveError: "", loadError: "", replaced: [],
   adapter: null, adapterKey: "",
-  ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), tech: new Set(), more: new Set(), expandedW: new Set(), editingRules: new Set(), editingRound: false, sendWarn: null, bench: {}, replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
+  ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), agencyOpen: new Set(), tech: new Set(), more: new Set(), expandedW: new Set(), editingRules: new Set(), editingRound: false, sendWarn: null, bench: {}, replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
 };
 const soc = () => app.societies[app.activeId];
 const nameOf = (s, id) => (id === "*" ? "anyone" : id === "you" ? "You" : ((Society.agentById(s, id) || { name: id }).name));
@@ -8135,8 +8677,9 @@ function modelAdviceHTML(s) {
   }
   return h;
 }
-function agentOptions(s, cur, withAnyone) {
-  return (withAnyone ? '<option value="*"' + sel(cur === "*") + '>anyone</option>' : "") + s.agents.map(a => '<option value="' + esc(a.id) + '"' + sel(a.id === cur) + '>' + esc(a.name) + '</option>').join("");
+function agentOptions(s, cur, withAnyone, withAgencies) {
+  return (withAnyone ? '<option value="*"' + sel(cur === "*") + '>anyone</option>' : "") + s.agents.map(a => '<option value="' + esc(a.id) + '"' + sel(a.id === cur) + '>' + esc(a.name) + '</option>').join("") +
+    (withAgencies ? (s.agencies || []).map(g => '<option value="' + esc(g.id) + '"' + sel(g.id === cur) + '>' + esc(g.emoji + " " + g.name) + ' (agency)</option>').join("") : "");
 }
 function statusShort(a) { return a.status === "needs-translation" ? "needs translation" : a.status === "refused" ? "has a question" : a.status === "error" ? "translation problem" : a.status === "translating" ? "translating…" : a.status; }
 function agentCardHTML(a, s) {
@@ -8157,12 +8700,12 @@ function ruleHTML(r, s) {
   const opt = (v, cur, label) => '<option value="' + esc(v) + '"' + sel(v === cur) + '>' + esc(label) + '</option>';
   const b = f => 'data-bind="rule" data-id="' + esc(r.id) + '" data-field="' + f + '"';
   let h = '<div class="rule' + (r.enabled === false ? " off" : "") + '"><input type="checkbox" ' + b("enabled") + (r.enabled !== false ? " checked" : "") + ' title="This rule is on" aria-label="Rule on or off">';
-  h += '<span class="kw">WHEN</span><select ' + b("from") + ' aria-label="From">' + '<option value="you"' + sel(r.from === "you") + '>You (the start)</option>' + agentOptions(s, r.from, true) + '</select><span class="kw">RESPONDS</span>';
+  h += '<span class="kw">WHEN</span><select ' + b("from") + ' aria-label="From">' + '<option value="you"' + sel(r.from === "you") + '>You (the start)</option>' + agentOptions(s, r.from, true, true) + '</select><span class="kw">RESPONDS</span>';
   h += '<select ' + b("when") + ' aria-label="Condition">' + opt("always", r.when, "ALWAYS") + opt("data", r.when, "IF data.…") + opt("text", r.when, "IF text contains…") + opt("end", r.when, "LAST, WHEN THE RUN ENDS") + '</select>';
   if (r.when === "data") h += '<input type="text" class="w-field" ' + b("field") + ' value="' + esc(r.field || "") + '" placeholder="field" aria-label="Field"><select ' + b("op") + ' aria-label="Comparison">' + ["=", "!=", "<", ">", "<=", ">="].map(o => opt(o, r.op || "=", o)).join("") + '</select><input type="text" class="w-val" ' + b("value") + ' value="' + esc(r.value == null ? "" : r.value) + '" placeholder="value" aria-label="Value">';
   if (r.when === "text") h += '<input type="text" class="w-val" ' + b("word") + ' value="' + esc(r.word || "") + '" placeholder="word" aria-label="Word">';
   const P = Society.sendParts(r.send);
-  h += '<span class="send-group"><span class="kw">SEND</span><span class="send-parts" role="group" aria-label="What to send">' + [["text", "words", "what it said"], ["data", "data", "the data it sent back, like rows or pass"], ["image", "picture", "the picture it made (only the Renderer makes pictures)"]].map(x => '<label class="sendp' + (P[x[0]] ? " on" : "") + '" title="' + esc(x[2]) + '"><input type="checkbox" data-bind="rule-send" data-id="' + esc(r.id) + '" data-part="' + x[0] + '"' + (P[x[0]] ? " checked" : "") + '>' + x[1] + '</label>').join("") + '</span>' + (app.ui.sendWarn === r.id ? '<span class="send-warn" role="alert">It has to send something: tick words, data or picture.</span>' : "") + '</span><span class="kw">TO</span><select ' + b("to") + ' aria-label="To">' + agentOptions(s, r.to, false) + '</select>';
+  h += '<span class="send-group"><span class="kw">SEND</span><span class="send-parts" role="group" aria-label="What to send">' + [["text", "words", "what it said"], ["data", "data", "the data it sent back, like rows or pass"], ["image", "picture", "the picture it made (only the Renderer makes pictures)"]].map(x => '<label class="sendp' + (P[x[0]] ? " on" : "") + '" title="' + esc(x[2]) + '"><input type="checkbox" data-bind="rule-send" data-id="' + esc(r.id) + '" data-part="' + x[0] + '"' + (P[x[0]] ? " checked" : "") + '>' + x[1] + '</label>').join("") + '</span>' + (app.ui.sendWarn === r.id ? '<span class="send-warn" role="alert">It has to send something: tick words, data or picture.</span>' : "") + '</span><span class="kw">TO</span><select ' + b("to") + ' aria-label="To">' + agentOptions(s, r.to, false, true) + '</select>';
   h += '<input type="text" class="w-pre" ' + b("prefix") + ' value="' + esc(r.prefix || "") + '" placeholder="starting with… (optional)" aria-label="Starting with">';
   return h + '<button class="icon-btn del" data-act="del-rule" data-id="' + esc(r.id) + '" title="Delete this rule" aria-label="Delete rule">🗑</button></div>';
 }
@@ -8171,7 +8714,8 @@ function rulesChanged() { renderLeft(); if (app.ui.editor) renderEditor(); }
 function agentBtnHTML(s, id) {
   if (id === "*") return '<span class="achip"><span class="e">✳️</span>anyone</span>';
   if (id === "you") return '<span class="achip you" title="You, with the start"><span class="e">🙋</span>You</span>';
-  const a = Society.agentById(s, id);
+  const a = Society.agentById(s, id), g = Society.agencyById(s, id);
+  if (g) return '<span class="achip agency" title="The ' + esc(g.name) + ' agency: ' + esc(Society.agencyMembers(s, g.id).map(m => Society.agentById(s, m).name).join(", ")) + '"><span class="e">' + esc(g.emoji) + '</span>' + esc(g.name) + '</span>';
   if (!a) return '<span class="achip off">' + esc(id) + '</span>';
   return '<button class="achip kind-' + a.kind + '" data-act="open-agent" data-id="' + esc(a.id) + '" title="Open ' + esc(a.name) + '"><span class="e">' + esc(a.emoji) + '</span>' + esc(a.name) + '</button>';
 }
@@ -8212,9 +8756,30 @@ function aboutEditHTML(s) {
   }
   return h + '</div></details>';
 }
+// The agents, with each agency folded into one line until it is opened (it can hold agencies of its own).
+const agencyOpen = (s, id) => app.ui.agencyOpen.has(s.id + ":" + id);
+function agencyBlockHTML(s, g) {
+  const n = Society.agencyMembers(s, g.id).length, open = agencyOpen(s, g.id);
+  let h = '<div class="agency' + (open ? " open" : "") + '"><button class="agency-head" data-act="agency-toggle" data-id="' + esc(g.id) + '" aria-expanded="' + open + '"><span class="caret">' + (open ? "▾" : "▸") + '</span><span class="e">' + esc(g.emoji) + '</span><b>' + esc(g.name) + '</b><span class="small muted">' + n + (n === 1 ? " agent" : " agents") + (g.about ? " · " + esc(g.about) : "") + '</span></button>';
+  if (!open) return h + '</div>';
+  h += '<div class="agency-body"><div class="row small agency-edit"><label class="muted">Its name</label><input class="field" data-bind="agency-name" data-id="' + esc(g.id) + '" value="' + esc(g.name) + '" maxlength="40" aria-label="The agency\'s name"><button class="btn tiny ghost" data-act="del-agency" data-id="' + esc(g.id) + '" title="Its agents stay; only the group goes, with the rules that name it">Remove the agency</button></div>';
+  h += '<div class="agent-grid">' + g.members.map(m => Society.agencyById(s, m) ? agencyBlockHTML(s, Society.agencyById(s, m)) : Society.agentById(s, m) ? agentCardHTML(Society.agentById(s, m), s) : "").join("") + '</div>';
+  if (!g.members.length) h += '<p class="hint">No agents yet. Open an agent and choose this agency under “Its agency”.</p>';
+  return h + '</div></div>';
+}
+function agentGridHTML(s) {
+  const parts = [], done = new Set();
+  for (const a of s.agents) {
+    const g = Society.topAgencyOf(s, a.id);
+    if (!g) parts.push(agentCardHTML(a, s));
+    else if (!done.has(g.id)) { done.add(g.id); parts.push(agencyBlockHTML(s, g)); }
+  }
+  for (const g of s.agencies || []) if (!done.has(g.id) && !Society.agencyOf(s, g.id)) { done.add(g.id); parts.push(agencyBlockHTML(s, g)); }   // an empty agency
+  return '<div class="agent-grid">' + parts.join("") + '</div>';
+}
 function insideHTML(s) {
   let h = '<div class="card"><div class="card-title"><h3>Inside ' + esc(s.title) + '</h3></div><p class="inside-note">Ordinary agents and rules — the same kinds you can make yourself. Open an agent to read or change it.</p>' + aboutEditHTML(s);
-  h += '<div class="agent-grid">' + s.agents.map(a => agentCardHTML(a, s)).join("") + '</div><div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-agent">+ Add an agent</button></div>';
+  h += agentGridHTML(s) + '<div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-agent">+ Add an agent</button><button class="btn tiny" data-act="add-agency" title="A group of agents, as in Minsky\'s Society of Mind: a rule can speak to all of them at once">+ Add an agency</button></div>';
   h += '<div class="section"><h3>Rules</h3><p class="hint">When an agent responds, every rule that matches sends a message. A new round starts each time ' + (app.ui.editingRound ? '<select data-bind="roundAgent" aria-label="Round agent">' + agentOptions(s, s.roundAgent, false) + '</select> gets a message. <button class="btn tiny primary" data-act="round-done">✓ Done</button>' : agentBtnHTML(s, s.roundAgent) + ' gets a message. <button class="btn tiny" data-act="round-edit" title="Choose which agent starts each round">✎ Change</button>') + '</p>' + variantsInsideHTML(s) + '<div class="rules">' + s.rules.map(r => ruleView(r, s)).join("") + '</div>' +
     '<div class="row" style="margin-top:8px"><button class="btn tiny" data-act="add-rule">+ Add a rule</button></div><div class="gate-note">⛔ A <b>gate</b> (like a Judge) says whether <b>pass</b> is true or false. When its data says pass is false, only its rules that say “if its data says <b>pass</b> is <b>false</b>” send anything; its other rules wait.</div></div>';
   h += '<div class="section"><div class="row"><button class="btn tiny" data-act="export-society">⬇ Export</button><button class="btn tiny" data-act="import-society">⬆ Import</button>' +
@@ -8245,6 +8810,20 @@ function viewState(s, run, trace) {
 function achipHTML(a, s, view) {
   const v = a.gate || view.verdicts[a.id] === false ? view.verdicts[a.id] : undefined;
   return '<button class="achip kind-' + a.kind + (view.active === a.id ? " active" : "") + '" data-act="open-agent" data-id="' + esc(a.id) + '" title="Open ' + esc(a.name) + ' to read or change it"><span class="e">' + esc(a.emoji) + '</span>' + esc(a.name) + (a.id === s.roundAgent ? '<span class="round-mark" title="starts each round">↻</span>' : "") + (a.kind === "model" && !a.human && modelRefs().length > 1 ? '<span class="mdl">' + esc(shortModel(refOfAgent(a).label)) + '</span>' : "") + callsHTML(view.calls && view.calls[a.id]) + (v === true ? '<span class="v-ok" title="pass">✓</span>' : v === false ? '<span class="v-bad" title="block">✗</span>' : "") + '</button>';
+}
+// The stage's agents, with each agency as one chip (lit while any of its agents works) that opens to show them.
+function stripHTML(s, view) {
+  const parts = [], done = new Set();
+  for (const a of s.agents) {
+    const g = Society.topAgencyOf(s, a.id);
+    if (!g) { parts.push(achipHTML(a, s, view)); continue; }
+    if (done.has(g.id)) continue;
+    done.add(g.id);
+    const members = Society.agencyMembers(s, g.id), open = agencyOpen(s, g.id), busy = members.indexOf(view.active) >= 0;
+    parts.push('<button class="achip agency' + (busy ? " active" : "") + (open ? " open" : "") + '" data-act="agency-toggle" data-id="' + esc(g.id) + '" aria-expanded="' + open + '" title="The ' + esc(g.name) + ' agency: ' + members.length + ' agents. Click to ' + (open ? "fold it" : "see them") + '."><span class="e">' + esc(g.emoji) + '</span>' + esc(g.name) + '<span class="cnt">' + members.length + '</span></button>');
+    if (open) parts.push('<span class="agency-members">' + members.map(id => achipHTML(Society.agentById(s, id), s, view)).join("") + '</span>');
+  }
+  return parts.join("");
 }
 // With more than one model set up, each AI agent's model can be chosen right here.
 function modelsRowHTML(s) {
@@ -8519,7 +9098,7 @@ function renderStage() {
   const view = viewState(s, run, trace);
   view.calls = callCounts(trace);
   const shown = stageShown(s, view);   // a film still playing stays on the stage
-  h += '<div class="agent-strip">' + s.agents.map(a => achipHTML(a, s, view)).join("") + '</div>' + modelsRowHTML(s);
+  h += '<div class="agent-strip">' + stripHTML(s, view) + '</div>' + modelsRowHTML(s);
   if (hasPictures(s)) h += '<div class="picture-wrap"><div class="picture' + (hasWhy(trace) ? " can-why" : "") + '"><canvas id="stageCanvas" data-act="stage-why" width="512" height="512" aria-label="The latest picture"></canvas>' +
     (shown.render ? '<span class="tag">' + (view.replay ? "replay · " : "") + "round " + shown.round + (shown.render.frames > 1 ? " · 🎞️" : "") + '</span>' : '<div class="empty">' + (trace.length ? "No picture yet." : "Press ▶ Run to start.<br>Every message will show up in the Trace.") + '</div>') + '</div>' + filmBarHTML(s, shown.render) + whyBoxHTML(s, shown, trace) +
     '<div class="bubbles">' + view.bubbles.map(bubbleHTML).join("") + '</div></div>';
@@ -8794,6 +9373,27 @@ function logWorkshop(socId, item) {
   if (list.length > 60) list.shift();
   if (socId === app.activeId) renderTrace();
 }
+// Three or more answers in a row from one agency's agents are one line in the trace, until it is opened; the step a
+// replay is showing is never folded away.
+function foldAgencies(entries, s, currentI) {
+  const out = [];
+  let k = 0;
+  while (k < entries.length) {
+    const e = entries[k], g = e.kind === "activation" ? Society.topAgencyOf(s, e.agentId) : null;
+    let j = k + 1;
+    if (g) while (j < entries.length && entries[j].kind === "activation" && (Society.topAgencyOf(s, entries[j].agentId) || {}).id === g.id) j++;
+    const list = entries.slice(k, j), key = "t:" + e.i;
+    if (g && list.length >= 3 && !app.ui.agencyOpen.has(key) && !list.some(x => x.i === currentI)) out.push({ fold: true, g, list, key });
+    else list.forEach((x, q) => out.push(g && list.length >= 3 && q === 0 ? { unfold: true, g, list, key, e: x } : x));
+    k = j;
+  }
+  return out;
+}
+function foldHTML(x, s) {
+  const names = x.list.map(e => e.agentName), errs = x.list.filter(e => e.error).length;
+  return '<div class="tentry agency-fold"><button class="fold-btn" data-act="trace-agency" data-key="' + esc(x.key) + '" aria-expanded="false">▸ ' + esc(x.g.emoji) + ' <b>' + esc(x.g.name) + '</b>: ' + x.list.length + ' agents answered' + (errs ? ', ' + errs + ' with a problem' : "") + ' <span class="small muted">(round ' + x.list[0].round + ')</span></button><div class="small muted fold-names">' + esc(names.join(", ")) + '</div></div>';
+}
+function unfoldHTML(x, s) { return '<div class="agency-unfold"><button class="btn tiny ghost" data-act="trace-agency" data-key="' + esc(x.key) + '" aria-expanded="true">▾ Fold ' + esc(x.g.name) + '\'s ' + x.list.length + ' answers into one line</button></div>'; }
 function renderTrace() {
   const s = soc();
   const host = $("#colRight");
@@ -8813,7 +9413,7 @@ function renderTrace() {
     h += replayHTML(run, trace);
     const view = viewState(s, run, trace);
     const shown = trace.filter(e => traceFilterOK(e, f) && (!hidden.has(e.i) || e.i === view.currentI));   // a replay shows every step
-    h += '<div class="trace-list" id="traceList">' + (shown.length ? shown.map(e => traceEntryHTML(e, s, run, trace, view.currentI)).join("") : '<p class="muted small">' + (trace.length ? "Nothing matches this filter." : "Nothing here yet. Every message between agents will appear here, and every model call opens to show exactly what was sent and what came back.") + '</p>') + '</div>';
+    h += '<div class="trace-list" id="traceList">' + (shown.length ? foldAgencies(shown, s, view.currentI).map(x => x.fold ? foldHTML(x, s) : (x.unfold ? unfoldHTML(x, s) : "") + traceEntryHTML(x.e || x, s, run, trace, view.currentI)).join("") : '<p class="muted small">' + (trace.length ? "Nothing matches this filter." : "Nothing here yet. Every message between agents will appear here, and every model call opens to show exactly what was sent and what came back.") + '</p>') + '</div>';
   }
   const editing = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.bind === "logo-edit" ? document.activeElement.selectionStart : null;
   const old = $("#traceList");
@@ -8929,8 +9529,14 @@ function openEmojiPicker(id) {
   });
   $("#emojiOwn", m.body).addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); choose(ev.target.value); } });
 }
+function agencyPickHTML(a, s) {
+  if (!(s.agencies || []).length) return "";
+  const g = Society.agencyOf(s, a.id), up = g ? Society.agencyOf(s, g.id) : null;
+  return '<div class="row small agency-pick"><label class="muted" for="agencyPick">Its agency</label><select class="field" id="agencyPick" data-bind="agent-agency" style="max-width:240px"><option value=""' + sel(!g) + '>none</option>' +
+    s.agencies.map(x => '<option value="' + esc(x.id) + '"' + sel(g && g.id === x.id) + '>' + esc(x.emoji + " " + x.name) + '</option>').join("") + '</select>' + (up ? '<span class="muted">, inside ' + esc(up.emoji + " " + up.name) + '</span>' : "") + '</div>';
+}
 function editorHead(a, s, kindLabel) {
-  return '<div class="ed-head"><button class="emoji-btn" data-act="emoji-pick" data-id="' + esc(a.id) + '" title="Choose an emoji for ' + esc(a.name) + '" aria-label="Emoji: ' + esc(a.emoji) + '. Choose another">' + esc(a.emoji) + '</button><input class="field name-in" data-bind="agent" data-field="name" value="' + esc(a.name) + '" aria-label="Name">' +
+  return agencyPickHTML(a, s) + '<div class="ed-head"><button class="emoji-btn" data-act="emoji-pick" data-id="' + esc(a.id) + '" title="Choose an emoji for ' + esc(a.name) + '" aria-label="Emoji: ' + esc(a.emoji) + '. Choose another">' + esc(a.emoji) + '</button><input class="field name-in" data-bind="agent" data-field="name" value="' + esc(a.name) + '" aria-label="Name">' +
     '<span class="badge ' + a.kind + '">' + kindLabel + '</span>' + (a.gate ? '<span class="badge gate">gate</span>' : "") + (a.collect ? '<span class="badge plain" title="It waits for its {wait} number of messages, then runs once on all of them (input.messages). If an answer never comes, it runs on what it has when nothing else is left to do.">collects</span>' : "") + (a.id === s.roundAgent ? '<span class="badge plain">↻ starts each round</span>' : "") + (a.copyOf ? '<span class="badge plain">copy of ' + esc(nameOf(s, a.copyOf)) + '</span>' : "") +
     '<span class="grow"></span><button class="btn tiny" data-act="dup-agent" data-id="' + esc(a.id) + '">Duplicate</button>' + (!a.shipped ? '<button class="btn tiny danger" data-act="del-agent" data-id="' + esc(a.id) + '">Delete</button>' : "") + '</div>';
 }
@@ -9745,6 +10351,28 @@ const ACTIONS = {
   "replay-next"() { setReplay((app.ui.replay || 0) + 1); },
   "replay-last"() { setReplay(1e9); },
   "replay-exit"() { app.ui.replay = null; renderStage(); renderTrace(); },
+  "agency-toggle"(t) { const s = soc(), k = s.id + ":" + t.dataset.id; if (app.ui.agencyOpen.has(k)) app.ui.agencyOpen.delete(k); else app.ui.agencyOpen.add(k); renderLeft(); renderStage(); },
+  "trace-agency"(t) { const k = t.dataset.key; if (app.ui.agencyOpen.has(k)) app.ui.agencyOpen.delete(k); else app.ui.agencyOpen.add(k); renderTrace(); },
+  "add-agency"() {
+    const s = soc();
+    s.agencies = s.agencies || [];
+    let n = s.agencies.length + 1;
+    while (Society.agencyById(s, "agency-" + n) || Society.agentById(s, "agency-" + n)) n++;
+    s.agencies.push({ id: "agency-" + n, name: "Agency " + n, emoji: "🧩", about: "", members: [] });
+    app.ui.agencyOpen.add(s.id + ":agency-" + n);
+    save(); renderLeft(); renderStage();
+    toast("A new agency. Name it, then open an agent and choose it under “Its agency”.");
+  },
+  "del-agency"(t) {
+    const s = soc(), id = t.dataset.id, g = Society.agencyById(s, id);
+    if (!g) return;
+    const up = Society.agencyOf(s, id);
+    if (up) up.members = up.members.filter(m => m !== id).concat(g.members);   // its agents go up a level
+    s.agencies = s.agencies.filter(x => x.id !== id);
+    s.rules = s.rules.filter(r => r.from !== id && r.to !== id);
+    if (!s.agencies.length) delete s.agencies;
+    save(); renderLeft(); renderStage();
+  },
   async "stage-why"(t, ev) {   // a click on the stage's picture: why the character there looks and moves like that
     const s = soc(), rec = app.runs[s.id], run = rec ? rec.api.run : null, trace = run ? run.trace : (app.traces[s.id] || []);
     if (!hasWhy(trace)) return;
@@ -10107,6 +10735,22 @@ async function handleBind(t, evt) {
       else if (change) r[f] = t.value;
       save();
       if (change && ["enabled", "when", "from", "to", "send", "op"].indexOf(f) >= 0) rulesChanged();
+      return;
+    }
+    case "agent-agency": {   // move the agent into another agency, or out of them all
+      const a = editorAgent();
+      if (!a || !change) return;
+      for (const g of s.agencies || []) g.members = g.members.filter(m => m !== a.id);
+      const g = Society.agencyById(s, t.value);
+      if (g) g.members.push(a.id);
+      save(); renderEditor(); renderLeft(); renderStage();
+      return;
+    }
+    case "agency-name": {
+      const g = Society.agencyById(s, t.dataset.id);
+      if (!g || !change) return;
+      g.name = util.cleanName(t.value, 40) || g.name;
+      save(); renderLeft(); renderStage(); renderTrace();
       return;
     }
     case "agent": {

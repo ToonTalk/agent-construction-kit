@@ -155,7 +155,7 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const m = Array.from(pw.document.querySelectorAll(".modal-body")).pop();
     const heads = Array.from(m.querySelectorAll("h4")).map(h => h.textContent);
     return linked && card && ak.soc().title === "Mini-Ani" && run.status === "done" && acts(run, "renderer").length === 4 &&
-      heads.some(h => /Mini-Ani/.test(h)) && m.querySelectorAll('[data-add-type^="ani-"]').length === 9;   // 1.19.0: and the Method Chooser that reads an AI's ways
+      heads.some(h => /Mini-Ani/.test(h)) && m.querySelectorAll('[data-add-type^="ani-"]').length === 11;   // 1.19.0: and the Method Chooser that reads an AI's ways; 1.20.0: a Chooser and the Gatherer
   });
 
   // 1.15.1, after a review
