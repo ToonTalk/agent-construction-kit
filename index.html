@@ -131,7 +131,7 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 .status-line{font-size:13.5px;color:var(--ink-soft);min-height:20px;margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .status-line .pulse{width:9px;height:9px;border-radius:50%;background:var(--ok);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
-.agent-strip{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}
+.agent-strip{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}.strip-hint{margin:-6px 0 10px}
 .agency{grid-column:1/-1;border:1.5px dashed var(--line);border-radius:12px;padding:4px 8px;background:var(--accent-bg)}.agency .agency-head{display:flex;align-items:center;gap:6px;width:100%;background:none;border:0;padding:4px 0;text-align:left;cursor:pointer;font:inherit;flex-wrap:wrap}.agency .agency-body{padding:4px 0 6px}.agency .agency-edit{gap:6px;align-items:center;margin:2px 0 6px}.agency .agency-edit .field{max-width:220px}.achip.agency{border-style:dashed;background:var(--accent-bg)}.achip.agency .cnt{font-size:11px;background:#fff;border-radius:8px;padding:0 5px;margin-left:2px}.agency-members{display:contents}.agency-fold .fold-btn{background:none;border:0;padding:0;text-align:left;cursor:pointer;font:inherit}.agency-fold .fold-names{margin-top:2px}.agency-unfold{margin:2px 0}.agency-pick{gap:6px;align-items:center;margin:0 0 6px}.achip{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:4px 10px 4px 7px;font-size:12.5px;font-weight:700;color:var(--ink-soft);transition:transform .15s,box-shadow .15s}
 .achip .e{font-size:15px}
 .achip.kind-model{border-color:#D8D2FF}
@@ -435,7 +435,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.20.1";
+AK.VERSION = "1.20.2";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -5728,8 +5728,8 @@ const CRITIC_INSTRUCTIONS = "You are the Critic. The Designer drew pebbles (dots
 const MYSTERY_TASK = "The Mystery Judge has a secret: how many pebbles each of 3 rows should have. Each row has between 1 and 8 pebbles. Draw 3 rows of pebbles, one under another. After each try, the Critic will tell you which rows need more pebbles and which need fewer.";
 // Bump this when a microworld changes: saved copies of the older version are then replaced (and can be kept as copies).
 const SEED_VERSION = 5;   // the newest; each microworld has its own, so one that didn't change isn't replaced
-const SEED_VERSIONS = { telephone: 4, pebbles: 7, secret: 6, lost: 6, story: 3, eyes3: 1, fool: 2, helpers: 1, jokes: 2 };   // "you" is reserved for the start
-const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, which follow its settings; the Critic talks only about the pebbles; and Eyes ignores stray lines, as the Judge does.", secret: "The Keeper's own secret is 83 now, and you can type a secret on the stage.", lost: "The Finder can say “nothing”, and there's a question about a toy robot.", story: "A Book keeps the whole story, and when the run ends an Editor tells it again. Compare them: what did the Editor change?" };
+const SEED_VERSIONS = { telephone: 4, pebbles: 7, secret: 6, lost: 6, story: 4, eyes3: 1, fool: 2, helpers: 1, jokes: 2 };   // "you" is reserved for the start
+const WHATS_NEW = { telephone: "Drawings are in Logo now, and runs are shorter.", pebbles: "Every Judge has more scenarios, which follow its settings; the Critic talks only about the pebbles; and Eyes ignores stray lines, as the Judge does.", secret: "The Keeper's own secret is 83 now, and you can type a secret on the stage.", lost: "The Finder can say “nothing”, and there's a question about a toy robot.", story: "A new question about the Book, and the trace now shows each sentence the Book adds, and which sentence each check is about." };
 // What a microworld needs before it can run. Small Helper, Big Helper compares two models, so it needs two.
 const WORLD_NEEDS = { helpers: { models: 2, why: "It compares a small model with a big one, so it needs two models, and only one is set up." } };
 // Which model suits each microworld, from testing with Gemini Nano (October 2026). strong: agents a small model lets down.
@@ -5906,7 +5906,8 @@ function makeStoryChain() {
       "Give one writer the whole story and the others only the last sentence. Who keeps it on track?",
       "Can you add a rule so the Name Keeper's warning goes back to the next writer? Does the story recover?",
       "The Name Keeper says “where did Pip go?” when a writer says “she”. Is the Name Keeper wrong, or the writer?",
-      "Compare the Book with the Editor's story. What did the Editor leave out, or make up? Which one is more like your own memory?"
+      "Compare the Book with the Editor's story. What did the Editor leave out, or make up? Which one is more like your own memory?",
+      "The Book keeps every sentence, even the ones the Name Keeper warned about. Find the first one without Pip. Who wrote it, and what had that writer been told?"
     ],
     openers: ["What does Writer B know about the story when it writes?", "How could the Name Keeper be fooled?", "What would you need to remember to keep a story on track?"],
     roundAgent: "writer-a", roundLimit: 4,
@@ -9098,7 +9099,7 @@ function renderStage() {
   const view = viewState(s, run, trace);
   view.calls = callCounts(trace);
   const shown = stageShown(s, view);   // a film still playing stays on the stage
-  h += '<div class="agent-strip">' + stripHTML(s, view) + '</div>' + modelsRowHTML(s);
+  h += '<div class="agent-strip">' + stripHTML(s, view) + '</div>' + (app.settings.openedAgent ? "" : '<p class="hint strip-hint">👆 Click an agent to see what it\'s told, and change it.</p>') + modelsRowHTML(s);
   if (hasPictures(s)) h += '<div class="picture-wrap"><div class="picture' + (hasWhy(trace) ? " can-why" : "") + '"><canvas id="stageCanvas" data-act="stage-why" width="512" height="512" aria-label="The latest picture"></canvas>' +
     (shown.render ? '<span class="tag">' + (view.replay ? "replay · " : "") + "round " + shown.round + (shown.render.frames > 1 ? " · 🎞️" : "") + '</span>' : '<div class="empty">' + (trace.length ? "No picture yet." : "Press ▶ Run to start.<br>Every message will show up in the Trace.") + '</div>') + '</div>' + filmBarHTML(s, shown.render) + whyBoxHTML(s, shown, trace) +
     '<div class="bubbles">' + view.bubbles.map(bubbleHTML).join("") + '</div></div>';
@@ -9301,6 +9302,25 @@ function summaryText(e, s) {
   const words = Words.paraphrase(resp.data || {});
   return words ? "sent data: " + words : "(said nothing)";
 }
+// What an answer is about: a short quote of the words it got (not for a collector's many, or for the Renderer's Logo).
+function aboutQuote(e) {
+  const m = e.message;
+  if (!m || m.collected || e.agentKind === "renderer" || e.collecting) return "";
+  const t = util.stripMd(String(m.text || "")).replace(/\s+/g, " ").trim();
+  return t ? ': “' + esc(t.length > 48 ? t.slice(0, 47).replace(/\s+\S*$/, "") + "…" : t) + '”' : "";
+}
+// When an agent's words are its last words with more added, the part it added.
+function grewFrom(e, trace) {
+  const now = String((e.response && e.response.text) || "").trim();
+  if (!now) return "";
+  for (let k = e.i - 1; k >= 0; k--) {
+    const p = (trace || [])[k];
+    if (!p || p.kind !== "activation" || p.agentId !== e.agentId || p.collecting || !p.response) continue;
+    const before = String(p.response.text || "").trim();
+    return before.length > 40 && now.length > before.length && now.indexOf(before) === 0 ? now.slice(before.length).trim() : "";
+  }
+  return "";
+}
 function traceEntryHTML(e, s, run, trace, currentI) {
   if (e.kind === "ending") return '<div class="tentry slim"><div class="th"><span class="rb">⏳</span><span class="sum">' + esc(e.text) + '</span></div></div>';
   if (e.kind === "note") return '<div class="tentry slim"><div class="th"><span class="rb">⏹</span><span class="sum">' + esc(e.text) + '</span></div></div>';
@@ -9311,13 +9331,16 @@ function traceEntryHTML(e, s, run, trace, currentI) {
   const resp = e.response;
   const a = Society.agentById(s, e.agentId);
   const quiet = !e.error && resp && !String(resp.text || "").trim() && !e.render && !(e.fired || []).length;
-  let sum = '<b>' + esc((e.emoji || "") + " " + e.agentName) + '</b> <span class="muted">← ' + esc(e.message ? e.message.fromName : "") + '</span>';
+  let sum = '<b>' + esc((e.emoji || "") + " " + e.agentName) + '</b> <span class="muted">← ' + esc(e.message ? e.message.fromName : "") + aboutQuote(e) + '</span>';
   if (resp && resp.data && resp.data.end === true) sum = '<span class="badge plain">the end</span> ' + sum;
   if (resp && resp.data && typeof resp.data.pass === "boolean" && (resp.data.pass === false || (a && a.gate))) sum = (resp.data.pass ? '<span class="badge ok">pass</span> ' : '<span class="badge bad">block</span> ') + sum;
   if (e.error) sum += '<br><span style="color:var(--bad)">⚠ ' + shortHTML(e.error, 170, "The problem") + '</span>';
   else if (e.collecting) sum += ' <span class="muted">is waiting: ' + e.collecting.have + ' of ' + e.collecting.want + ' messages so far</span>';
   else if (quiet) sum += ' <span class="muted">' + shortHTML(summaryText(e, s), 120, e.agentName) + '</span>';
-  else if (resp) sum += '<br>' + shortHTML(summaryText(e, s), 170, e.agentName);
+  else if (resp) {
+    const grew = grewFrom(e, trace), flat = t => util.stripMd(String(t || "")).replace(/\s+/g, " ").trim();
+    sum += '<br>' + (!grew ? shortHTML(summaryText(e, s), 170, e.agentName) : flat(grew) === flat(e.message && e.message.text) ? '<span class="muted">…the same as before, with that added</span>' : '<span class="muted">…the same as before, then:</span> ' + shortHTML(grew, 150, e.agentName));
+  }
   if (e.call && e.call.pretend) sum += ' <span class="badge warn" title="Played by a small built-in program, not an AI">pretend</span>';
   if (e.byYou) sum += ' <span class="badge ok" title="You played this agent">you</span>';
   if (e.render && e.render.frames > 1 && !e.render.error) sum += ' <span class="badge plain" title="' + esc(filmWords(e.render)) + '">🎞️ film</span>';
@@ -9453,6 +9476,7 @@ function openAgent(id) {
   const s = soc();
   const a = Society.agentById(s, id);
   if (!a) return;
+  if (!app.settings.openedAgent) { app.settings.openedAgent = true; save(); renderStage(); }   // the hint under the stage's agents has done its job
   if (app.ui.editorModal) app.ui.editorModal.close();
   app.ui.editor = { socId: s.id, agentId: id, mode: "view", draft: "", scn: null, scnEdit: null, peek: false, peekTab: "js", busy: false };
   app.ui.editorModal = openModal({ title: a.emoji + " " + a.name, wide: true, onClose: () => { app.ui.editor = null; app.ui.editorModal = null; renderLeft(); } });

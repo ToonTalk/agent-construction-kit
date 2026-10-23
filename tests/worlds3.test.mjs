@@ -151,4 +151,24 @@ export default function (T, { modelWindow, pageWindow, same }) {
     pw.__ak.renderAll();
     return grayed && !!note && /can’t run yet/.test(note.textContent) && run.disabled && refused && !btn().classList.contains("needs") && !pw.document.querySelector(".needs-note") && !pw.document.querySelector('.controls [data-act="run"]').disabled;
   });
+  // 1.20.2, after a tester's sessions with his sisters: each answer in the trace quotes what it answers; the Book's line
+  // shows the sentence it added (it used to start with Pip every time); and under the stage's agents, until one is
+  // opened, a line says where an agent's instructions are.
+  T.test("page: Story Chain's trace quotes what each check is about and shows what the Book added; the stage says to click an agent until one is opened", ["Seeds", "Engine"], async () => {
+    const { w: pw, errors } = await pageWindow();
+    const ak = pw.__ak, $ = q => pw.document.querySelector(q), $$ = q => Array.from(pw.document.querySelectorAll(q));
+    ak.app.settings.connection = "pretend"; ak.app.settings.speed = "instant";
+    pw.document.querySelector('[data-act="world"][data-id="story"]').click();
+    const hintBefore = !!$(".strip-hint") && /Click an agent to see what it's told/.test($(".strip-hint").textContent);
+    await ak.runNow();
+    const sums = $$("#traceList .tentry .sum").map(x => x.textContent.replace(/\s+/g, " "));
+    const keeper = sums.filter(t => /Name Keeper ← Writer [ABC]: “/.test(t)), book = sums.filter(t => /^📕 Book ← /.test(t));
+    const added = book.slice(1).every(t => /…the same as before, with that added$/.test(t)) && !/…the same as before/.test(book[0] || "") && /Once upon a time/.test(book[0] || "");
+    ak.openAgent("writer-a");
+    await new Promise(r => setTimeout(r, 10));
+    const s = Seeds.makeStoryChain();
+    return hintBefore && keeper.length >= 3 && book.length >= 3 && added && !$(".strip-hint") && ak.app.settings.openedAgent === true &&
+      s.seedVersion === 4 && s.questions.length === 6 && /first one without Pip/.test(s.questions[5]) && !errors.length;
+  });
+
 }
