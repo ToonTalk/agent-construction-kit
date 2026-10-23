@@ -43,11 +43,12 @@ export default function (T, { modelWindow, pageWindow, same }) {
     const rule = id => s.rules.find(r => r.id === id);
     const models = s.agents.filter(a => a.kind === "model").map(a => a.id);
     const plainOne = Seeds.makeMiniAni();
-    return Seeds.EXAMPLES.some(x => x.id === "miniani-voices") && same(models, ["reader", "animator", "person", "narrator"]) && agent(s, "person").human === true &&
+    return Seeds.EXAMPLES.some(x => x.id === "miniani-voices") && same(models, ["reader", "animator", "person", "wayfinder", "narrator"]) && agent(s, "person").human === true &&
       agent(s, "animator").pretend === "animator" && agent(s, "animator").history === "stateless" && agent(s, "reader").pretend === "reader" && agent(s, "narrator").collect && agent(s, "narrator").wait === 20 &&
       rule("v6").from === "reader" && rule("v6").to === "cast" && rule("v6").enabled !== false && rule("v1").when === "text" && rule("v1").word === "suggest values" &&
-      rule("v3").enabled === false && rule("v4").enabled === false && rule("v7").field === "understood" && rule("v7").value === "false" &&
-      s.starts[1].to === "reader" && s.starts[1].label === "Your own story, in your own words" && s.variants.map(v => v.id).join() === "you,only-ai" && s.variants.every(v => !v.on) &&
+      rule("v3").enabled === false && rule("v4").enabled === false && rule("v7").field === "understood" && rule("v7").value === "false" && rule("v7").send === "text+data" && rule("v8").to === "wayfinder" && rule("v8").word === "On stage" && rule("v9").to === "methods" &&
+      agent(s, "methods").typeId === "ani-methods-ai" && agent(s, "methods").collect && agent(s, "wayfinder").pretend === "wayfinder" &&
+      s.starts[1].to === "reader" && s.starts[1].label === "Your own story, in your own words" && s.variants.map(v => v.id).join() === "you,only-ai,no-ways" && s.variants.every(v => !v.on) &&
       s.agents.filter(a => a.kind === "program").every(a => a.code.js === Library.LIB[a.typeId].js) && s.link.url === plainOne.link.url && s.intro.length < 420 &&
       !plainOne.agents.some(a => a.kind === "model") && plainOne.rules.every(r => /^m\d+$/.test(r.id));
   });
@@ -144,4 +145,34 @@ export default function (T, { modelWindow, pageWindow, same }) {
     await sleep(30);
     return /You changed the Mini-Ani you made from this example/.test(q) && ak.soc().id === "miniani" && ak.app.order.filter(id => /^miniani/.test(id)).length === 2;
   });
+  // 1.19.0: the AI Way Finder suggests ways for what the Method Chooser has no way for, and the Reader gets a story the
+  // Cast couldn't read, so a story told in someone's own words works even when it was given to the Cast.
+  T.test("Mini-Ani with AI voices: the AI Way Finder's ways show what the Method Chooser has none for; a way the Director can't show is named; switched off, it is as before", ["Engine", "Seeds"], async () => {
+    const tell = async (story, off) => {
+      const s = Seeds.makeMiniAniVoices();
+      if (off) Society.applyVariant(s, "no-ways", true);
+      const api = Engine.createRun(s, { runtime: Runtime, adapter: Adapters.makeAdapter({ connection: "pretend", models: {}, keys: {} }), seed: 1 });
+      api.start({ to: "cast", text: story });
+      await api.play();
+      return api.run;
+    };
+    const STORY = "Ann is shy and kind.\nBob is strong and mean.\nScene 1: Ann loves Bob. Bob obeys Ann.\nScene 2: Bob sings to Ann.";
+    const on = await tell(STORY), off = await tell(STORY, true);
+    const plan = (r, round) => acts(r, "methods").find(e => e.round === round).response;
+    const p1 = plan(on, 1), p2 = plan(on, 2), q1 = plan(off, 1);
+    return on.status === "done" && /Ann and Bob come together \(loves, AI Way Finder's way/.test(p1.text) && /Bob goes along with Ann \(obeys, AI Way Finder's way/.test(p1.text) && same(p1.data.untaught, []) &&
+      /Not used\*\* \(not ways the Director can show\): “dances around” \(AI Way Finder\)/.test(p2.text) && same(p2.data.untaught, ["sings"]) &&
+      acts(on, "wayfinder").length === 2 && acts(off, "wayfinder").length === 0 && same(q1.data.untaught, ["loves", "obeys"]) && acts(off, "renderer").length === 2 && !on.trace.some(e => e.error);
+  });
+  T.test("Mini-Ani with AI voices: a story given to the Cast with no scenes goes to the Reader with the story itself, and the Reader's sentences are read", ["Engine", "Seeds"], async () => {
+    const s = Seeds.makeMiniAniVoices(), OWN = s.starts[1].value;
+    const api = Engine.createRun(s, { runtime: Runtime, adapter: Adapters.makeAdapter({ connection: "pretend", models: {}, keys: {} }), seed: 1 });
+    api.start({ to: "cast", text: OWN });
+    await api.play();
+    const r = api.run, first = acts(r, "cast")[0].response, toReader = acts(r, "reader")[0];
+    const got = toReader.call.messages.map(m => m.content).join(" ");
+    return first.data.understood === false && first.data.story === OWN && /An AI Reader can turn a story told in your own words/.test(first.text) &&
+      got.indexOf("called Pip") >= 0 && acts(r, "renderer").length >= 2 && r.status === "done";
+  });
+
 }

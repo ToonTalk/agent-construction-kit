@@ -1,15 +1,15 @@
 {
   "kind": "agent-kit-export",
   "schema": 1,
-  "app": "Agent Kit 1.18.0",
-  "exportedAt": "2026-10-23T10:45:01.014Z",
+  "app": "Agent Kit 1.19.0",
+  "exportedAt": "2026-10-23T16:19:29.998Z",
   "society": {
     "kind": "agent-kit-society",
     "schema": 1,
     "id": "miniani-voices",
     "title": "Mini-Ani with AI voices",
     "question": "When the AI Animator disagrees with the experts, who wins?",
-    "intro": "The Mini-Ani, with AI agents where words are needed. An AI Animator suggests how the characters move and look, in Ani's words, and the Choice Points weigh its lines like any expert's. A Reader turns a story told in your own words into the Cast's simple sentences, and a Narrator tells the finished film. The weighing, the plans and the films are still programs.",
+    "intro": "The Mini-Ani, with AI agents where words are needed. An AI Animator suggests how the characters move and look, in Ani's words, and the Choice Points weigh its lines like any expert's. A Reader turns a story told in your own words into the Cast's simple sentences, an AI Way Finder suggests how to show what the programs can't, and a Narrator tells the film. The weighing, the plans and the films are still programs.",
     "link": {
       "url": "https://toontalk.github.io/ani/",
       "label": "Watch Ani's own 1978 Cinderella film"
@@ -20,6 +20,7 @@
       "Switch on “You suggest too” and try to outvote shy: can you make Cinderella fast? (Your line counts {3} times its strength, the AI Animator's {2}: see the Choice Points.)",
       "Choose “Your own story” and tell a story of your own. What did the Reader change to fit the Cast's sentences? Which of your words did no expert know?",
       "Switch on “Only the AI Animator suggests”. Is the film better or worse with one AI expert instead of three programmed ones?",
+      "The AI Way Finder suggests ways to show words the Method Chooser has no way for, like “loves”. Find one in a plan. Switch on “No AI Way Finder”: what does the Method Chooser do instead?",
       "The Narrator gets only the Method Chooser's plans. What does its telling add that the film doesn't show, and what does it get wrong?",
       "Which agents use a model, and which are programs? Could a program do the Reader's job? Could a model do the Choice Points'?"
     ],
@@ -68,6 +69,15 @@
           "m8"
         ],
         "on": false
+      },
+      {
+        "id": "no-ways",
+        "label": "No AI Way Finder: the Method Chooser shows only what it was taught",
+        "disable": [
+          "v8",
+          "v9"
+        ],
+        "on": false
       }
     ],
     "agents": [
@@ -77,7 +87,7 @@
         "name": "Reader",
         "emoji": "📖",
         "role": "turns a story told in your own words into the Cast's simple sentences",
-        "instructions": "You turn a story that someone tells in their own words into the simple sentences that the Cast, a small program, can read. Write only those sentences, in three parts.\n1. One line for each character, at most 4: “Name is word, word and word.” A name is one word, or “the” and one word, like “the Wolf”. Use only words that Ani's experts know: shy, bold, kind, good, friendly, unfriendly, hardworking, lazy, graceful, clumsy, strong, weak, determined, stubborn, mean, selfish, evil, grumpy, beautiful, pretty, ugly, shabby, elegant, magical. When the story uses another word, choose the nearest of these.\n2. How they get on, on one line: “A dominates B.”, “A obeys B.”, “A helps B.”, “A likes B.” or “A dislikes B.”\n3. The scenes, at most 5, each on its own line starting “Scene 1:”, with sentences like “A is shy.”, “A dominates B.”, “A keeps B from C.”, “A helps B.”, “A meets B.”, “A becomes happy.” (or sad), “A changes from shy to bold.” or “A changes B from shabby to elegant.”\nFor example:\nThe Wolf is mean, strong and grumpy.\nThe Lamb is shy, good and graceful.\nThe Wolf dominates the Lamb.\nScene 1: The Lamb is shy. The Wolf dominates the Lamb.\nScene 2: The Wolf changes from mean to kind. The Wolf meets the Lamb. The Lamb becomes happy.\nIf the Cast says it couldn't read what you wrote, write the whole story again so that it can.",
+        "instructions": "You turn a story that someone tells in their own words into the simple sentences that the Cast, a small program, can read. Write only those sentences, in three parts.\n1. One line for each character, at most 4: “Name is word, word and word.” A name is one word, or “the” and one word, like “the Wolf”. Use only words that Ani's experts know: shy, bold, kind, good, friendly, unfriendly, hardworking, lazy, graceful, clumsy, strong, weak, determined, stubborn, mean, selfish, evil, grumpy, beautiful, pretty, ugly, shabby, elegant, magical. When the story uses another word, choose the nearest of these.\n2. How they get on, on one line: “A dominates B.”, “A obeys B.”, “A helps B.”, “A likes B.” or “A dislikes B.”\n3. The scenes, at most 5, each on its own line starting “Scene 1:”, with sentences like “A is shy.”, “A dominates B.”, “A keeps B from C.”, “A helps B.”, “A meets B.”, “A loves B.”, “A becomes happy.” (or sad), “A changes from shy to bold.” or “A changes B from shabby to elegant.”\nFor example:\nThe Wolf is mean, strong and grumpy.\nThe Lamb is shy, good and graceful.\nThe Wolf dominates the Lamb.\nScene 1: The Lamb is shy. The Wolf dominates the Lamb.\nScene 2: The Wolf changes from mean to kind. The Wolf meets the Lamb. The Lamb becomes happy.\nIf the Cast says it couldn't read a story (its data has the story), write that whole story again, in these sentences.",
         "outputFields": [],
         "canSeeImages": false,
         "history": "full",
@@ -94,7 +104,7 @@
         "note": "reads a story and sends it one scene at a time",
         "gate": false,
         "collect": false,
-        "pseudocode": "the story's own words: \"{is}\", \"{and}\", \"{the}\", \"{Scene}\", \"{changes}\", \"{from}\", \"{to}\", \"{becomes}\"\n\"X is a, b and c\" before the scenes says what X is like; in a scene it shows that X is a\n\"A does something to B\" before the scenes is how they get on; in a scene it is something that happens\n{helps, likes, loves} make two characters friends\n\"A changes B from X to Y\", \"A changes from X to Y\" and \"A becomes Y\" change someone, but {happy, sad} are feelings\nat the start, read the story, and send scene 1 with everyone, so the experts suggest values for the whole cast\nafter each film, send the next scene: who is on stage, what happens, and how they get on\nfor someone who changes in a scene, also send a stand-in, \"X {after}\", with the new words; from then on X has them\nwhen the Renderer says a film didn't run, say so, and go on to the next scene\nafter the last scene, end the story, and say \"The end.\"\nname any sentence I can't read; with nobody or no scenes, say how to write a story, and wait for another",
+        "pseudocode": "the story's own words: \"{is}\", \"{and}\", \"{the}\", \"{Scene}\", \"{changes}\", \"{from}\", \"{to}\", \"{becomes}\"\n\"X is a, b and c\" before the scenes says what X is like; in a scene it shows that X is a\n\"A does something to B\" before the scenes is how they get on; in a scene it is something that happens\n{helps, likes, loves} make two characters friends\n\"A changes B from X to Y\", \"A changes from X to Y\" and \"A becomes Y\" change someone, but {happy, sad} are feelings\nat the start, read the story, and send scene 1 with everyone, so the experts suggest values for the whole cast\nafter each film, send the next scene: who is on stage, what happens, and how they get on\nfor someone who changes in a scene, also send a stand-in, \"X {after}\", with the new words; from then on X has them\nwhen the Renderer says a film didn't run, say so, and go on to the next scene\nafter the last scene, end the story, and say \"The end.\"\nname any sentence I can't read; with nobody or no scenes, say how to write a story, send the story back (for a Reader), and wait for another",
         "params": {
           "is": "is",
           "and": "and",
@@ -584,8 +594,8 @@
           }
         ],
         "code": {
-          "pseudocode": "the story's own words: \"{is}\", \"{and}\", \"{the}\", \"{Scene}\", \"{changes}\", \"{from}\", \"{to}\", \"{becomes}\"\n\"X is a, b and c\" before the scenes says what X is like; in a scene it shows that X is a\n\"A does something to B\" before the scenes is how they get on; in a scene it is something that happens\n{helps, likes, loves} make two characters friends\n\"A changes B from X to Y\", \"A changes from X to Y\" and \"A becomes Y\" change someone, but {happy, sad} are feelings\nat the start, read the story, and send scene 1 with everyone, so the experts suggest values for the whole cast\nafter each film, send the next scene: who is on stage, what happens, and how they get on\nfor someone who changes in a scene, also send a stand-in, \"X {after}\", with the new words; from then on X has them\nwhen the Renderer says a film didn't run, say so, and go on to the next scene\nafter the last scene, end the story, and say \"The end.\"\nname any sentence I can't read; with nobody or no scenes, say how to write a story, and wait for another",
-          "js": "function run(input, params, h) {\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const IS = low(params.is), AND = low(params.and), THE = low(params.the), SCENE = low(params.scene);\n  const CHANGES = low(params.changes), FROM = low(params.from), TO = low(params.to), BECOMES = low(params.becomes);\n  const listOf = s => String(s == null ? \"\" : s).split(\",\").map(w => low(w)).filter(w => w && w !== \"-\");\n  const friendWords = listOf(params.friends), feelings = listOf(params.feelings);\n  const wordsOf = text => {\n    const out = [];\n    let w = \"\";\n    for (const c of String(text == null ? \"\" : text)) {\n      h.tick();\n      if (c.toLowerCase() !== c.toUpperCase() || (c >= \"0\" && c <= \"9\") || c === \"'\") {\n        w += c;\n      } else {\n        if (w) out.push(w);\n        w = \"\";\n      }\n    }\n    if (w) out.push(w);\n    return out;\n  };\n  const sentencesOf = line => {\n    const out = [];\n    let s = \"\";\n    for (const c of String(line)) {\n      h.tick();\n      if (c === \".\" || c === \"!\" || c === \"?\" || c === \";\") {\n        if (s.trim()) out.push(s.trim());\n        s = \"\";\n      } else {\n        s += c;\n      }\n    }\n    if (s.trim()) out.push(s.trim());\n    return out;\n  };\n  const joinAnd = list => (list.length < 2 ? list.join(\"\") : list.slice(0, -1).join(\", \") + \" \" + AND + \" \" + list[list.length - 1]);\n  const count = (n, one, many) => n + \" \" + (n === 1 ? one : many);\n  const readStory = text => {\n    const m = { cast: [], called: {}, words: {}, relations: [], friends: [], scenes: [], unread: [], next: 0 };\n    const names = new Map();\n    const top = [], others = [];\n    let scene = null;\n    for (const raw of String(text == null ? \"\" : text).split(\"\\n\")) {\n      h.tick();\n      let line = raw.trim();\n      const first = wordsOf(line);\n      if (first.length && low(first[0]) === SCENE) {\n        scene = { text: \"\", sentences: [] };\n        m.scenes.push(scene);\n        line = line.indexOf(\":\") >= 0 ? line.slice(line.indexOf(\":\") + 1) : first.slice(2).join(\" \");\n      }\n      for (const s of sentencesOf(line)) {\n        h.tick();\n        if (scene) scene.sentences.push(s);\n        else top.push(s);\n      }\n    }\n    const rest = (lw, from) => lw.slice(from).filter(x => x !== AND && x !== THE);\n    for (const s of top) {\n      h.tick();\n      const w = wordsOf(s), lw = w.map(low), k = lw.indexOf(IS);\n      if (k < 1 || k > 3) {\n        others.push(s);\n        continue;\n      }\n      const the = k > 1 && lw[0] === THE;\n      const name = w.slice(the ? 1 : 0, k).join(\" \");\n      if (!names.has(low(name))) {\n        names.set(low(name), name);\n        m.cast.push(name);\n        m.words[name] = [];\n        if (the) m.called[name] = THE + \" \" + name;\n      }\n      for (const word of rest(lw, k + 1)) {\n        h.tick();\n        if (m.words[names.get(low(name))].indexOf(word) < 0) m.words[names.get(low(name))].push(word);\n      }\n    }\n    const findNames = lw => {\n      const found = [];\n      for (let i = 0; i < lw.length; i++) {\n        h.tick();\n        const two = lw[i] + \" \" + (lw[i + 1] || \"\");\n        if (names.has(two)) {\n          found.push({ name: names.get(two), at: i, end: i + 2 });\n          i++;\n        } else if (names.has(lw[i])) found.push({ name: names.get(lw[i]), at: i, end: i + 1 });\n      }\n      return found;\n    };\n    const readSentence = s => {\n      const lw = wordsOf(s).map(low), who = findNames(lw);\n      if (!who.length || who[0].at > 1) return null;\n      if (lw[who[0].end] === IS) return { verb: IS, who: who[0].name, what: rest(lw, who[0].end + 1) };\n      const c = lw.indexOf(CHANGES), f = lw.indexOf(FROM, c), t = lw.indexOf(TO, f);\n      if (c === who[0].end && f > c && t > f) {\n        const whom = who.find(x => x.at > c && x.at < f);\n        return { verb: CHANGES, who: who[0].name, whom: whom ? whom.name : \"\", from: rest(lw.slice(0, t), f + 1), to: rest(lw, t + 1) };\n      }\n      if (lw[who[0].end] === BECOMES) {\n        const what = rest(lw, who[0].end + 1);\n        if (what.length && what.every(x => feelings.indexOf(x) >= 0)) return { verb: BECOMES, who: who[0].name, what: what };\n        return { verb: CHANGES, who: who[0].name, whom: \"\", from: [], to: what };\n      }\n      if (who[0].end >= lw.length) return null;\n      return { verb: lw[who[0].end], who: who[0].name, whom: who[1] ? who[1].name : \"\", also: who[2] ? who[2].name : \"\" };\n    };\n    for (const s of others) {\n      h.tick();\n      const r = readSentence(s);\n      if (!r || !r.whom) {\n        m.unread.push(s);\n        continue;\n      }\n      m.relations.push({ who: r.who, verb: r.verb, whom: r.whom });\n      if (friendWords.indexOf(r.verb) >= 0) m.friends.push([r.who, r.whom]);\n    }\n    m.scenes = m.scenes.map(sc => {\n      const events = [], unread = [];\n      for (const s of sc.sentences) {\n        h.tick();\n        const e = readSentence(s);\n        if (e) events.push(e);\n        else unread.push(s);\n      }\n      const on = m.cast.filter(n => events.some(e => e.who === n || e.whom === n || e.also === n));\n      return { text: sc.sentences.join(\". \") + \".\", events: events, onStage: on, unread: unread };\n    });\n    return m;\n  };\n  const called = (m, n) => m.called[n] || n;\n  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);\n  const send = (m, note) => {\n    if (m.next >= m.scenes.length) return { end: true, over: true, say: (note ? note + \" \" : \"\") + \"The end.\", memory: m };\n    const sc = m.scenes[m.next];\n    const choose = m.next === 0 ? m.cast.map(n => ({ name: n, words: m.words[n].slice() })) : [];\n    const changed = new Map();\n    for (const e of sc.events) {\n      h.tick();\n      if (e.verb !== CHANGES) continue;\n      const who = e.whom || e.who;\n      const words = (changed.get(who) || m.words[who]).filter(x => e.from.indexOf(x) < 0);\n      for (const x of e.to) {\n        h.tick();\n        if (words.indexOf(x) < 0) words.push(x);\n      }\n      changed.set(who, words);\n    }\n    let say = (note ? note + \"\\n\\n\" : \"\") + \"**Scene \" + (m.next + 1) + \" of \" + m.scenes.length + \".** \" + sc.text + \"\\n\\nOn stage: \" + joinAnd(sc.onStage.map(n => called(m, n))) + \".\";\n    if (m.next === 0) say += \"\\n\\nI read the story: \" + count(m.cast.length, \"character\", \"characters\") + \", \" + count(m.relations.length, \"way\", \"ways\") + \" they get on, and \" + count(m.scenes.length, \"scene\", \"scenes\") + \". The experts suggest values for everyone now, for the whole film:\\n\" + m.cast.map(n => \"- \" + called(m, n) + \": \" + m.words[n].join(\", \")).join(\"\\n\");\n    for (const who of Array.from(changed.keys())) {\n      h.tick();\n      choose.push({ name: who + \" \" + params.after, of: who, words: changed.get(who) });\n      if (m.called[who]) m.called[who + \" \" + params.after] = m.called[who] + \" \" + params.after;\n      say += \"\\n\\n\" + cap(called(m, who)) + \" changes, so the experts suggest values for \" + called(m, who + \" \" + params.after) + \": \" + changed.get(who).join(\", \") + \".\";\n      m.words[who] = changed.get(who);\n    }\n    const unread = (m.next === 0 ? m.unread : []).concat(sc.unread);\n    if (unread.length) say += \"\\n\\nI couldn't read: \" + unread.map(s => \"“\" + s + \"”\").join(\", \") + \".\";\n    const out = { scene: m.next + 1, of: m.scenes.length, title: sc.text, cast: m.cast, called: m.called, choose: choose, onStage: sc.onStage, relations: m.relations, friends: m.friends, events: sc.events, unread: unread, say: say, memory: m };\n    m.next = m.next + 1;\n    return out;\n  };\n  if (!input.memory) {\n    const m = readStory(input.text);\n    if (!m.cast.length) return { pass: false, understood: false, say: \"I couldn't find anyone in the story. Say what each character is like first, like “Cinderella is shy and kind.”\" };\n    if (!m.scenes.length) return { pass: false, understood: false, say: \"There are no scenes in the story. Start each scene on a new line, like “Scene 1: Cinderella meets the Prince.”\" };\n    return send(m, \"\");\n  }\n  const m = input.memory;\n  const d = input.data || {};\n  return send(m, d.pass === false ? \"Scene \" + m.next + \"'s film didn't run (\" + String(d.error || \"no reason given\") + \"), so on to the next scene.\" : \"\");\n}",
+          "pseudocode": "the story's own words: \"{is}\", \"{and}\", \"{the}\", \"{Scene}\", \"{changes}\", \"{from}\", \"{to}\", \"{becomes}\"\n\"X is a, b and c\" before the scenes says what X is like; in a scene it shows that X is a\n\"A does something to B\" before the scenes is how they get on; in a scene it is something that happens\n{helps, likes, loves} make two characters friends\n\"A changes B from X to Y\", \"A changes from X to Y\" and \"A becomes Y\" change someone, but {happy, sad} are feelings\nat the start, read the story, and send scene 1 with everyone, so the experts suggest values for the whole cast\nafter each film, send the next scene: who is on stage, what happens, and how they get on\nfor someone who changes in a scene, also send a stand-in, \"X {after}\", with the new words; from then on X has them\nwhen the Renderer says a film didn't run, say so, and go on to the next scene\nafter the last scene, end the story, and say \"The end.\"\nname any sentence I can't read; with nobody or no scenes, say how to write a story, send the story back (for a Reader), and wait for another",
+          "js": "function run(input, params, h) {\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const IS = low(params.is), AND = low(params.and), THE = low(params.the), SCENE = low(params.scene);\n  const CHANGES = low(params.changes), FROM = low(params.from), TO = low(params.to), BECOMES = low(params.becomes);\n  const listOf = s => String(s == null ? \"\" : s).split(\",\").map(w => low(w)).filter(w => w && w !== \"-\");\n  const friendWords = listOf(params.friends), feelings = listOf(params.feelings);\n  const wordsOf = text => {\n    const out = [];\n    let w = \"\";\n    for (const c of String(text == null ? \"\" : text)) {\n      h.tick();\n      if (c.toLowerCase() !== c.toUpperCase() || (c >= \"0\" && c <= \"9\") || c === \"'\") {\n        w += c;\n      } else {\n        if (w) out.push(w);\n        w = \"\";\n      }\n    }\n    if (w) out.push(w);\n    return out;\n  };\n  const sentencesOf = line => {\n    const out = [];\n    let s = \"\";\n    for (const c of String(line)) {\n      h.tick();\n      if (c === \".\" || c === \"!\" || c === \"?\" || c === \";\") {\n        if (s.trim()) out.push(s.trim());\n        s = \"\";\n      } else {\n        s += c;\n      }\n    }\n    if (s.trim()) out.push(s.trim());\n    return out;\n  };\n  const joinAnd = list => (list.length < 2 ? list.join(\"\") : list.slice(0, -1).join(\", \") + \" \" + AND + \" \" + list[list.length - 1]);\n  const count = (n, one, many) => n + \" \" + (n === 1 ? one : many);\n  const readStory = text => {\n    const m = { cast: [], called: {}, words: {}, relations: [], friends: [], scenes: [], unread: [], next: 0 };\n    const names = new Map();\n    const top = [], others = [];\n    let scene = null;\n    for (const raw of String(text == null ? \"\" : text).split(\"\\n\")) {\n      h.tick();\n      let line = raw.trim();\n      const first = wordsOf(line);\n      if (first.length && low(first[0]) === SCENE) {\n        scene = { text: \"\", sentences: [] };\n        m.scenes.push(scene);\n        line = line.indexOf(\":\") >= 0 ? line.slice(line.indexOf(\":\") + 1) : first.slice(2).join(\" \");\n      }\n      for (const s of sentencesOf(line)) {\n        h.tick();\n        if (scene) scene.sentences.push(s);\n        else top.push(s);\n      }\n    }\n    const rest = (lw, from) => lw.slice(from).filter(x => x !== AND && x !== THE);\n    for (const s of top) {\n      h.tick();\n      const w = wordsOf(s), lw = w.map(low), k = lw.indexOf(IS);\n      if (k < 1 || k > 3) {\n        others.push(s);\n        continue;\n      }\n      const the = k > 1 && lw[0] === THE;\n      const name = w.slice(the ? 1 : 0, k).join(\" \");\n      if (!names.has(low(name))) {\n        names.set(low(name), name);\n        m.cast.push(name);\n        m.words[name] = [];\n        if (the) m.called[name] = THE + \" \" + name;\n      }\n      for (const word of rest(lw, k + 1)) {\n        h.tick();\n        if (m.words[names.get(low(name))].indexOf(word) < 0) m.words[names.get(low(name))].push(word);\n      }\n    }\n    const findNames = lw => {\n      const found = [];\n      for (let i = 0; i < lw.length; i++) {\n        h.tick();\n        const two = lw[i] + \" \" + (lw[i + 1] || \"\");\n        if (names.has(two)) {\n          found.push({ name: names.get(two), at: i, end: i + 2 });\n          i++;\n        } else if (names.has(lw[i])) found.push({ name: names.get(lw[i]), at: i, end: i + 1 });\n      }\n      return found;\n    };\n    const readSentence = s => {\n      const lw = wordsOf(s).map(low), who = findNames(lw);\n      if (!who.length || who[0].at > 1) return null;\n      if (lw[who[0].end] === IS) return { verb: IS, who: who[0].name, what: rest(lw, who[0].end + 1) };\n      const c = lw.indexOf(CHANGES), f = lw.indexOf(FROM, c), t = lw.indexOf(TO, f);\n      if (c === who[0].end && f > c && t > f) {\n        const whom = who.find(x => x.at > c && x.at < f);\n        return { verb: CHANGES, who: who[0].name, whom: whom ? whom.name : \"\", from: rest(lw.slice(0, t), f + 1), to: rest(lw, t + 1) };\n      }\n      if (lw[who[0].end] === BECOMES) {\n        const what = rest(lw, who[0].end + 1);\n        if (what.length && what.every(x => feelings.indexOf(x) >= 0)) return { verb: BECOMES, who: who[0].name, what: what };\n        return { verb: CHANGES, who: who[0].name, whom: \"\", from: [], to: what };\n      }\n      if (who[0].end >= lw.length) return null;\n      return { verb: lw[who[0].end], who: who[0].name, whom: who[1] ? who[1].name : \"\", also: who[2] ? who[2].name : \"\" };\n    };\n    for (const s of others) {\n      h.tick();\n      const r = readSentence(s);\n      if (!r || !r.whom) {\n        m.unread.push(s);\n        continue;\n      }\n      m.relations.push({ who: r.who, verb: r.verb, whom: r.whom });\n      if (friendWords.indexOf(r.verb) >= 0) m.friends.push([r.who, r.whom]);\n    }\n    m.scenes = m.scenes.map(sc => {\n      const events = [], unread = [];\n      for (const s of sc.sentences) {\n        h.tick();\n        const e = readSentence(s);\n        if (e) events.push(e);\n        else unread.push(s);\n      }\n      const on = m.cast.filter(n => events.some(e => e.who === n || e.whom === n || e.also === n));\n      return { text: sc.sentences.join(\". \") + \".\", events: events, onStage: on, unread: unread };\n    });\n    return m;\n  };\n  const called = (m, n) => m.called[n] || n;\n  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);\n  const send = (m, note) => {\n    if (m.next >= m.scenes.length) return { end: true, over: true, say: (note ? note + \" \" : \"\") + \"The end.\", memory: m };\n    const sc = m.scenes[m.next];\n    const choose = m.next === 0 ? m.cast.map(n => ({ name: n, words: m.words[n].slice() })) : [];\n    const changed = new Map();\n    for (const e of sc.events) {\n      h.tick();\n      if (e.verb !== CHANGES) continue;\n      const who = e.whom || e.who;\n      const words = (changed.get(who) || m.words[who]).filter(x => e.from.indexOf(x) < 0);\n      for (const x of e.to) {\n        h.tick();\n        if (words.indexOf(x) < 0) words.push(x);\n      }\n      changed.set(who, words);\n    }\n    let say = (note ? note + \"\\n\\n\" : \"\") + \"**Scene \" + (m.next + 1) + \" of \" + m.scenes.length + \".** \" + sc.text + \"\\n\\nOn stage: \" + joinAnd(sc.onStage.map(n => called(m, n))) + \".\";\n    if (m.next === 0) say += \"\\n\\nI read the story: \" + count(m.cast.length, \"character\", \"characters\") + \", \" + count(m.relations.length, \"way\", \"ways\") + \" they get on, and \" + count(m.scenes.length, \"scene\", \"scenes\") + \". The experts suggest values for everyone now, for the whole film:\\n\" + m.cast.map(n => \"- \" + called(m, n) + \": \" + m.words[n].join(\", \")).join(\"\\n\");\n    for (const who of Array.from(changed.keys())) {\n      h.tick();\n      choose.push({ name: who + \" \" + params.after, of: who, words: changed.get(who) });\n      if (m.called[who]) m.called[who + \" \" + params.after] = m.called[who] + \" \" + params.after;\n      say += \"\\n\\n\" + cap(called(m, who)) + \" changes, so the experts suggest values for \" + called(m, who + \" \" + params.after) + \": \" + changed.get(who).join(\", \") + \".\";\n      m.words[who] = changed.get(who);\n    }\n    const unread = (m.next === 0 ? m.unread : []).concat(sc.unread);\n    if (unread.length) say += \"\\n\\nI couldn't read: \" + unread.map(s => \"“\" + s + \"”\").join(\", \") + \".\";\n    const out = { scene: m.next + 1, of: m.scenes.length, title: sc.text, cast: m.cast, called: m.called, choose: choose, onStage: sc.onStage, relations: m.relations, friends: m.friends, events: sc.events, unread: unread, say: say, memory: m };\n    m.next = m.next + 1;\n    return out;\n  };\n  if (!input.memory) {\n    const m = readStory(input.text);\n    if (!m.cast.length) return { pass: false, understood: false, story: String(input.text || \"\").slice(0, 2000), say: \"I couldn't find anyone in the story. Say what each character is like first, like “Cinderella is shy and kind.” An AI Reader can turn a story told in your own words into these sentences: see Mini-Ani with AI voices.\" };\n    if (!m.scenes.length) return { pass: false, understood: false, story: String(input.text || \"\").slice(0, 2000), say: \"There are no scenes in the story. Start each scene on a new line, like “Scene 1: Cinderella meets the Prince.” An AI Reader can turn a story told in your own words into these sentences: see Mini-Ani with AI voices.\" };\n    return send(m, \"\");\n  }\n  const m = input.memory;\n  const d = input.data || {};\n  return send(m, d.pass === false ? \"Scene \" + m.next + \"'s film didn't run (\" + String(d.error || \"no reason given\") + \"), so on to the next scene.\" : \"\");\n}",
           "lineMap": [
             {
               "pseudo": [
@@ -1078,7 +1088,7 @@
               ]
             }
           ],
-          "hash": "77836d006a43f597"
+          "hash": "779970e425bef163"
         },
         "lastGood": null,
         "status": "ok",
@@ -6007,14 +6017,14 @@
       {
         "id": "methods",
         "kind": "program",
-        "typeId": "ani-methods",
+        "typeId": "ani-methods-ai",
         "name": "Method Chooser",
         "emoji": "🧭",
-        "role": "picks a way to show each thing that happens, and says what it crossed out",
-        "note": "picks a way to show each thing that happens, and says what it crossed out",
+        "role": "collects · picks a way to show each thing that happens, using an AI agent's ways for words it has none for",
+        "note": "collects · picks a way to show each thing that happens, using an AI agent's ways for words it has none for",
         "gate": false,
-        "collect": false,
-        "pseudocode": "for each thing that happens in the scene, find the ways to show it:\n  someone who is {shy}: {keeps away} from someone on stage who isn't a friend\n  someone who is {mean, evil}: {chases off} someone on stage who isn't a friend\n  A {dominates} B: {looms over, chases off}\n  A {keeps} B from C: {stands guard}\n  A {helps} B: {goes along}\n  A {meets} B: {come together}\n  A {-} B: {-}\n  A {changes} B from X to Y: {goes to and changes}; A changes from X to Y: {comes closer bit by bit}\n  A {becomes} {happy}: {faster, livelier, curvier, brighter}\n  A becomes {sad}: {slower, calmer, straighter, dimmer}\ncross out chases off and stands guard unless A is faster than B, and any way that needs someone who isn't on stage\ncross out keeps away when A is drawn to strangers\nprefer chases off when A is bigger than B, stands guard when A dominates B, and goes along and come together when A is drawn to friends\nprefer a way the film hasn't used yet\na change takes {8} frames (0: at once)\nif no way is left, A moves about in its own way, so its values still show; a word with no ways at all is named, for teaching\nsend the plan, in order, to the Director, with the values of everyone on stage",
+        "collect": true,
+        "pseudocode": "wait for the Choice Points' scene and an AI agent's ways: {2} messages, or until nobody else has anything to say\nfor each thing that happens in the scene, find the ways to show it:\n  someone who is {shy}: {keeps away} from someone on stage who isn't a friend\n  someone who is {mean, evil}: {chases off} someone on stage who isn't a friend\n  A {dominates} B: {looms over, chases off}\n  A {keeps} B from C: {stands guard}\n  A {helps} B: {goes along}\n  A {meets} B: {come together}\n  A {-} B: {-}\n  A {changes} B from X to Y: {goes to and changes}; A changes from X to Y: {comes closer bit by bit}\n  A {becomes} {happy}: {faster, livelier, curvier, brighter}\n  A becomes {sad}: {slower, calmer, straighter, dimmer}\ncross out chases off and stands guard unless A is faster than B, and any way that needs someone who isn't on stage\n  a line like “obeys: goes along” from an AI agent gives the ways for a word I have no way for (only the ways above count); its ways come first even for words I know: {no}\ncross out keeps away when A is drawn to strangers\nprefer chases off when A is bigger than B, stands guard when A dominates B, and goes along and come together when A is drawn to friends\nprefer a way the film hasn't used yet\na change takes {8} frames (0: at once)\nif no way is left, A moves about in its own way, so its values still show; a word with no ways at all is named, for teaching\nsend the plan, in order, to the Director, with the values of everyone on stage",
         "params": {
           "shyWords": "shy",
           "shyWays": "keeps away",
@@ -6038,123 +6048,135 @@
           "happyWays": "faster, livelier, curvier, brighter",
           "sad": "sad",
           "sadWays": "slower, calmer, straighter, dimmer",
-          "changeFrames": 8
+          "changeFrames": 8,
+          "wait": 2,
+          "aiFirst": "no"
         },
         "slots": [
           {
-            "line": 2,
+            "line": 3,
             "text": "shy",
             "param": "shyWords"
           },
           {
-            "line": 2,
+            "line": 3,
             "text": "keeps away",
             "param": "shyWays"
           },
           {
-            "line": 3,
+            "line": 4,
             "text": "mean, evil",
             "param": "meanWords"
           },
           {
-            "line": 3,
+            "line": 4,
             "text": "chases off",
             "param": "meanWays"
           },
           {
-            "line": 4,
+            "line": 5,
             "text": "dominates",
             "param": "dominates"
           },
           {
-            "line": 4,
+            "line": 5,
             "text": "looms over, chases off",
             "param": "dominatesWays"
           },
           {
-            "line": 5,
+            "line": 6,
             "text": "keeps",
             "param": "keeps"
           },
           {
-            "line": 5,
+            "line": 6,
             "text": "stands guard",
             "param": "keepsWays"
           },
           {
-            "line": 6,
+            "line": 7,
             "text": "helps",
             "param": "helps"
           },
           {
-            "line": 6,
+            "line": 7,
             "text": "goes along",
             "param": "helpsWays"
           },
           {
-            "line": 7,
+            "line": 8,
             "text": "meets",
             "param": "meets"
           },
           {
-            "line": 7,
+            "line": 8,
             "text": "come together",
             "param": "meetsWays"
           },
           {
-            "line": 8,
+            "line": 9,
             "text": "-",
             "param": "other"
           },
           {
-            "line": 8,
+            "line": 9,
             "text": "-",
             "param": "otherWays"
           },
           {
-            "line": 9,
+            "line": 10,
             "text": "changes",
             "param": "changes"
           },
           {
-            "line": 9,
+            "line": 10,
             "text": "goes to and changes",
             "param": "changesWays"
           },
           {
-            "line": 9,
+            "line": 10,
             "text": "comes closer bit by bit",
             "param": "selfWays"
           },
           {
-            "line": 10,
+            "line": 11,
             "text": "becomes",
             "param": "becomes"
           },
           {
-            "line": 10,
+            "line": 11,
             "text": "happy",
             "param": "happy"
           },
           {
-            "line": 10,
+            "line": 11,
             "text": "faster, livelier, curvier, brighter",
             "param": "happyWays"
           },
           {
-            "line": 11,
+            "line": 12,
             "text": "sad",
             "param": "sad"
           },
           {
-            "line": 11,
+            "line": 12,
             "text": "slower, calmer, straighter, dimmer",
             "param": "sadWays"
           },
           {
-            "line": 16,
+            "line": 18,
             "text": "8",
             "param": "changeFrames"
+          },
+          {
+            "line": 1,
+            "text": "2",
+            "param": "wait"
+          },
+          {
+            "line": 14,
+            "text": "no",
+            "param": "aiFirst"
           }
         ],
         "scenarios": [
@@ -6686,16 +6708,299 @@
               ],
               "sayContains": "Cid goes to Ann and changes Ann"
             }
+          },
+          {
+            "id": "s7",
+            "name": "a word I have no way for gets the AI agent's way, if the Director can show it",
+            "input": {
+              "messages": [
+                {
+                  "from": "Choice Points",
+                  "text": "",
+                  "data": {
+                    "scene": 1,
+                    "of": 1,
+                    "title": "A scene.",
+                    "cast": [
+                      "Ann",
+                      "Bob",
+                      "Cid"
+                    ],
+                    "called": {},
+                    "onStage": [
+                      "Ann",
+                      "Bob",
+                      "Cid"
+                    ],
+                    "relations": [],
+                    "friends": [],
+                    "events": [
+                      {
+                        "verb": "obeys",
+                        "who": "Ann",
+                        "whom": "Bob",
+                        "also": ""
+                      }
+                    ],
+                    "words": {
+                      "speed": [
+                        "slow",
+                        "fast",
+                        "slower",
+                        "faster"
+                      ],
+                      "liveliness": [
+                        "calm",
+                        "lively",
+                        "calmer",
+                        "livelier"
+                      ],
+                      "curves": [
+                        "straight",
+                        "curvy",
+                        "straighter",
+                        "curvier"
+                      ],
+                      "brightness": [
+                        "dim",
+                        "bright",
+                        "dimmer",
+                        "brighter"
+                      ]
+                    },
+                    "standIns": [],
+                    "choices": {
+                      "Ann": {
+                        "speed": 3,
+                        "size": 3,
+                        "strangers": 2,
+                        "friends": 2
+                      },
+                      "Bob": {
+                        "speed": 1,
+                        "size": 1,
+                        "strangers": 2,
+                        "friends": 2
+                      },
+                      "Cid": {
+                        "speed": 2,
+                        "size": 2,
+                        "strangers": 2,
+                        "friends": 2
+                      }
+                    }
+                  }
+                },
+                {
+                  "from": "AI Way Finder",
+                  "text": "obeys: goes along, flies away",
+                  "data": {}
+                }
+              ]
+            },
+            "expect": {
+              "ways": [
+                "goes along"
+              ],
+              "sayContains": "Ann goes along with Bob (obeys, AI Way Finder's way)"
+            }
+          },
+          {
+            "id": "s8",
+            "name": "a word I know keeps my ways, unless the AI's come first",
+            "input": {
+              "messages": [
+                {
+                  "from": "Choice Points",
+                  "text": "",
+                  "data": {
+                    "scene": 1,
+                    "of": 1,
+                    "title": "A scene.",
+                    "cast": [
+                      "Ann",
+                      "Bob",
+                      "Cid"
+                    ],
+                    "called": {},
+                    "onStage": [
+                      "Ann",
+                      "Bob",
+                      "Cid"
+                    ],
+                    "relations": [],
+                    "friends": [],
+                    "events": [
+                      {
+                        "verb": "=dominates",
+                        "who": "Ann",
+                        "whom": "Bob",
+                        "also": ""
+                      }
+                    ],
+                    "words": {
+                      "speed": [
+                        "slow",
+                        "fast",
+                        "slower",
+                        "faster"
+                      ],
+                      "liveliness": [
+                        "calm",
+                        "lively",
+                        "calmer",
+                        "livelier"
+                      ],
+                      "curves": [
+                        "straight",
+                        "curvy",
+                        "straighter",
+                        "curvier"
+                      ],
+                      "brightness": [
+                        "dim",
+                        "bright",
+                        "dimmer",
+                        "brighter"
+                      ]
+                    },
+                    "standIns": [],
+                    "choices": {
+                      "Ann": {
+                        "speed": 3,
+                        "size": 3,
+                        "strangers": 2,
+                        "friends": 2
+                      },
+                      "Bob": {
+                        "speed": 1,
+                        "size": 1,
+                        "strangers": 2,
+                        "friends": 2
+                      },
+                      "Cid": {
+                        "speed": 2,
+                        "size": 2,
+                        "strangers": 2,
+                        "friends": 2
+                      }
+                    }
+                  }
+                },
+                {
+                  "from": "AI Way Finder",
+                  "text": "{=dominates}: goes along",
+                  "data": {}
+                }
+              ]
+            },
+            "expect": {
+              "ways": [
+                "chases off"
+              ]
+            }
+          },
+          {
+            "id": "s9",
+            "name": "with no AI line, a word I have no way for is named, as before",
+            "input": {
+              "missing": true,
+              "messages": [
+                {
+                  "from": "Choice Points",
+                  "text": "",
+                  "data": {
+                    "scene": 1,
+                    "of": 1,
+                    "title": "A scene.",
+                    "cast": [
+                      "Ann",
+                      "Bob",
+                      "Cid"
+                    ],
+                    "called": {},
+                    "onStage": [
+                      "Ann",
+                      "Bob",
+                      "Cid"
+                    ],
+                    "relations": [],
+                    "friends": [],
+                    "events": [
+                      {
+                        "verb": "obeys",
+                        "who": "Ann",
+                        "whom": "Bob",
+                        "also": ""
+                      }
+                    ],
+                    "words": {
+                      "speed": [
+                        "slow",
+                        "fast",
+                        "slower",
+                        "faster"
+                      ],
+                      "liveliness": [
+                        "calm",
+                        "lively",
+                        "calmer",
+                        "livelier"
+                      ],
+                      "curves": [
+                        "straight",
+                        "curvy",
+                        "straighter",
+                        "curvier"
+                      ],
+                      "brightness": [
+                        "dim",
+                        "bright",
+                        "dimmer",
+                        "brighter"
+                      ]
+                    },
+                    "standIns": [],
+                    "choices": {
+                      "Ann": {
+                        "speed": 3,
+                        "size": 3,
+                        "strangers": 2,
+                        "friends": 2
+                      },
+                      "Bob": {
+                        "speed": 1,
+                        "size": 1,
+                        "strangers": 2,
+                        "friends": 2
+                      },
+                      "Cid": {
+                        "speed": 2,
+                        "size": 2,
+                        "strangers": 2,
+                        "friends": 2
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "expect": {
+              "ways": [
+                "moves about"
+              ],
+              "sayContains": "show these yet: obeys"
+            }
           }
         ],
         "code": {
-          "pseudocode": "for each thing that happens in the scene, find the ways to show it:\n  someone who is {shy}: {keeps away} from someone on stage who isn't a friend\n  someone who is {mean, evil}: {chases off} someone on stage who isn't a friend\n  A {dominates} B: {looms over, chases off}\n  A {keeps} B from C: {stands guard}\n  A {helps} B: {goes along}\n  A {meets} B: {come together}\n  A {-} B: {-}\n  A {changes} B from X to Y: {goes to and changes}; A changes from X to Y: {comes closer bit by bit}\n  A {becomes} {happy}: {faster, livelier, curvier, brighter}\n  A becomes {sad}: {slower, calmer, straighter, dimmer}\ncross out chases off and stands guard unless A is faster than B, and any way that needs someone who isn't on stage\ncross out keeps away when A is drawn to strangers\nprefer chases off when A is bigger than B, stands guard when A dominates B, and goes along and come together when A is drawn to friends\nprefer a way the film hasn't used yet\na change takes {8} frames (0: at once)\nif no way is left, A moves about in its own way, so its values still show; a word with no ways at all is named, for teaching\nsend the plan, in order, to the Director, with the values of everyone on stage",
-          "js": "function run(input, params, h) {\n  const WAYS = [\"keeps away\", \"chases off\", \"looms over\", \"stands guard\", \"goes along\", \"come together\", \"goes to and changes\", \"comes closer bit by bit\"];\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const listOf = s => String(s == null ? \"\" : s).split(\",\").map(low).filter(w => w && w !== \"-\");\n  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);\n  const d = input.data || {};\n  const memory = input.memory || { used: [] };\n  const choices = d.choices || {}, onStage = d.onStage || [];\n  const call = n => (d.called || {})[n] || n;\n  const value = (who, el) => (choices[who] || {})[el] || 2;\n  const friends = (a, b) => (d.friends || []).some(p => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a));\n  const standIn = who => ((d.standIns || []).find(s => s.of === who) || {}).name || \"\";\n  const verbWays = [[low(params.dominates), listOf(params.dominatesWays)], [low(params.keeps), listOf(params.keepsWays)], [low(params.helps), listOf(params.helpsWays)], [low(params.meets), listOf(params.meetsWays)], [low(params.other), listOf(params.otherWays)]].filter(x => x[0] && x[0] !== \"-\");\n  const plan = [], notes = [], unknown = [];\n  const says = s => {\n    const a = call(s.who), b = call(s.whom || \"\"), c = call(s.third || \"\");\n    return cap(s.way === \"keeps away\" ? a + \" keeps away from \" + b : s.way === \"chases off\" ? a + \" chases \" + b + \" off\" : s.way === \"looms over\" ? a + \" looms over \" + b\n      : s.way === \"stands guard\" ? a + \" stands guard between \" + b + \" and \" + c : s.way === \"goes along\" ? a + \" goes along with \" + b : s.way === \"come together\" ? a + \" and \" + b + \" come together\"\n      : s.way === \"goes to and changes\" ? a + \" goes to \" + b + \" and changes \" + b : s.way === \"comes closer bit by bit\" ? a + \" comes closer, bit by bit\" : a + \" moves about in its own way\");\n  };\n  const crossedOut = (way, task) => {\n    const needs = way === \"stands guard\" ? [task.whom, task.third] : way === \"comes closer bit by bit\" ? [] : [task.whom];\n    const away = needs.find(n => !n || onStage.indexOf(n) < 0);\n    if (away !== undefined) return way + \" needs \" + (away ? call(away) + \" on stage\" : \"someone else on stage who isn't a friend\");\n    if ((way === \"chases off\" || way === \"stands guard\") && !(value(task.who, \"speed\") > value(task.whom, \"speed\"))) return way + \": \" + call(task.who) + \" isn't faster than \" + call(task.whom);\n    if (way === \"keeps away\" && value(task.who, \"strangers\") === 3) return way + \": \" + call(task.who) + \" is drawn to strangers\";\n    return \"\";\n  };\n  const bestWhen = (way, task) => {\n    if (way === \"chases off\" && value(task.who, \"size\") > value(task.whom, \"size\")) return \"best when \" + call(task.who) + \" is bigger than \" + call(task.whom);\n    if (way === \"stands guard\" && (d.relations || []).some(r => r.who === task.who && r.whom === task.whom && low(r.verb) === low(params.dominates))) return \"best when \" + call(task.who) + \" dominates \" + call(task.whom);\n    if ((way === \"goes along\" || way === \"come together\") && value(task.who, \"friends\") === 3) return \"best when \" + call(task.who) + \" is drawn to friends\";\n    return \"\";\n  };\n  const pick = (task, ways) => {\n    const ok = [];\n    for (const way of ways) {\n      h.tick();\n      if (WAYS.indexOf(way) < 0) {\n        if (unknown.indexOf(way) < 0) unknown.push(way);\n        continue;\n      }\n      const no = crossedOut(way, task);\n      if (no) {\n        notes.push(\"crossed out \" + no);\n        continue;\n      }\n      ok.push({ way: way, best: bestWhen(way, task), fresh: memory.used.indexOf(way) < 0 });\n    }\n    ok.sort((x, y) => (y.best ? 2 : 0) + (y.fresh ? 1 : 0) - (x.best ? 2 : 0) - (x.fresh ? 1 : 0));\n    if (!ok.length) return { way: \"moves about\", who: task.who, because: task.because + (ways.length ? \"; no way was left\" : \"\") };\n    for (const other of ok.slice(1)) {\n      h.tick();\n      notes.push(other.way + \" was passed over for \" + ok[0].way + (ok[0].best ? \" (\" + ok[0].best + \")\" : ok[0].fresh && !other.fresh ? \" (the film hasn't used it yet)\" : \"\"));\n    }\n    return { way: ok[0].way, who: task.who, whom: task.whom || \"\", third: task.third || \"\", because: task.because + (ok[0].best ? \"; \" + ok[0].best : \"\") };\n  };\n  const shy = listOf(params.shyWords), mean = listOf(params.meanWords);\n  for (const e of d.events || []) {\n    h.tick();\n    const verb = low(e.verb);\n    if (verb === low(params.becomes) && (e.what || []).length) {\n      const feeling = low(e.what[0]), words = feeling === low(params.happy) ? listOf(params.happyWays) : feeling === low(params.sad) ? listOf(params.sadWays) : [];\n      const changes = {};\n      for (const w of words) {\n        h.tick();\n        const el = Object.keys(d.words || {}).find(id => d.words[id][3] === w || d.words[id][2] === w);\n        if (el) changes[el] = d.words[el][3] === w ? 1 : -1;\n        else if (unknown.indexOf(w) < 0) unknown.push(w);\n      }\n      plan.push({ way: \"feels\", who: e.who, feeling: feeling, changes: changes, because: \"\", says: cap(call(e.who)) + \" becomes \" + feeling + \": \" + words.join(\", \") });\n      continue;\n    }\n    if (verb === low(params.changes)) {\n      if (!listOf(e.whom ? params.changesWays : params.selfWays).length && unknown.indexOf(e.verb) < 0) unknown.push(e.verb);\n      const step = e.whom ? pick({ who: e.who, whom: e.whom, because: (e.from || []).join(\" \") + \" → \" + (e.to || []).join(\" \") }, listOf(params.changesWays)) : pick({ who: e.who, because: (e.from || []).join(\" \") + \" → \" + (e.to || []).join(\" \") }, listOf(params.selfWays));\n      step.standIn = standIn(e.whom || e.who);\n      plan.push(step);\n      continue;\n    }\n    const others = onStage.filter(n => n !== e.who && !friends(n, e.who));\n    let ways = [], task = { who: e.who, whom: e.whom, third: e.also, because: e.verb };\n    if ((e.what || []).length) {\n      const word = e.what.find(w => shy.indexOf(low(w)) >= 0 || mean.indexOf(low(w)) >= 0);\n      ways = !word ? [] : shy.indexOf(low(word)) >= 0 ? listOf(params.shyWays) : listOf(params.meanWays);\n      if (word && !ways.length && unknown.indexOf(word) < 0) unknown.push(word);\n      task = { who: e.who, whom: others[0] || \"\", because: word || e.what.join(\", \") };\n    } else {\n      const vw = verbWays.find(x => x[0] === verb);\n      if (vw && vw[1].length) ways = vw[1];\n      else if (unknown.indexOf(verb) < 0) unknown.push(verb);\n    }\n    plan.push(pick(task, ways));\n  }\n  for (const s of plan) {\n    h.tick();\n    if (!s.says) s.says = says(s);\n    if (memory.used.indexOf(s.way) < 0 && s.way !== \"moves about\" && s.way !== \"feels\") memory.used.push(s.way);\n  }\n  const shown = {}, strengths = {};\n  for (const name of onStage.concat((d.standIns || []).map(s => s.name))) {\n    h.tick();\n    if (choices[name]) shown[name] = choices[name];\n    if ((d.strengths || {})[name]) strengths[name] = d.strengths[name];\n  }\n  const say = \"**Scene \" + d.scene + \"'s plan:**\\n\" + plan.map((s, i) => (i + 1) + \". \" + s.says + (s.because ? \" (\" + s.because + \")\" : \"\") + \".\").join(\"\\n\") +\n    (notes.length ? \"\\n\\n\" + cap(notes.join(\"; \")) + \".\" : \"\") + (unknown.length ? \"\\n\\nNobody has taught me a way to show these yet: \" + unknown.join(\", \") + \".\" : \"\");\n  return { scene: d.scene, of: d.of, title: d.title, cast: d.cast, called: d.called, onStage: onStage, plan: plan, ways: plan.map(s => s.way), choices: shown, strengths: strengths, standIns: d.standIns || [],\n    summary: d.summary, looksFrom: d.looksFrom || [], tasteLevel: d.tasteLevel || {}, changeFrames: +params.changeFrames || 0, notes: notes, untaught: unknown, say: say, memory: memory };\n}",
+          "pseudocode": "wait for the Choice Points' scene and an AI agent's ways: {2} messages, or until nobody else has anything to say\nfor each thing that happens in the scene, find the ways to show it:\n  someone who is {shy}: {keeps away} from someone on stage who isn't a friend\n  someone who is {mean, evil}: {chases off} someone on stage who isn't a friend\n  A {dominates} B: {looms over, chases off}\n  A {keeps} B from C: {stands guard}\n  A {helps} B: {goes along}\n  A {meets} B: {come together}\n  A {-} B: {-}\n  A {changes} B from X to Y: {goes to and changes}; A changes from X to Y: {comes closer bit by bit}\n  A {becomes} {happy}: {faster, livelier, curvier, brighter}\n  A becomes {sad}: {slower, calmer, straighter, dimmer}\ncross out chases off and stands guard unless A is faster than B, and any way that needs someone who isn't on stage\n  a line like “obeys: goes along” from an AI agent gives the ways for a word I have no way for (only the ways above count); its ways come first even for words I know: {no}\ncross out keeps away when A is drawn to strangers\nprefer chases off when A is bigger than B, stands guard when A dominates B, and goes along and come together when A is drawn to friends\nprefer a way the film hasn't used yet\na change takes {8} frames (0: at once)\nif no way is left, A moves about in its own way, so its values still show; a word with no ways at all is named, for teaching\nsend the plan, in order, to the Director, with the values of everyone on stage",
+          "js": "function run(input, params, h) {\n  const WAYS = [\"keeps away\", \"chases off\", \"looms over\", \"stands guard\", \"goes along\", \"come together\", \"goes to and changes\", \"comes closer bit by bit\"];\n  const low = s => String(s == null ? \"\" : s).trim().toLowerCase();\n  const listOf = s => String(s == null ? \"\" : s).split(\",\").map(low).filter(w => w && w !== \"-\");\n  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);\n  const msgs = input.messages || [], fromCP = msgs.find(m => m.data && m.data.choices), d = fromCP ? fromCP.data : input.data || {};\n  const memory = input.memory || { used: [] };\n  const choices = d.choices || {}, onStage = d.onStage || [];\n  const call = n => (d.called || {})[n] || n;\n  const value = (who, el) => (choices[who] || {})[el] || 2;\n  const friends = (a, b) => (d.friends || []).some(p => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a));\n  const standIn = who => ((d.standIns || []).find(s => s.of === who) || {}).name || \"\";\n  const verbWays = [[low(params.dominates), listOf(params.dominatesWays)], [low(params.keeps), listOf(params.keepsWays)], [low(params.helps), listOf(params.helpsWays)], [low(params.meets), listOf(params.meetsWays)], [low(params.other), listOf(params.otherWays)]].filter(x => x[0] && x[0] !== \"-\");\n  const aiWays = {}, aiFrom = {}, unused = [], aiFirst = low(params.aiFirst) === \"yes\";\n  for (const m of msgs) {\n    h.tick();\n    if (m === fromCP || !m.text) continue;\n    for (const line of String(m.text).split(\"\\n\")) {\n      h.tick();\n      const at = line.indexOf(\":\"), word = low(line.slice(0, Math.max(at, 0)).split(\"*\").join(\"\"));\n      if (at <= 0 || !word) continue;\n      const ways = line.slice(at + 1).split(\"(\")[0].split(\".\").join(\"\").split(\",\").map(low).filter(Boolean), good = ways.filter(w => WAYS.indexOf(w) >= 0).slice(0, 2);\n      for (const w of ways) { h.tick(); if (WAYS.indexOf(w) < 0 && unused.length < 6) unused.push(\"“\" + w.slice(0, 40) + \"” (\" + m.from + \")\"); }\n      if (good.length && !aiWays[word]) { aiWays[word] = good; aiFrom[word] = m.from; }\n    }\n  }\n  const plan = [], notes = [], unknown = [];\n  const says = s => {\n    const a = call(s.who), b = call(s.whom || \"\"), c = call(s.third || \"\");\n    return cap(s.way === \"keeps away\" ? a + \" keeps away from \" + b : s.way === \"chases off\" ? a + \" chases \" + b + \" off\" : s.way === \"looms over\" ? a + \" looms over \" + b\n      : s.way === \"stands guard\" ? a + \" stands guard between \" + b + \" and \" + c : s.way === \"goes along\" ? a + \" goes along with \" + b : s.way === \"come together\" ? a + \" and \" + b + \" come together\"\n      : s.way === \"goes to and changes\" ? a + \" goes to \" + b + \" and changes \" + b : s.way === \"comes closer bit by bit\" ? a + \" comes closer, bit by bit\" : a + \" moves about in its own way\");\n  };\n  const crossedOut = (way, task) => {\n    const needs = way === \"stands guard\" ? [task.whom, task.third] : way === \"comes closer bit by bit\" ? [] : [task.whom];\n    const away = needs.find(n => !n || onStage.indexOf(n) < 0);\n    if (away !== undefined) return way + \" needs \" + (away ? call(away) + \" on stage\" : \"someone else on stage who isn't a friend\");\n    if ((way === \"chases off\" || way === \"stands guard\") && !(value(task.who, \"speed\") > value(task.whom, \"speed\"))) return way + \": \" + call(task.who) + \" isn't faster than \" + call(task.whom);\n    if (way === \"keeps away\" && value(task.who, \"strangers\") === 3) return way + \": \" + call(task.who) + \" is drawn to strangers\";\n    return \"\";\n  };\n  const bestWhen = (way, task) => {\n    if (way === \"chases off\" && value(task.who, \"size\") > value(task.whom, \"size\")) return \"best when \" + call(task.who) + \" is bigger than \" + call(task.whom);\n    if (way === \"stands guard\" && (d.relations || []).some(r => r.who === task.who && r.whom === task.whom && low(r.verb) === low(params.dominates))) return \"best when \" + call(task.who) + \" dominates \" + call(task.whom);\n    if ((way === \"goes along\" || way === \"come together\") && value(task.who, \"friends\") === 3) return \"best when \" + call(task.who) + \" is drawn to friends\";\n    return \"\";\n  };\n  const pick = (task, ways) => {\n    const ok = [];\n    for (const way of ways) {\n      h.tick();\n      if (WAYS.indexOf(way) < 0) {\n        if (unknown.indexOf(way) < 0) unknown.push(way);\n        continue;\n      }\n      const no = crossedOut(way, task);\n      if (no) {\n        notes.push(\"crossed out \" + no);\n        continue;\n      }\n      ok.push({ way: way, best: bestWhen(way, task), fresh: memory.used.indexOf(way) < 0 });\n    }\n    ok.sort((x, y) => (y.best ? 2 : 0) + (y.fresh ? 1 : 0) - (x.best ? 2 : 0) - (x.fresh ? 1 : 0));\n    if (!ok.length) return { way: \"moves about\", who: task.who, because: task.because + (ways.length ? \"; no way was left\" : \"\") };\n    for (const other of ok.slice(1)) {\n      h.tick();\n      notes.push(other.way + \" was passed over for \" + ok[0].way + (ok[0].best ? \" (\" + ok[0].best + \")\" : ok[0].fresh && !other.fresh ? \" (the film hasn't used it yet)\" : \"\"));\n    }\n    return { way: ok[0].way, who: task.who, whom: task.whom || \"\", third: task.third || \"\", because: task.because + (ok[0].best ? \"; \" + ok[0].best : \"\") };\n  };\n  const shy = listOf(params.shyWords), mean = listOf(params.meanWords);\n  for (const e of d.events || []) {\n    h.tick();\n    const verb = low(e.verb);\n    if (verb === low(params.becomes) && (e.what || []).length) {\n      const feeling = low(e.what[0]), words = feeling === low(params.happy) ? listOf(params.happyWays) : feeling === low(params.sad) ? listOf(params.sadWays) : [];\n      const changes = {};\n      for (const w of words) {\n        h.tick();\n        const el = Object.keys(d.words || {}).find(id => d.words[id][3] === w || d.words[id][2] === w);\n        if (el) changes[el] = d.words[el][3] === w ? 1 : -1;\n        else if (unknown.indexOf(w) < 0) unknown.push(w);\n      }\n      plan.push({ way: \"feels\", who: e.who, feeling: feeling, changes: changes, because: \"\", says: cap(call(e.who)) + \" becomes \" + feeling + \": \" + words.join(\", \") });\n      continue;\n    }\n    if (verb === low(params.changes)) {\n      if (!listOf(e.whom ? params.changesWays : params.selfWays).length && unknown.indexOf(e.verb) < 0) unknown.push(e.verb);\n      const step = e.whom ? pick({ who: e.who, whom: e.whom, because: (e.from || []).join(\" \") + \" → \" + (e.to || []).join(\" \") }, listOf(params.changesWays)) : pick({ who: e.who, because: (e.from || []).join(\" \") + \" → \" + (e.to || []).join(\" \") }, listOf(params.selfWays));\n      step.standIn = standIn(e.whom || e.who);\n      plan.push(step);\n      continue;\n    }\n    const others = onStage.filter(n => n !== e.who && !friends(n, e.who));\n    let ways = [], task = { who: e.who, whom: e.whom, third: e.also, because: e.verb };\n    if ((e.what || []).length) {\n      const word = e.what.find(w => shy.indexOf(low(w)) >= 0 || mean.indexOf(low(w)) >= 0);\n      ways = !word ? [] : shy.indexOf(low(word)) >= 0 ? listOf(params.shyWays) : listOf(params.meanWays);\n      if (word && !ways.length && unknown.indexOf(word) < 0) unknown.push(word);\n      task = { who: e.who, whom: others[0] || \"\", because: word || e.what.join(\", \") };\n    } else {\n      const vw = verbWays.find(x => x[0] === verb), mine = vw ? vw[1] : [];\n      if (aiWays[verb] && (aiFirst || !mine.length)) { ways = aiWays[verb]; task.because = e.verb + \", \" + aiFrom[verb] + \"'s way\"; } else if (mine.length) ways = mine;\n      else if (unknown.indexOf(verb) < 0) unknown.push(verb);\n    }\n    plan.push(pick(task, ways));\n  }\n  for (const s of plan) {\n    h.tick();\n    if (!s.says) s.says = says(s);\n    if (memory.used.indexOf(s.way) < 0 && s.way !== \"moves about\" && s.way !== \"feels\") memory.used.push(s.way);\n  }\n  const shown = {}, strengths = {};\n  for (const name of onStage.concat((d.standIns || []).map(s => s.name))) {\n    h.tick();\n    if (choices[name]) shown[name] = choices[name];\n    if ((d.strengths || {})[name]) strengths[name] = d.strengths[name];\n  }\n  const say = \"**Scene \" + d.scene + \"'s plan:**\\n\" + plan.map((s, i) => (i + 1) + \". \" + s.says + (s.because ? \" (\" + s.because + \")\" : \"\") + \".\").join(\"\\n\") +\n    (notes.length ? \"\\n\\n\" + cap(notes.join(\"; \")) + \".\" : \"\") + (unknown.length ? \"\\n\\nNobody has taught me a way to show these yet: \" + unknown.join(\", \") + \".\" : \"\") + (unused.length ? \"\\n\\n**Not used** (not ways the Director can show): \" + unused.join(\", \") + \".\" : \"\");\n  return { scene: d.scene, of: d.of, title: d.title, cast: d.cast, called: d.called, onStage: onStage, plan: plan, ways: plan.map(s => s.way), choices: shown, strengths: strengths, standIns: d.standIns || [],\n    summary: d.summary, looksFrom: d.looksFrom || [], tasteLevel: d.tasteLevel || {}, changeFrames: +params.changeFrames || 0, notes: notes, untaught: unknown, say: say, memory: memory };\n}",
           "lineMap": [
             {
               "pseudo": [
-                1,
-                1
+                2,
+                2
               ],
               "js": [
                 2,
@@ -6704,8 +7009,8 @@
             },
             {
               "pseudo": [
-                1,
-                1
+                2,
+                2
               ],
               "js": [
                 6,
@@ -6714,58 +7019,108 @@
             },
             {
               "pseudo": [
-                1,
-                1
+                2,
+                2
               ],
               "js": [
-                35,
-                35
+                48,
+                48
               ]
             },
             {
               "pseudo": [
-                1,
-                1
+                2,
+                2
               ],
               "js": [
-                56,
-                57
+                69,
+                70
               ]
             },
             {
               "pseudo": [
-                1,
-                1
+                2,
+                2
               ],
               "js": [
-                59,
-                61
+                72,
+                74
               ]
             },
             {
               "pseudo": [
-                1,
-                1
+                2,
+                2
               ],
               "js": [
-                82,
-                82
+                95,
+                95
               ]
             },
             {
               "pseudo": [
-                1,
-                1
+                2,
+                2
               ],
               "js": [
-                93,
+                106,
+                107
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                4,
+                4
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                11,
+                11
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                71,
+                71
+              ]
+            },
+            {
+              "pseudo": [
+                3,
+                3
+              ],
+              "js": [
+                94,
                 94
               ]
             },
             {
               "pseudo": [
-                2,
-                2
+                3,
+                3
+              ],
+              "js": [
+                96,
+                100
+              ]
+            },
+            {
+              "pseudo": [
+                4,
+                4
               ],
               "js": [
                 4,
@@ -6774,8 +7129,8 @@
             },
             {
               "pseudo": [
-                2,
-                2
+                4,
+                4
               ],
               "js": [
                 11,
@@ -6784,82 +7139,12 @@
             },
             {
               "pseudo": [
-                2,
-                2
-              ],
-              "js": [
-                58,
-                58
-              ]
-            },
-            {
-              "pseudo": [
-                2,
-                2
-              ],
-              "js": [
-                81,
-                81
-              ]
-            },
-            {
-              "pseudo": [
-                2,
-                2
-              ],
-              "js": [
-                83,
-                87
-              ]
-            },
-            {
-              "pseudo": [
-                3,
-                3
-              ],
-              "js": [
                 4,
                 4
-              ]
-            },
-            {
-              "pseudo": [
-                3,
-                3
               ],
               "js": [
-                11,
-                11
-              ]
-            },
-            {
-              "pseudo": [
-                3,
-                3
-              ],
-              "js": [
-                58,
-                58
-              ]
-            },
-            {
-              "pseudo": [
-                3,
-                3
-              ],
-              "js": [
-                81,
-                81
-              ]
-            },
-            {
-              "pseudo": [
-                3,
-                3
-              ],
-              "js": [
-                83,
-                87
+                71,
+                71
               ]
             },
             {
@@ -6868,8 +7153,8 @@
                 4
               ],
               "js": [
-                4,
-                4
+                94,
+                94
               ]
             },
             {
@@ -6878,28 +7163,8 @@
                 4
               ],
               "js": [
-                13,
-                13
-              ]
-            },
-            {
-              "pseudo": [
-                4,
-                4
-              ],
-              "js": [
-                88,
-                90
-              ]
-            },
-            {
-              "pseudo": [
-                4,
-                4
-              ],
-              "js": [
-                92,
-                92
+                96,
+                100
               ]
             },
             {
@@ -6928,8 +7193,8 @@
                 5
               ],
               "js": [
-                88,
-                90
+                101,
+                103
               ]
             },
             {
@@ -6938,8 +7203,8 @@
                 5
               ],
               "js": [
-                92,
-                92
+                105,
+                105
               ]
             },
             {
@@ -6968,8 +7233,8 @@
                 6
               ],
               "js": [
-                88,
-                90
+                101,
+                103
               ]
             },
             {
@@ -6978,8 +7243,8 @@
                 6
               ],
               "js": [
-                92,
-                92
+                105,
+                105
               ]
             },
             {
@@ -7008,8 +7273,8 @@
                 7
               ],
               "js": [
-                88,
-                90
+                101,
+                103
               ]
             },
             {
@@ -7018,14 +7283,14 @@
                 7
               ],
               "js": [
-                92,
-                92
+                105,
+                105
               ]
             },
             {
               "pseudo": [
-                9,
-                9
+                8,
+                8
               ],
               "js": [
                 4,
@@ -7034,22 +7299,32 @@
             },
             {
               "pseudo": [
-                9,
-                9
+                8,
+                8
               ],
               "js": [
-                12,
-                12
+                13,
+                13
               ]
             },
             {
               "pseudo": [
-                9,
-                9
+                8,
+                8
               ],
               "js": [
-                74,
-                80
+                101,
+                103
+              ]
+            },
+            {
+              "pseudo": [
+                8,
+                8
+              ],
+              "js": [
+                105,
+                105
               ]
             },
             {
@@ -7068,8 +7343,18 @@
                 10
               ],
               "js": [
-                62,
-                73
+                12,
+                12
+              ]
+            },
+            {
+              "pseudo": [
+                10,
+                10
+              ],
+              "js": [
+                87,
+                93
               ]
             },
             {
@@ -7088,14 +7373,34 @@
                 11
               ],
               "js": [
-                62,
-                73
+                75,
+                86
               ]
             },
             {
               "pseudo": [
                 12,
                 12
+              ],
+              "js": [
+                4,
+                4
+              ]
+            },
+            {
+              "pseudo": [
+                12,
+                12
+              ],
+              "js": [
+                75,
+                86
+              ]
+            },
+            {
+              "pseudo": [
+                13,
+                13
               ],
               "js": [
                 8,
@@ -7104,66 +7409,6 @@
             },
             {
               "pseudo": [
-                12,
-                12
-              ],
-              "js": [
-                10,
-                10
-              ]
-            },
-            {
-              "pseudo": [
-                12,
-                12
-              ],
-              "js": [
-                21,
-                25
-              ]
-            },
-            {
-              "pseudo": [
-                12,
-                12
-              ],
-              "js": [
-                27,
-                28
-              ]
-            },
-            {
-              "pseudo": [
-                12,
-                12
-              ],
-              "js": [
-                36,
-                38
-              ]
-            },
-            {
-              "pseudo": [
-                12,
-                12
-              ],
-              "js": [
-                43,
-                47
-              ]
-            },
-            {
-              "pseudo": [
-                12,
-                12
-              ],
-              "js": [
-                49,
-                49
-              ]
-            },
-            {
-              "pseudo": [
                 13,
                 13
               ],
@@ -7178,27 +7423,7 @@
                 13
               ],
               "js": [
-                21,
-                21
-              ]
-            },
-            {
-              "pseudo": [
-                13,
-                13
-              ],
-              "js": [
-                26,
-                28
-              ]
-            },
-            {
-              "pseudo": [
-                13,
-                13
-              ],
-              "js": [
-                36,
+                34,
                 38
               ]
             },
@@ -7208,8 +7433,8 @@
                 13
               ],
               "js": [
-                43,
-                47
+                40,
+                41
               ]
             },
             {
@@ -7219,13 +7444,33 @@
               ],
               "js": [
                 49,
-                49
+                51
               ]
             },
             {
               "pseudo": [
-                14,
-                14
+                13,
+                13
+              ],
+              "js": [
+                56,
+                60
+              ]
+            },
+            {
+              "pseudo": [
+                13,
+                13
+              ],
+              "js": [
+                62,
+                62
+              ]
+            },
+            {
+              "pseudo": [
+                15,
+                15
               ],
               "js": [
                 10,
@@ -7234,42 +7479,22 @@
             },
             {
               "pseudo": [
-                14,
-                14
+                15,
+                15
               ],
               "js": [
-                29,
+                34,
                 34
               ]
             },
             {
               "pseudo": [
-                14,
-                14
+                15,
+                15
               ],
               "js": [
-                36,
-                38
-              ]
-            },
-            {
-              "pseudo": [
-                14,
-                14
-              ],
-              "js": [
-                48,
-                50
-              ]
-            },
-            {
-              "pseudo": [
-                14,
-                14
-              ],
-              "js": [
-                52,
-                55
+                39,
+                41
               ]
             },
             {
@@ -7278,8 +7503,8 @@
                 15
               ],
               "js": [
-                7,
-                7
+                49,
+                51
               ]
             },
             {
@@ -7288,8 +7513,8 @@
                 15
               ],
               "js": [
-                36,
-                38
+                56,
+                60
               ]
             },
             {
@@ -7298,28 +7523,8 @@
                 15
               ],
               "js": [
-                48,
-                50
-              ]
-            },
-            {
-              "pseudo": [
-                15,
-                15
-              ],
-              "js": [
-                52,
-                55
-              ]
-            },
-            {
-              "pseudo": [
-                15,
-                15
-              ],
-              "js": [
-                98,
-                98
+                62,
+                62
               ]
             },
             {
@@ -7328,8 +7533,48 @@
                 16
               ],
               "js": [
-                109,
-                109
+                10,
+                10
+              ]
+            },
+            {
+              "pseudo": [
+                16,
+                16
+              ],
+              "js": [
+                42,
+                47
+              ]
+            },
+            {
+              "pseudo": [
+                16,
+                16
+              ],
+              "js": [
+                49,
+                51
+              ]
+            },
+            {
+              "pseudo": [
+                16,
+                16
+              ],
+              "js": [
+                61,
+                63
+              ]
+            },
+            {
+              "pseudo": [
+                16,
+                16
+              ],
+              "js": [
+                65,
+                68
               ]
             },
             {
@@ -7338,8 +7583,8 @@
                 17
               ],
               "js": [
-                39,
-                42
+                7,
+                7
               ]
             },
             {
@@ -7348,7 +7593,7 @@
                 17
               ],
               "js": [
-                51,
+                49,
                 51
               ]
             },
@@ -7358,8 +7603,8 @@
                 17
               ],
               "js": [
-                91,
-                91
+                61,
+                63
               ]
             },
             {
@@ -7368,14 +7613,74 @@
                 17
               ],
               "js": [
-                107,
-                107
+                65,
+                68
+              ]
+            },
+            {
+              "pseudo": [
+                17,
+                17
+              ],
+              "js": [
+                111,
+                111
               ]
             },
             {
               "pseudo": [
                 18,
                 18
+              ],
+              "js": [
+                122,
+                122
+              ]
+            },
+            {
+              "pseudo": [
+                19,
+                19
+              ],
+              "js": [
+                52,
+                55
+              ]
+            },
+            {
+              "pseudo": [
+                19,
+                19
+              ],
+              "js": [
+                64,
+                64
+              ]
+            },
+            {
+              "pseudo": [
+                19,
+                19
+              ],
+              "js": [
+                104,
+                104
+              ]
+            },
+            {
+              "pseudo": [
+                19,
+                19
+              ],
+              "js": [
+                120,
+                120
+              ]
+            },
+            {
+              "pseudo": [
+                20,
+                20
               ],
               "js": [
                 5,
@@ -7384,8 +7689,8 @@
             },
             {
               "pseudo": [
-                18,
-                18
+                20,
+                20
               ],
               "js": [
                 9,
@@ -7394,51 +7699,104 @@
             },
             {
               "pseudo": [
-                18,
-                18
-              ],
-              "js": [
-                14,
+                20,
                 20
+              ],
+              "js": [
+                27,
+                33
               ]
             },
             {
               "pseudo": [
-                18,
-                18
+                20,
+                20
               ],
               "js": [
-                95,
-                97
-              ]
-            },
-            {
-              "pseudo": [
-                18,
-                18
-              ],
-              "js": [
-                99,
+                108,
                 110
               ]
             },
             {
               "pseudo": [
-                8,
-                8
+                20,
+                20
+              ],
+              "js": [
+                112,
+                123
+              ]
+            },
+            {
+              "pseudo": [
+                9,
+                9
               ],
               "js": [
                 13,
                 13
               ]
+            },
+            {
+              "pseudo": [
+                1,
+                1
+              ],
+              "js": [
+                6,
+                6
+              ]
+            },
+            {
+              "pseudo": [
+                14,
+                14
+              ],
+              "js": [
+                14,
+                26
+              ]
+            },
+            {
+              "pseudo": [
+                14,
+                14
+              ],
+              "js": [
+                102,
+                103
+              ]
+            },
+            {
+              "pseudo": [
+                14,
+                14
+              ],
+              "js": [
+                120,
+                120
+              ]
             }
           ],
-          "hash": "5554d5eec38b7b37"
+          "hash": "deb727d98484bdd2"
         },
         "lastGood": null,
         "status": "ok",
         "statusDetail": null,
         "shipped": true
+      },
+      {
+        "id": "wayfinder",
+        "kind": "model",
+        "name": "AI Way Finder",
+        "emoji": "🗺️",
+        "role": "suggests ways to show what happens in a scene, from the ways the Director can draw",
+        "instructions": "You help plan each scene of a cartoon that a society of small programs makes from a story, as Ken Kahn's program Ani did in 1978. The Cast tells you a scene, in sentences like “The Stepmother dominates Cinderella.” For each thing one character does to another (the word after the first name, like dominates, obeys or loves), write one line: that word, a colon, then one or two of these ways of showing it, best first: keeps away, chases off, looms over, stands guard, goes along, come together, goes to and changes, comes closer bit by bit. Use only those ways, written exactly so. Skip is, becomes and changes. For example:\nobeys: goes along\nloves: come together, comes closer bit by bit\nWrite only those lines.",
+        "outputFields": [],
+        "canSeeImages": false,
+        "history": "stateless",
+        "replyKind": "prose",
+        "pretend": "wayfinder"
       },
       {
         "id": "director",
@@ -9675,13 +10033,32 @@
         "id": "v7",
         "from": "cast",
         "when": "data",
-        "send": "text",
+        "send": "text+data",
         "to": "reader",
         "prefix": "",
         "enabled": true,
         "field": "understood",
         "op": "=",
         "value": "false"
+      },
+      {
+        "id": "v8",
+        "from": "cast",
+        "when": "text",
+        "send": "text",
+        "to": "wayfinder",
+        "prefix": "",
+        "enabled": true,
+        "word": "On stage"
+      },
+      {
+        "id": "v9",
+        "from": "wayfinder",
+        "when": "always",
+        "send": "text",
+        "to": "methods",
+        "prefix": "",
+        "enabled": true
       }
     ]
   }

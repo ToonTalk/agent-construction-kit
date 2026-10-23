@@ -522,6 +522,12 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **Swedish paused** (Ken): `sv/` stays at 1.17.0 until he is ready to release.
   - The programs-only Mini-Ani's pinned output was re-recorded (the Method Chooser's `untaught`).
   - Suite: 638 PASS, fingerprint `458ee22a6350`.
+- 2026-10-23 — **Revision 1.19.0: the AI Way Finder, and a story in your own words given to the Cast** (Ken: “build the Method Chooser LLM option”; his Beauty and the Beast story, which the new Ani app reads, stopped at “There are no scenes in the story”).
+  - **AI Way Finder** (Mini-Ani with AI voices, on by default; “No AI Way Finder” switches it off). The Cast sends it each scene; it answers with lines like “loves: come together, comes closer bit by bit”. The Method Chooser there is a new library type, `ani-methods-ai`, made from the programs-only one with `libExtend` (as the voices' Choice Points are): it collects the Choice Points' scene and the AI's lines, uses the AI's ways for a word it has no way for (or before its own, if its slot “its ways come first even for words I know” says yes), says whose way each was (“obeys, AI Way Finder's way”), and names any way the Director can't show (“Not used”). So the model only chooses among the ways the Director can draw, and the film can't break. `libExtend` can now make a collecting program from one that isn't. A Pretend AI Way Finder stands in for the tests.
+  - **A story in your own words, given to the Cast.** When the Cast can't read a story (nobody in it, or no scenes), its reply carries the story (`data.story`) and says an AI Reader can turn it into its sentences (Mini-Ani with AI voices). There, the rule to the Reader now sends text and data, so the Reader gets the story itself, not only the complaint. The Reader may also write “A loves B.” in a scene, since the Way Finder can show it.
+  - Ken's story, as a Reader might write it (Belle, the Beast and the Father in four scenes), runs to “The end.” with a film for each scene; the Way Finder shows “loves”. With a live model, still to be tried.
+  - The plain Mini-Ani and Mini-Ani, as in 1978 stay programs only. Library: 33 agents.
+  - Suite: 646 PASS, fingerprint `6e113a93ab59`.
 - 2026-10-10 — **Revision 1.15.1: what a regression review of 1.13.0–1.15.0 found.** Each finding was checked first;
   all ten held. An earlier, unfinished attempt (kept in `git stash`, untested) was reused where it was sound.
   - **Pause, then Run, in the middle of a delivery lost it** (pre-existing). A model's answer or a Worker program is
