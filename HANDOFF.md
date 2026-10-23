@@ -124,7 +124,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**665 PASS, 0 FAIL · fingerprint ` 721de7a7761e`** · model modules covered 19/19.
+**666 PASS, 0 FAIL · fingerprint `8f3d56161885`** · model modules covered 20/20.
 Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; `library.test` 189/198 (the 9 look for
 English words, two of them the Mini-Ani's “no …” scenario names; the same 9 as 1.14.0); `node tests/leftovers.mjs
 sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which stay English in the copy.
