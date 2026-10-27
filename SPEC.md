@@ -543,6 +543,8 @@ Drag-to-wire; direct model interpretation of pseudocode; suppress / compete / es
   - **The Book's line shows what it added.** When an agent's words are its last words with more added, its line says “…the same as before, with that added” (or “…then:” and the new part, when that isn't the message it got). The Book's line used to begin with the story's first sentence every time, so Pip seemed never to leave, although the Book keeps every sentence. Story Chain has a new question (“Find the first one without Pip. Who wrote it, and what had that writer been told?”), as seed version 4, so it reaches learners who have Story Chain already.
   - **“👆 Click an agent to see what it's told, and change it.”** under the stage's agents, until the learner first opens one (remembered in the settings). Both testers needed exactly this hint to find the Instructions box.
   - Suite: 666 PASS, fingerprint `8f3d56161885`.
+- 2026-10-27 — **Revision 1.20.3: “pass messages” is back in the guide's first line.** The tester's third session (building from scratch: his 15-year-old sister made a Joker and a Rater; his 7-year-old sister couldn't) noticed that 1.20.1 had dropped “pass messages to each other”, the part his younger sister needed explained. It now reads “A society is a team of helpers that pass messages to each other. Each helper is called an agent.”
+  - Suite: 666 PASS, fingerprint `8f3d56161885`.
 - 2026-10-10 — **Revision 1.15.1: what a regression review of 1.13.0–1.15.0 found.** Each finding was checked first;
   all ten held. An earlier, unfinished attempt (kept in `git stash`, untested) was reused where it was sound.
   - **Pause, then Run, in the middle of a delivery lost it** (pre-existing). A model's answer or a Worker program is

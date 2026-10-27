@@ -4,7 +4,7 @@
 
 ## State (2026-10-10)
 
-Agent Kit **1.20.2**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.20.2 follow reviews
+Agent Kit **1.20.3**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.20.3 follow reviews
 and the first real-model runs (see `SPEC.md` §14). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
