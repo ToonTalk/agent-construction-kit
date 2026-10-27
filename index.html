@@ -160,6 +160,9 @@ textarea.code,.code-input{font-family:var(--mono);font-size:12.5px;line-height:1
 img.zoomable{cursor:zoom-in}img.zoomable:hover,img.zoomable:focus{outline:2px solid var(--accent);outline-offset:1px}
 .zoom{display:flex;justify-content:center}.zoom img{width:min(100%, 72vh, 768px);height:auto;aspect-ratio:1/1;border:1px solid var(--line);border-radius:10px;background:#fff}
 .world.needs{opacity:.5;border-style:dashed}.world.needs.on{opacity:.75}
+.build-goals{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;padding:6px 12px;border-bottom:1px solid var(--line);font-size:12px}.build-goals .goal{border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--ink-soft)}.build-goals .goal.done{background:var(--accent-bg);border-color:var(--accent);color:var(--ink)}.build-offer{margin:0 0 8px}.hmsg.you.auto{opacity:.7;font-style:italic}
+.glow{outline:3px solid #f59e0b!important;outline-offset:2px;animation:glowpulse 1s ease-in-out 4}@keyframes glowpulse{50%{box-shadow:0 0 0 8px rgba(245,158,11,.3)}}
+.run-notes{border:1px solid var(--line);border-left:4px solid var(--focus);border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px}.run-notes .rn-head{font-weight:700;margin-bottom:2px}.run-notes ul{margin:0;padding-left:18px}.run-notes li{margin:3px 0}
 .needs-note{background:var(--warn-bg);color:#6B4A0A;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px}
 .guide .steps li{margin:6px 0}.guide details.ref{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}.guide details.ref summary{cursor:pointer}.guide h4{margin:12px 0 4px}
 .guide .big-idea{background:var(--accent-bg);border-radius:10px;padding:8px 10px}.guide-table{border-collapse:collapse;width:100%;font-size:13px}.guide-table th,.guide-table td{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}.guide-table th{background:#F3F6FA}
@@ -435,7 +438,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.20.3";
+AK.VERSION = "1.21.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -2422,6 +2425,8 @@ const Pretend = (() => {
       } },
     critic: { id: "critic", title: "Pretend Critic", about: "A small built-in program, not an AI. It repeats what the Judge said and bluntly tells the Designer to fix exactly that.",
       reply: ctx => { const said = String((ctx.message && ctx.message.text) || "").replace(/\s+/g, " ").trim(); return "That picture fails. " + (said ? said + " " : "") + "Fix exactly that, and count every pebble again before you send it."; } },
+    builder: { id: "builder", title: "Scripted guide", about: "A small built-in program, not an AI. It asks about the first goal your society hasn't met yet.",
+      reply: ctx => (ctx.helperState && ctx.helperState.scripted) || "What would you like a team of helpers to do?" },
     helper: { id: "helper", title: "Pretend Helper", about: "A small built-in program, not an AI. It can only ask simple questions about what it sees in your society.",
       reply: ctx => helperReply(ctx.helperState || {}) },
     finder: { id: "finder", title: "Pretend Finder", about: "Used by the tests. It reads the words written in the picture with LABEL; with none, it describes the shapes.",
@@ -7656,6 +7661,8 @@ const HELPER_SYSTEM = PREAMBLE +
   "- ⬇ Export and ⬆ Import, at the top of the page, save the society you are in as a file and open one from a file. An agent's emoji is changed by clicking it at the top of its editor.\n" +
   "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
   "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.\n" +
+  "- After a run, “🔎 What the kit noticed”, under the stage's buttons, lists plain checks: an agent nothing was sent to, a rule that's off, a start that goes to the wrong agent, an agent with no instructions of its own. A new society starts with one agent called Agent; agents only talk when a rule tells them to; in your own society, the start's agent is chosen beside the start on the stage.\n" +
+  "- 🧱 Build with me, in the Helper (in your own societies), makes the Helper a guide while the learner builds, one question at a time, with four goals shown at the top: two helpers each with a job, a rule so one hears another, the start going to the one who begins, and a run where they all answer.\n" +
   "- Why: in a picture or film whose agents explain themselves (the Mini-Ani), a click on a character shows why it looks and moves like that: its looks (the Director), what it does (the Method Chooser) and the reasons (the Choice Points), with a button to the whole answer in the Trace. A program can end a story with end: true in its data: its other rules wait, as with pass: false, but it isn't a failure, so nothing gets a ✗.\n" +
   "- Agencies (as in Minsky's Society of Mind): a named group of agents, or of other agencies. A rule from an agency fires when any agent in it responds; a rule to an agency sends to every agent in it but the sender. Look inside, the stage and the trace show an agency folded into one line until it is opened. “+ Add an agency” in Look inside makes one; an agent's editor has “Its agency”. Mini-Ani as a society of mind uses them: thirteen choosers, each choosing one thing about everyone, and a Gatherer that chooses nothing; it makes the same film as the Mini-Ani.\n" +
   "- AI Way Finder (Mini-Ani with AI voices): for each scene it suggests ways to show what happens (like “loves: come together”), only from the ways the Director can draw. The Method Chooser uses them for words it has no way for (or first, if its slot says yes), says whose way each was, and names any way the Director can't show. “No AI Way Finder” switches it off. A story given to the Cast with no scenes goes to the Reader with the story itself.\n" +
@@ -7721,16 +7728,159 @@ function describeModels(soc, models) {
   const uses = (soc && soc.agents || []).filter(a => a.kind === "model").map(a => a.name + " uses " + ((models.uses || {})[a.id] || av[0]));
   return "Models set up (by a grown-up, in Settings): " + av.join(", ") + ". The first is the main one. The learner can change any AI agent's model without Settings: in the Models row on the stage, or in the agent's editor under “Its model”. Now: " + (uses.join("; ") || "there are no AI agents") + ".";
 }
+// After a run, plain checks for what most often goes wrong in a first society (a tester's sisters, building their own):
+// an agent that nothing was sent to, a start that goes to some other agent than the one meant to begin, an agent that
+// still has the instructions every new agent starts with. No model: each note says only what the society and the trace
+// show. Nothing after Stop, when an agent may not have had its turn yet. The Helper is given them as facts.
+const FIRST_INSTRUCTIONS = "You are a friendly agent. Answer in one or two short sentences.";
+function runNotes(soc, trace) {
+  trace = trace || [];
+  const begin = trace.find(e => e.kind === "run-start"), end = trace.find(e => e.kind === "run-end");
+  if (!soc || !begin || !end || end.reason === "stopped") return [];
+  const nameOf = id => (id === "you" ? "You" : id === "*" ? "anyone" : (agentById(soc, id) || agencyById(soc, id) || { name: id }).name);
+  const acts = trace.filter(e => e.kind === "activation");
+  const reached = new Set(acts.map(e => e.agentId));
+  const answered = id => acts.some(e => e.agentId === id && e.response && !e.error && !e.collecting);
+  const on = r => r.enabled !== false;
+  const switched = new Set([].concat.apply([], (soc.variants || []).map(v => (v.enable || []).concat(v.disable || []))));   // a switch under the start turns these on and off on purpose
+  const fired = id => acts.some(e => e.agentId === id && (e.fired || []).length);
+  const sendsTo = (r, id) => r.from !== id && (r.to === id || (!!agencyById(soc, r.to) && inAgency(soc, r.to, id)));
+  const sendsFrom = (r, id) => r.from === id || (r.from === "*" && r.to !== id) || (!!agencyById(soc, r.from) && inAgency(soc, r.from, id));
+  const speaks = id => soc.rules.some(r => on(r) && r.when !== "end" && sendsFrom(r, id));
+  const model = a => a.kind === "model" && !a.human;
+  const firstAgent = a => model(a) && a.id === "agent" && a.name === "Agent" && String(a.instructions || "").trim() === FIRST_INSTRUCTIONS;
+  const many = soc.agents.length > 1;
+  const starts = [], others = [], told = [];
+  for (const a of soc.agents) {
+    if (reached.has(a.id)) continue;
+    const rules = soc.rules.filter(r => sendsTo(r, a.id)), live = rules.filter(on);
+    if (!rules.length) {
+      if (many && firstAgent(a)) continue;   // the agent every new society starts with, left over: its own note says so
+      // Meant to begin (it sends on, or the start went to the agent left over from the new society), but nothing reached it.
+      const begins = speaks(a.id) || (!starts.length && many && firstAgent(agentById(soc, begin.to) || {}));
+      if (begins && begin.to !== a.id) { starts.push({ kind: "start", agent: a.id, text: a.name + " never got a message. The start goes to " + nameOf(begin.to) + ", and no rule sends anything to " + a.name + "." + (starts.length ? "" : " Should the start go to " + a.name + "? You can choose beside the start.") }); continue; }
+      const quiet = [begin.to].concat(acts.map(e => e.agentId)).find(id => id !== a.id && answered(id) && !speaks(id) && !firstAgent(agentById(soc, id) || {}));
+      others.push({ kind: "unsent", agent: a.id, text: a.name + " never got a message: no rule sends anything to it. Agents only talk when a rule tells them to." + (quiet ? " A rule like “When " + nameOf(quiet) + " responds, send its words to " + a.name + "” would." : "") });
+      continue;
+    }
+    if (!live.length) { if (rules.every(r => switched.has(r.id))) continue; others.push({ kind: "off", agent: a.id, text: a.name + " never got a message: " + (rules.length === 1 ? "the rule that sends to it is switched off" : "the rules that send to it are all switched off") + ". The tick in front of a rule switches it on." }); continue; }
+    const why = live.map(r => {
+      const who = nameOf(r.from), heard = soc.agents.some(b => sendsFrom(r, b.id) && answered(b.id));
+      if (r.from === "you") return "";
+      if (!heard) return "Its rule from " + who + " sends when " + (r.from === "*" ? "anyone else responds, and nobody did" : who + " responds, and " + who + " never did") + ".";
+      if ((r.when === "text" || r.when === "data") && soc.agents.some(b => sendsFrom(r, b.id) && fired(b.id))) return "";   // a branch: what was said went another way
+      if (r.when === "text") return "Its rule from " + who + " sends only when " + who + "'s words contain “" + (r.word || "") + "”, and they never did.";
+      if (r.when === "data") return "Its rule from " + who + " sends only when " + who + "'s data says " + (r.field || "") + " " + (r.op || "=") + " " + (r.value || "") + ", and it never did.";
+      const held = acts.map(e => (e.held || []).find(h => h.ruleId === r.id)).find(Boolean);
+      if (held) return "Its rule from " + who + " waited: " + held.reason;
+      return "";
+    }).filter(Boolean);
+    if (!why.length && (end.reason === "round-limit" || end.reason === "too-many")) why.push("The run ended before a message reached it.");
+    if (why.length) others.push({ kind: "unfired", agent: a.id, text: a.name + " never got a message. " + why.join(" ") });
+  }
+  if (many) for (const a of soc.agents) {
+    if (!model(a)) continue;
+    const ins = String(a.instructions || "").trim();
+    if (!ins) told.push({ kind: "instructions", agent: a.id, text: a.name + " has no instructions, so it doesn't know what it's for. Open it and write what it should do." });
+    else if (firstAgent(a)) told.push({ kind: "first", agent: a.id, text: "Agent is the agent every new society starts with, and it still has its first instructions" + (begin.to === a.id ? " (and the start goes to it)" : "") + ". Make it one of your team with a new name and instructions, or remove it." });
+    else if (ins === FIRST_INSTRUCTIONS) told.push({ kind: "instructions", agent: a.id, text: a.name + " still has the instructions every new agent starts with: “" + FIRST_INSTRUCTIONS + "” Open it and write what it should do." });
+  }
+  return starts.concat(others, told);
+}
 function helperRequest(soc, trace, question, chat, models) {
   const prior = (chat || []).slice(-6).map(m => (m.who === "you" ? "Learner: " : "Helper: ") + m.text).join("\n");
   return {
     system: HELPER_SYSTEM,
-    messages: [{ role: "user", content: "THE SOCIETY:\n" + describeSociety(soc) + "\n\nMODELS:\n" + describeModels(soc, models) + "\n\nTHE LATEST RUN:\n" + describeTrace(trace) + "\n\nSCENARIOS:\n" + describeScenarioResults(soc) + (prior ? "\n\nEARLIER IN THIS CHAT:\n" + prior : "") + "\n\nThe learner says: " + question }],
+    messages: [{ role: "user", content: "THE SOCIETY:\n" + describeSociety(soc) + "\n\nMODELS:\n" + describeModels(soc, models) + "\n\nTHE LATEST RUN:\n" + describeTrace(trace) + "\n\nSCENARIOS:\n" + describeScenarioResults(soc) + (runNotes(soc, trace).length ? "\n\nWHAT THE KIT NOTICED AFTER THE LATEST RUN (plain checks, always right about that run; the society may have changed since):\n" + runNotes(soc, trace).map(n => "- " + n.text).join("\n") : "") + (prior ? "\n\nEARLIER IN THIS CHAT:\n" + prior : "") + "\n\nThe learner says: " + question }],
     images: [], outputFields: [], replyKind: "prose", maxTokens: 4000,
     meta: { persona: "helper", helperState: { question, openers: soc && soc.openers, failing: failingForHelper(soc) } }
   };
 }
-AK.Helper = { HELPER_SYSTEM, describeSociety, describeModels, describeTrace, describeScenarioResults, helperRequest };
+// Build with me: the Helper as a guide while a learner makes a society of their own. It starts from the learner's idea,
+// keeps four goals in view (in any order: the learner's order), reacts to what they changed and to each run, and points
+// at a part of the kit with [[show: …]], which the kit makes glow. It never changes anything itself. With no model, a
+// scripted guide asks about the first goal not yet met, so the youngest learners aren't left with nothing.
+const BUILD_BEGIN = "(I pressed “Build with me”.)", BUILD_RAN = "▶ I ran it.";
+const BUILD_GUIDE = "\nBUILD WITH ME. The learner pressed “Build with me”: you are guiding them while they make a society of their own. It is theirs. Start from their idea: ask what they would like a team of helpers to do. Offer an example (a Joke Team: a Joker tells a joke about a word, and a Rater scores it from 1 to 10) only if they are stuck or ask for one.\n" +
+  "Never make a change yourself (you can't) and never give a list of steps. Give one short question, or one small next step, at a time, in one to three short sentences, and say where it is in the kit. Use short, plain words: the learner may be seven.\n" +
+  "The GOALS below are what a first society needs. The learner can reach them in any order; go with the order they choose. First react to what they just did (WHAT THE LEARNER CHANGED, and the latest run): name one thing they did well. When WHAT THE KIT NOTICED lists something, ask a question that helps them see it, rather than telling them the fix, unless they have already tried twice. When every goal is met, ask what they thought would happen, and what they would make better.\n" +
+  "To point at part of the kit, end your reply with one of these on a line of its own, and the kit makes it glow: [[show: add-agent]], [[show: add-rule]], [[show: start]], [[show: run]], [[show: look]], or [[show: agent NAME]] with an agent's name. At most one.\n";
+const BUILD_LABELS = { two: "Two helpers, each with a job", rule: "A rule, so one hears another", start: "The start goes to the one who begins", run: "A run where they all answer" };
+function buildProgress(soc, trace, fresh) {
+  const on = r => r.enabled !== false, model = a => a.kind === "model" && !a.human;
+  const ins = a => String(a.instructions || "").trim();
+  const own = a => !model(a) || (!!ins(a) && ins(a) !== FIRST_INSTRUCTIONS);
+  const sendsFrom = (r, id) => r.from === id || (r.from === "*" && r.to !== id) || (!!agencyById(soc, r.from) && inAgency(soc, r.from, id));
+  const st = ((soc && soc.starts) || [])[0], first = st && agentById(soc, st.to);
+  const notes = fresh ? runNotes(soc, trace) : [], acts = (trace || []).filter(e => e.kind === "activation"), end = (trace || []).find(e => e.kind === "run-end");
+  const done = {
+    two: soc.agents.filter(own).length >= 2,
+    rule: soc.rules.some(r => on(r) && r.when !== "end" && r.from !== "you" && r.from !== r.to && !!(agentById(soc, r.to) || agencyById(soc, r.to))),
+    start: !!first && own(first) && soc.rules.some(r => on(r) && r.when !== "end" && sendsFrom(r, first.id)),
+    run: !!fresh && !!end && end.reason !== "stopped" && soc.agents.filter(own).every(a => acts.some(e => e.agentId === a.id && e.response && !e.error)) && !notes.some(n => n.kind !== "first")
+  };
+  const steps = Object.keys(BUILD_LABELS).map(id => ({ id, label: BUILD_LABELS[id], done: done[id] }));
+  return { steps, next: (steps.find(x => !x.done) || {}).id || "", notes };
+}
+// The scripted guide: one question about the first goal not yet met.
+function builderScript(soc, p, said) {
+  const model = a => a.kind === "model" && !a.human, ins = a => String(a.instructions || "").trim();
+  const leftover = soc.agents.find(a => model(a) && a.id === "agent" && a.name === "Agent" && ins(a) === FIRST_INSTRUCTIONS);
+  const own = soc.agents.filter(a => !model(a) || (!!ins(a) && ins(a) !== FIRST_INSTRUCTIONS)), blank = soc.agents.find(a => model(a) && a !== leftover && (!ins(a) || ins(a) === FIRST_INSTRUCTIONS));
+  const st = (soc.starts || [])[0], to = st && agentById(soc, st.to);
+  if (said === BUILD_BEGIN) return "Let's build it together. You decide, and I'll ask questions. What would you like a team of helpers to do? (Stuck? One team that works: a Joker tells a joke, and a Rater gives it a score.)";
+  if (p.next === "two") {
+    if (leftover) return "Your society starts with one agent, called Agent. What should your first helper be called, and what is its job? Click Agent on the stage, then change its name and its instructions.\n[[show: agent Agent]]";
+    if (blank) return blank.name + " needs a job. Click it on the stage and write what it should do in its instructions.\n[[show: agent " + blank.name + "]]";
+    return (own.length ? "Who else is on your team, to work with " + own[0].name + "?" : "Who is on your team?") + " Press + Add an agent in Look inside, then give it a name and a job.\n[[show: add-agent]]";
+  }
+  if (p.next === "rule") return "Your helpers can't hear each other yet: agents only talk when a rule tells them to. Who should hear what " + own[0].name + " says? Press + Add a rule in Look inside.\n[[show: add-rule]]";
+  if (p.next === "start") return "The start goes to " + (to ? to.name : "nobody") + " now. Which helper should hear it first? You can choose beside the start.\n[[show: start]]";
+  if (p.next === "run") return p.notes.length ? "Look at what the kit noticed after your run: " + p.notes[0].text + " What could you change?" : "What do you think will happen when you press ▶ Run? Say it out loud, then try it.\n[[show: run]]";
+  return "Every helper answered! Was it what you thought would happen? What would make it better?";
+}
+// What the learner changed since the guide last spoke, in plain words.
+function describeChanges(before, after) {
+  if (!before || !after) return [];
+  const out = [], nameOf = (soc, id) => (id === "you" ? "You" : id === "*" ? "anyone" : (agentById(soc, id) || agencyById(soc, id) || { name: id }).name);
+  const short = t => { t = String(t || "").replace(/\s+/g, " ").trim(); return t.length > 120 ? t.slice(0, 120) + "…" : t; };
+  for (const a of after.agents) {
+    const b = agentById(before, a.id);
+    if (!b) { out.push("added " + (a.kind === "model" ? "an AI agent" : a.kind === "program" ? "a programmed agent" : "a Renderer") + " called " + a.name); continue; }
+    if (b.name !== a.name) out.push("renamed " + b.name + " to " + a.name);
+    if (String(b.instructions || "") !== String(a.instructions || "")) out.push("changed " + a.name + "'s instructions to “" + short(a.instructions) + "”");
+  }
+  for (const b of before.agents) if (!agentById(after, b.id)) out.push("removed " + b.name);
+  const rid = soc => new Map(soc.rules.map(r => [r.id, r]));
+  const rb = rid(before), ra = rid(after);
+  for (const r of after.rules) {
+    const o = rb.get(r.id), said = describeRule(r, id => nameOf(after, id));
+    if (!o) out.push("added a rule: " + said);
+    else if ((o.enabled !== false) !== (r.enabled !== false)) out.push("switched " + (r.enabled === false ? "off" : "on") + " the rule: " + said);
+    else if (JSON.stringify(o) !== JSON.stringify(r)) out.push("changed a rule to: " + said);
+  }
+  for (const r of before.rules) if (!ra.has(r.id)) out.push("removed the rule: " + describeRule(r, id => nameOf(before, id)));
+  const sb = (before.starts || [])[0], sa = (after.starts || [])[0];
+  if (sb && sa && sb.to !== sa.to) out.push("made the start go to " + nameOf(after, sa.to));
+  if (sb && sa && sb.value !== sa.value && sa.kind === "text") out.push("changed the start to “" + short(sa.value) + "”");
+  return out;
+}
+function buildRequest(soc, trace, question, chat, models, opts) {
+  const o = opts || {}, p = buildProgress(soc, trace, o.fresh);
+  const req = helperRequest(soc, trace, question, chat, models);
+  req.system = HELPER_SYSTEM + BUILD_GUIDE;
+  const goals = "GOALS FOR A FIRST SOCIETY (in any order):\n" + p.steps.map(x => "- [" + (x.done ? "done" : "not yet") + "] " + x.label).join("\n") + (o.fresh ? "" : "\n(The latest run, if there is one, was before the society last changed.)");
+  const changed = "WHAT THE LEARNER CHANGED SINCE YOUR LAST REPLY:\n" + ((o.changes || []).length ? o.changes.map(c => "- " + c).join("\n") : "(nothing)");
+  req.messages[0].content = req.messages[0].content.replace("\n\nThe learner says: ", () => "\n\n" + goals + "\n\n" + changed + "\n\nThe learner says: ");
+  req.meta = { persona: "builder", helperState: { scripted: builderScript(soc, p, question) } };
+  return req;
+}
+// A reply's [[show: …]], taken out of its words.
+function splitShow(text) {
+  const m = /\[\[\s*show:\s*([^\]]{1,60})\]\]/i.exec(String(text || ""));
+  return { text: String(text || "").replace(/\s*\[\[\s*show:[^\]]*\]\]\s*/gi, " ").trim(), show: m ? m[1].trim() : "" };
+}
+AK.Helper = { HELPER_SYSTEM, describeSociety, describeModels, describeTrace, describeScenarioResults, helperRequest, runNotes, FIRST_INSTRUCTIONS, BUILD_BEGIN, BUILD_RAN, buildProgress, builderScript, describeChanges, buildRequest, splitShow };
 
 /* ===== SECTION: TEACH (a model suggests a line for a program's empty line; a person puts it in, or not) ===== */
 // The knowledge-writer. When the Mini-Ani's experts or its Method Chooser don't know a word, a model can suggest a line
@@ -8024,7 +8174,7 @@ const app = {
   runs: {}, traces: {}, prevStrips: {}, log: {}, helperChat: {}, used: {},
   banners: [], saveError: "", loadError: "", replaced: [],
   adapter: null, adapterKey: "",
-  ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), agencyOpen: new Set(), tech: new Set(), more: new Set(), expandedW: new Set(), editingRules: new Set(), editingRound: false, sendWarn: null, bench: {}, replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
+  ui: { playAs: {}, yourDraft: {}, logoEdit: null, lookInside: false, traceTab: "run", traceFilter: "all", expanded: new Set(), agencyOpen: new Set(), notes: {}, build: {}, tech: new Set(), more: new Set(), expandedW: new Set(), editingRules: new Set(), editingRound: false, sendWarn: null, bench: {}, replay: null, mobileTab: "stage", startKind: {}, helperOpen: false, helperBusy: false, editor: null, editorModal: null, settingsModal: null }
 };
 const soc = () => app.societies[app.activeId];
 const nameOf = (s, id) => (id === "*" ? "anyone" : id === "you" ? "You" : ((Society.agentById(s, id) || { name: id }).name));
@@ -8565,6 +8715,7 @@ function afterRun(rec) {
   app.traces[rec.socId] = rec.api.run.trace;
   save();
   if (rec.socId === app.activeId) renderAll();
+  if (rec.socId === app.activeId && app.ui.build[rec.socId] && app.ui.helperOpen && rec.api.run.stopReason !== "stopped" && !rec.told) { rec.told = true; askBuilder(Helper.BUILD_RAN); }   // Build with me reacts to each run
 }
 async function runNow(override) {
   const rec = beginRun(override);
@@ -8601,7 +8752,7 @@ function onRunEvent(rec, e, run) {
     // a real call through the main connection says whether it works
     if (e.call && !e.call.pretend && e.call.adapter === app.settings.connection) { if (!e.error) setConnState("ok"); else if (["auth", "network", "signedout", "nano", "timeout", "unreadable", "empty"].indexOf(e.errorKind) >= 0) setConnState("failed", e.error); }
   }
-  else if (e.kind === "run-end") { rec.working = null; app.traces[rec.socId] = run.trace; }
+  else if (e.kind === "run-end") { rec.working = null; app.traces[rec.socId] = run.trace; const s = app.societies[rec.socId]; if (s) app.ui.notes[rec.socId] = { sig: notesSig(s), notes: AK.Helper.runNotes(s, run.trace) }; }
   if (rec.socId !== app.activeId || paintQueued) return;
   paintQueued = true;
   raf(() => { paintQueued = false; renderStage(); renderTrace(); });
@@ -8880,6 +9031,17 @@ function statusLineHTML(s, rec, run) {
   if (run.status === "done" || run.status === "stopped") return "■ " + esc(run.note || "Finished.") + " <span class=\"muted\">(" + round + ", " + run.deliveries + " messages)</span>" + (run.parked && run.parked.length ? ' <span class="muted">▶ Run or Step carries on' + (run.stopReason === "round-limit" ? " for " + plural(s.roundLimit, "more round") : "") + '; ↺ Reset starts again.</span>' : ' <span class="muted">▶ Run starts a new run.</span>') + (tooEasy(s, run) ? '<span class="nudge-inline">The Designer passed on its first try. Can you invent a challenge it can’t meet?</span>' : "");
   return "";
 }
+// What the kit noticed after the last run (AK.Helper.runNotes), while the society is as it was then.
+const notesSig = s => JSON.stringify([s.agents.map(a => [a.id, a.name, a.instructions || ""]), s.rules, (s.starts || []).map(x => x.to), s.agencies || []]);
+function runNotesHTML(s) {
+  const n = app.ui.notes[s.id];
+  if (!n || !n.notes.length || n.sig !== notesSig(s)) return "";
+  const shown = n.notes.slice(0, 4);
+  return '<div class="run-notes"><div class="rn-head">🔎 What the kit noticed</div><ul>' + shown.map(x => {
+    const a = Society.agentById(s, x.agent);
+    return '<li>' + esc(x.text) + (a ? ' <button class="btn tiny" data-act="open-agent" data-id="' + esc(a.id) + '">Open ' + esc(a.name) + '</button>' : "") + '</li>';
+  }).join("") + '</ul>' + (n.notes.length > shown.length ? '<div class="small muted">…and ' + plural(n.notes.length - shown.length, "more thing") + ' like these.</div>' : "") + '</div>';
+}
 // A live model that meets a challenge at once has nothing to learn from the Critic.
 function tooEasy(s, run) {
   if (!s.challenges || !liveConnection() || run.stopReason !== "done" || run.round !== 1) return false;
@@ -8927,7 +9089,7 @@ function fitStart(ta) {
 function startHTML(s) {
   const starts = s.starts || [];
   const cur = startChoice(s);
-  let h = '<div class="start-tabs">' + (starts.length > 1 ? starts.map(st => '<button class="seg' + (st === cur ? " on" : "") + '" data-act="start-kind" data-id="' + esc(st.id) + '">' + esc(st.label) + '</button>').join("") : '<b class="small muted">' + esc(cur ? cur.label : "Start") + '</b>') + (cur ? '<span class="small muted">→ goes to ' + esc(nameOf(s, cur.to)) + '</span>' : "") + '</div>';
+  let h = '<div class="start-tabs">' + (starts.length > 1 ? starts.map(st => '<button class="seg' + (st === cur ? " on" : "") + '" data-act="start-kind" data-id="' + esc(st.id) + '">' + esc(st.label) + '</button>').join("") : '<b class="small muted">' + esc(cur ? cur.label : "Start") + '</b>') + (cur ? (!isMicroworld(s.id) && s.agents.length > 1 ? '<label class="small muted">→ goes to <select class="small" data-bind="start-field" data-id="' + esc(cur.id) + '" data-field="to" aria-label="The start goes to">' + agentOptions(s, cur.to, false) + '</select></label>' : '<span class="small muted">→ goes to ' + esc(nameOf(s, cur.to)) + '</span>') : "") + '</div>';
   if (!cur) return h + '<p class="hint">This society has no start.</p>';
   if (cur.kind === "text") {
     h += '<textarea class="field" rows="' + startRows(cur.value) + '" data-bind="start-value" data-id="' + esc(cur.id) + '" placeholder="Write a start…" aria-label="Start">' + esc(cur.value || "") + '</textarea>';
@@ -9095,10 +9257,12 @@ function renderStage() {
     '<span class="small muted">Rounds</span><input class="num" type="number" min="1" max="50" data-bind="roundLimit" value="' + s.roundLimit + '" aria-label="Round limit">' +
     '<select class="small" data-bind="speed" aria-label="Speed" title="How fast messages are delivered">' + ["slow", "normal", "fast", "instant"].map(v => '<option value="' + v + '"' + sel(app.settings.speed === v) + '>' + v + '</option>').join("") + '</select>' + playAsHTML(s) + '</div>';
   h += '<div class="status-line">' + statusLineHTML(s, rec, run) + '</div>';
+  if (!live) h += runNotesHTML(s);
   if (status === "waiting") h += yourTurnHTML(s, run);
   const view = viewState(s, run, trace);
   view.calls = callCounts(trace);
   const shown = stageShown(s, view);   // a film still playing stays on the stage
+  if (!isMicroworld(s.id) && !app.ui.build[s.id] && !s.rules.length && s.agents.length <= 2) h += '<p class="hint build-hint">🧱 Just begun? <button class="btn tiny" data-act="helper-build">Build it with the Helper</button>, one question at a time.</p>';
   h += '<div class="agent-strip">' + stripHTML(s, view) + '</div>' + (app.settings.openedAgent ? "" : '<p class="hint strip-hint">👆 Click an agent to see what it\'s told, and change it.</p>') + modelsRowHTML(s);
   if (hasPictures(s)) h += '<div class="picture-wrap"><div class="picture' + (hasWhy(trace) ? " can-why" : "") + '"><canvas id="stageCanvas" data-act="stage-why" width="512" height="512" aria-label="The latest picture"></canvas>' +
     (shown.render ? '<span class="tag">' + (view.replay ? "replay · " : "") + "round " + shown.round + (shown.render.frames > 1 ? " · 🎞️" : "") + '</span>' : '<div class="empty">' + (trace.length ? "No picture yet." : "Press ▶ Run to start.<br>Every message will show up in the Trace.") + '</div>') + '</div>' + filmBarHTML(s, shown.render) + whyBoxHTML(s, shown, trace) +
@@ -9972,11 +10136,13 @@ function renderHelper() {
   fab.classList.add("hidden");
   const s = soc();
   const chat = app.helperChat[s.id] || [];
-  host.innerHTML = '<div class="drawer" role="dialog" aria-label="Helper"><div class="dh" title="Drag here to move the Helper; drag its bottom corner to resize it; double-click here to put it back"><span class="grip" aria-hidden="true">⠿</span><h3>🤔 Helper</h3><button class="btn tiny ghost" data-act="helper-clear">Clear</button><button class="icon-btn" data-act="helper" aria-label="Close">✕</button></div><div class="log" id="helperLog">' +
-    (app.settings.connection === "none"   // the Helper is an AI: with no model it can't answer, so its questions are for thinking about
+  const building = !!app.ui.build[s.id], canBuild = !isMicroworld(s.id);
+  host.innerHTML = '<div class="drawer" role="dialog" aria-label="Helper"><div class="dh" title="Drag here to move the Helper; drag its bottom corner to resize it; double-click here to put it back"><span class="grip" aria-hidden="true">⠿</span><h3>' + (building ? "🧱 Building with you" : "🤔 Helper") + '</h3><button class="btn tiny ghost" data-act="helper-clear">Clear</button><button class="icon-btn" data-act="helper" aria-label="Close">✕</button></div>' + (building ? buildGoalsHTML(s) : "") + '<div class="log" id="helperLog">' +
+    (building ? "" : canBuild ? '<div class="row build-offer"><button class="btn tiny primary" data-act="helper-build">🧱 Build with me</button><span class="small muted">I\'ll ask one question at a time while you build. You decide.</span></div>' : "") +
+    (building ? "" : app.settings.connection === "none"   // the Helper is an AI: with no model it can't answer, so its questions are for thinking about
       ? '<div class="hmsg ai">I\'m an AI, so I need a model before I can answer. Choose one in ⚙️ Settings. Until then, here are some questions to think about:</div><ul class="hmsg-q">' + (s.openers || []).map(q => '<li>' + esc(q) + '</li>').join("") + '</ul><div class="row"><button class="btn tiny" data-act="settings">⚙️ Settings</button></div>'
       : '<div class="hmsg ai">I can read your society, the last run and your scenarios, but I can\'t change anything. I\'ll mostly ask questions. Here are some to start with:</div><div class="chips">' + (s.openers || []).map(q => '<button data-act="helper-ask" data-text="' + esc(q) + '">' + esc(q) + '</button>').join("") + '</div>') +
-    chat.map(m => m.who === "you" ? '<div class="hmsg you">' + esc(m.text) + '</div>' : '<div class="hmsg ai">' + md(m.text) + '</div>').join("") + (app.ui.helperBusy ? '<div class="hmsg ai">…</div>' : "") +
+    chat.map(m => m.who === "you" ? (m.text === Helper.BUILD_BEGIN ? "" : '<div class="hmsg you' + (m.text === Helper.BUILD_RAN ? " auto" : "") + '">' + esc(m.text) + '</div>') : '<div class="hmsg ai">' + md(m.text) + (m.show ? '<div><button class="btn tiny" data-act="helper-show" data-target="' + esc(m.show) + '">👉 Show me</button></div>' : "") + '</div>').join("") + (app.ui.helperBusy ? '<div class="hmsg ai">…</div>' : "") +
     '</div><div class="ask"><textarea class="field" id="helperInput" placeholder="Ask the helper…" rows="2" aria-label="Your question"></textarea><button class="btn mic" data-act="helper-mic" title="Ask by talking: the answer is read to you" aria-label="Ask by talking">🎤</button><button class="btn primary" data-act="helper-send"' + (app.ui.helperBusy ? " disabled" : "") + '>Ask</button></div></div>';
   const log = $("#helperLog");
   if (log) log.scrollTop = log.scrollHeight;
@@ -10013,9 +10179,67 @@ function wireDrawer(d) {
     }).observe(d);
   }
 }
+// The four goals, ticked as they're met, in whatever order the learner meets them.
+function buildFresh(s) { const n = app.ui.notes[s.id]; return !!n && n.sig === notesSig(s); }
+function buildGoalsHTML(s) {
+  const p = Helper.buildProgress(s, runOrLastTrace(s.id), buildFresh(s));
+  return '<div class="build-goals">' + p.steps.map(x => '<span class="goal' + (x.done ? " done" : "") + '">' + (x.done ? "✓ " : "○ ") + esc(x.label) + '</span>').join("") + '<button class="btn tiny ghost" data-act="helper-build-off">Stop building together</button></div>';
+}
+// Make the part of the kit a guide pointed at glow, opening Look inside first if that's where it is.
+function showTarget(t) {
+  const s = soc(), k = String(t || "").trim().toLowerCase();
+  const inside = { "add-agent": '[data-act="add-agent"]', "add-rule": '[data-act="add-rule"]' };
+  if (inside[k] && !app.ui.lookInside) { app.ui.lookInside = true; if (window.innerWidth <= 820) app.ui.mobileTab = "inside"; renderAll(); }
+  let q = inside[k] || { start: '#colCenter .start-tabs select, #colCenter .start-tabs', run: '#colCenter [data-act="run"]', look: '[data-act="look"]' }[k];
+  if (!q && /^agent\s+/.test(k)) { const name = k.replace(/^agent\s+/, ""), a = s.agents.find(x => x.name.toLowerCase() === name); if (a) q = '#colCenter .achip[data-id="' + a.id.replace(/"/g, "") + '"]'; }
+  const el = q && $(q);
+  if (!el) return false;
+  el.classList.remove("glow"); void el.offsetWidth; el.classList.add("glow");
+  setTimeout(() => el.classList.remove("glow"), 4200);
+  if (el.scrollIntoView) el.scrollIntoView({ block: "center", behavior: "smooth" });
+  return true;
+}
+// One turn of Build with me: the learner's words (or that they pressed it, or ran it), what they changed since, the goals.
+async function askBuilder(q) {
+  const s = soc(), b = app.ui.build[s.id];
+  if (!b || app.ui.helperBusy) return;
+  const chat = app.helperChat[s.id] = app.helperChat[s.id] || [];
+  chat.push({ who: "you", text: util.cleanText(q, 1000) });
+  app.ui.helperBusy = true;
+  renderHelper();
+  const trace = runOrLastTrace(s.id), changes = b.snap ? Helper.describeChanges(JSON.parse(b.snap), s) : [];
+  const refs = modelRefs(), uses = {};
+  for (const a of s.agents) if (a.kind === "model" && !a.human) uses[a.id] = (refOfAgent(a) || {}).label;
+  const req = Helper.buildRequest(s, trace, q, chat.slice(0, -1), { available: refs.map(r => r.label), uses }, { fresh: buildFresh(s), changes });
+  let text;
+  if (app.settings.connection === "none") text = req.meta.helperState.scripted;   // no model: the scripted guide
+  else {
+    const adapter = getAdapter();
+    try {
+      const r = await adapter.call(req);
+      text = r.text || r.raw;
+      logWorkshop(s.id, { kind: "helper", title: "Build with me: " + q, status: "ok", call: { adapter: adapter.id, adapterLabel: adapter.label, model: r.model, persona: r.persona, pretend: !!r.pretend, system: r.system, messages: req.messages, request: r.request, reply: r.raw, ms: Math.round(r.ms || 0), warning: r.warning } });
+    } catch (e) {
+      text = "😕 " + e.message + "\n\n" + req.meta.helperState.scripted;   // the scripted guide still has a question
+      logWorkshop(s.id, { kind: "helper", title: "Build with me (didn't answer)", status: "error", error: e.message, call: Object.assign({ adapter: adapter.id, adapterLabel: adapter.label, system: req.system, messages: req.messages }, e.trace || {}) });
+      handleCallError({ errorKind: e.kind });
+    }
+  }
+  const said = Helper.splitShow(text);
+  chat.push({ who: "ai", text: util.cleanText(said.text, 3000), show: said.show || undefined });
+  if (chat.length > 40) chat.splice(0, chat.length - 40);
+  b.snap = JSON.stringify(s);
+  app.ui.helperBusy = false;
+  save();
+  renderHelper();
+  if (said.show) showTarget(said.show);
+  if (app.ui.helperVoice || app.settings.readAloud) { const last = $("#helperLog .hmsg.ai:last-child"); SpeechUI.speak(said.text, last); }
+  app.ui.helperVoice = false;
+}
 async function askHelper(q) {
   q = String(q || "").trim();
   if (!q || app.ui.helperBusy) return;
+  if (app.ui.build[app.activeId]) return askBuilder(q);
   const s = soc();
   const chat = app.helperChat[s.id] = app.helperChat[s.id] || [];
   chat.push({ who: "you", text: util.cleanText(q, 1000) });
@@ -10058,7 +10282,12 @@ const GUIDES = {
     "<li><b>Change one thing.</b> Tick a switch under the start (like “Writer A remembers everything”), or press <b>🔍 Look inside</b> and change one agent's instructions or one rule. Run it again. What changed, and why?</li>" +
     "<li><b>Make it yours.</b> Press <b>＋ New society</b> at the end of the microworld buttons. Copy the one you were in, start from scratch, or start from an example like <b>Evolution</b>, <b>Two Answers</b>, <b>Tic-Tac-Toe</b>, <b>Trail Mix Barter</b>, <b>Artist and Critic</b>, or one of the four <b>Mini-Ani</b>s. Give it a name and a question in Look inside, add an agent with <b>+ Add an agent</b>, and connect them with rules.</li>" +
     "</ol>" +
-    "<p>Stuck? Ask the <b>🤔 Helper</b> (bottom right). It knows where everything is, and it will ask you questions back. Working with a friend? One of you drives and the other predicts; swap every run.</p>" +
+    "<p><b>Three things to know when you make your own:</b></p><ul class='guide-facts'>" +
+    "<li>A new society already has one agent, called <b>Agent</b>. Make it your first agent (give it a name and instructions), or remove it.</li>" +
+    "<li>Agents only talk when a <b>rule</b> tells them to. An agent no rule sends anything to hears nothing.</li>" +
+    "<li>The start goes to one agent: the stage says which, beside the start, and you can change it there.</li>" +
+    "</ul><p>After a run, <b>🔎 What the kit noticed</b> under the stage's buttons says when something like this went wrong.</p>" +
+    "<p>Stuck? Ask the <b>🤔 Helper</b> (bottom right). It knows where everything is, and it will ask you questions back. In a society of your own, <b>🧱 Build with me</b> makes it a guide: you decide what to make, and it asks one question at a time while you build. Working with a friend? One of you drives and the other predicts; swap every run.</p>" +
     "<details class='ref'><summary><b>Everything else, when you need it</b></summary>" +
     "<h4>The stage</h4><p><b>▶ Run</b> goes until the round limit. <b>⏭ Step</b> delivers one message at a time, and Run carries on from there. <b>↺ Reset</b> starts over. <b>🙋 You be the …</b> lets you take an agent's place: the run waits for your answer. One-click switches under the start change several rules at once. If a grown-up has set up more than one model, the <b>Models</b> row lets you choose which model each AI agent uses. After a run, each AI agent's button says how many model calls it made.</p>" +
     "<h4>Rules</h4><p>In Look inside, every rule reads as a sentence: <i>When the Artist responds, send its words to the Renderer.</i> The tick in front switches a rule on or off. <b>✎ Edit</b> shows its parts: who it's from, a condition (like <i>if its data says pass is false</i>), what to send (words, data, picture) and who to. A rule can come from <b>You</b>, so the start reaches more than one agent, and a rule can wait for <b>the end of the run</b>, like the one that sends Story Chain's Book to the Editor.</p>" +
@@ -10519,6 +10748,9 @@ const ACTIONS = {
   "speech-test"() { SpeechUI.speak("Hello! This is how I sound."); },
   "helper-send"() { const i = $("#helperInput"); if (i) { const q = i.value; i.value = ""; askHelper(q); } },
   "helper-clear"() { app.helperChat[app.activeId] = []; save(); renderHelper(); },
+  "helper-build"() { app.ui.build[app.activeId] = { snap: null }; app.ui.helperOpen = true; renderStage(); askBuilder(Helper.BUILD_BEGIN); },
+  "helper-build-off"() { delete app.ui.build[app.activeId]; renderHelper(); renderStage(); },
+  "helper-show"(t) { showTarget(t.dataset.target); },
   "banner-close"(t) { clearBanner(t.dataset.id); if (t.dataset.id === "save") { app.saveError = ""; renderBanners(); } },
   "test-conn"() { testConnection(); },
   "copy-link"() { copyText(PROJECT_URL); },

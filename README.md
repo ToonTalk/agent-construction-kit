@@ -71,6 +71,13 @@ one to a claude.ai chat and ask Claude to copy it, exactly as it is, into an HTM
 **Other languages:** there is a Swedish copy at [sv/](https://toontalk.github.io/agent-construction-kit/sv/)
 (*på svenska*). Anyone with a coding agent can make a copy in another language: see [TRANSLATING.md](TRANSLATING.md).
 
+**Building your first society:** after a run, **🔎 What the kit noticed** says, without any AI, what most often
+goes wrong in a first society: an agent no rule sends anything to, a start that goes to the wrong agent, a rule that's
+off, the agent every new society starts with left as it was. In a society of your own, the Helper's **🧱 Build with me**
+is a guide that starts from your idea and asks one question at a time, with four goals in view (two helpers each with
+a job, a rule so one hears another, the start going to the one who begins, a run where they all answer). It points at
+the button to press and changes nothing itself. With no model, a scripted guide asks the same questions.
+
 **Speech:** 🔊 Read aloud reads any words you click, and says what a button is when you point at it. A 🎤
 by the box you are typing in lets you talk instead, and the Helper can be asked aloud and answers aloud. Where
 the browser can't listen, the 🎤 explains the computer's own dictation (on Windows, the Windows key + H).

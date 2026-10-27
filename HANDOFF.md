@@ -4,7 +4,7 @@
 
 ## State (2026-10-10)
 
-Agent Kit **1.20.3**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.20.3 follow reviews
+Agent Kit **1.21.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.21.0 follow reviews
 and the first real-model runs (see `SPEC.md` §14). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -82,7 +82,16 @@ folder is a copy without the §14 log.)
   ready to release. Then bring it up to date from `git diff c38eae4 -- index.html`, with `sv/GLOSSARY.md`.
 - **Artifact size:** keep the English artifact under 950 KB (the build refuses more). Ken wants the chat-copy route,
   because its artifact can still send pictures to Claude; a published artifact's `sample` can't. The build minifies
-  its scripts (terser: `npm install -g terser`): 1.20.0 is 730 KB.
+  its scripts (terser: `npm install -g terser`): 1.21.0 is 750 KB.
+- **First societies** (1.21.0, after a tester's sisters built a Joker and a Rater from scratch):
+  `Helper.runNotes(soc, trace)` are plain checks after a run (an agent nothing reached, and why; a start that goes to
+  the wrong agent; the leftover Agent; instructions never written), kept in `app.ui.notes` with `notesSig(s)` and shown
+  on the stage only while the society is unchanged. Built-in worlds, with any switch flipped, stay quiet (tested):
+  rules a variant switches, and conditions on a branch that went another way, aren't noted. **🧱 Build with me**
+  (`app.ui.build`, `askBuilder`): the Helper as a guide, with `BUILD_GUIDE`, four goals (`buildProgress`), what changed
+  since its last reply (`describeChanges`), a reply after each run, and `[[show: …]]` (`splitShow`, `showTarget`) that
+  makes a button glow. With no model, or when a call fails, `builderScript` asks about the first goal not met. Your own
+  society's start chooses its agent on the stage.
 - **Speech** (1.9.0, `SpeechUI`): 🔊 Read aloud, a 🎤 by the focused text box, the Helper by voice; when listening
   can't work, the 🎤 explains the OS's own dictation (Windows + H …). Number words aren't moves yet.
 - **Yours** (1.8.0): the top row is the microworlds, then your four most recent societies (`app.used`), then
@@ -124,7 +133,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**666 PASS, 0 FAIL · fingerprint `8f3d56161885`** · model modules covered 20/20.
+**675 PASS, 0 FAIL · fingerprint `189c55422337`** · model modules covered 20/20.
 Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; `library.test` 189/198 (the 9 look for
 English words, two of them the Mini-Ani's “no …” scenario names; the same 9 as 1.14.0); `node tests/leftovers.mjs
 sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which stay English in the copy.
@@ -143,7 +152,7 @@ sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which s
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 859 KB, under 1 MB (tested); artifact builds 859 KB and 877 KB, under 950 KB, scripts under 571 KB. |
+| 11 | 985 KB, under 1.5 MB (tested); the English artifact builds minified at 750 KB, under 950 KB. |
 
 ## Open issues
 
