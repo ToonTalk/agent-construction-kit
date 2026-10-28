@@ -438,7 +438,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.21.0";
+AK.VERSION = "1.21.1";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -2316,6 +2316,8 @@ const Pretend = (() => {
       const f = state.failing[0];
       return "Look at the scenario “" + f.scenario + "” for " + f.agent + ": it expected " + f.expected + ", but the agent gave " + f.actual + ". Which line of the pseudocode decides that part of the answer?";
     }
+    if (/repeat|same joke|duplicate|again and again|twice/.test(q) && !/score|rate|rating/.test(q)) return "What does your agent remember from one message to the next? Open it and look at “It remembers”. And what could remember everything it said, and stop a repeat? (There's a Repeat Catcher in the library: Look inside, then + Add an agent.)";
+    if (/score|rate|rating|consistent|fair/.test(q)) return "Run the same start twice, then compare this run with the run before. Did the score change? Why might an AI give the same thing two different scores?";
     if (/swap|flip|switch|order|left|right|back and forth/.test(q)) return "Put two rounds side by side. Which words stayed the same, and what changed in the pictures? Which agent decides the order that things are listed in?";
     if (/secret|mystery|guess/.test(q)) return "How does the Designer find out about the secret? Which agent passes the clues along, and what would happen if it said less?";
     if (/stuck|loop|settle|same|repeat/.test(q)) return "What would tell you that the pictures have stopped changing? Put two rounds side by side: which words come back? (There's a Loop Spotter in the library that watches for this: Look inside, then + Add an agent.)";
@@ -3636,6 +3638,44 @@ libAgent({
     { id: "s3", name: "a new picture", input: { text: "Three green triangles.", round: 2, memory: [{ round: 1, text: "A red circle next to a blue square." }] }, expect: { stuck: false } },
     { id: "s4", name: "only a few words shared", input: { text: "A small blue circle under a tree.", round: 3, memory: [{ round: 2, text: "A big red circle on a hill." }] }, expect: { stuck: false } },
     { id: "s5", name: "forgets after five", input: { text: "A red circle.", round: 7, memory: [{ round: 1, text: "A red circle." }, { round: 2, text: "Two green lines." }, { round: 3, text: "Three blue dots in a row." }, { round: 4, text: "A yellow star." }, { round: 5, text: "An orange zigzag." }, { round: 6, text: "A purple spiral with 3 turns." }] }, expect: { stuck: false } }
+  ]
+});
+// A tester's 7-year-old sister made a Joker that told the same joke twice; Ken suggested a memory agent that rejects
+// repeated jokes. This is one: a gate, so a rule from it sends only new things on, and a rule “if pass is false” can
+// send the repeat back to whoever said it.
+libAgent({
+  typeId: "repeat-catcher", name: "Repeat Catcher", emoji: "🔂", gate: true, note: "a gate · stops anything it has heard before",
+  about: "A memory agent. It remembers everything it is sent in a run. Something new it passes on, word for word; something it has heard before (more than half the same words) it stops, and says when it heard it.",
+  pseudo: [
+    "remember everything I am sent in this run",
+    "if the new one shares more than {half} its words with one I heard before",
+    "  block, and say \"that's the same as round {that round}: try something new\"",
+    "otherwise",
+    "  pass, and say it on, word for word"
+  ],
+  code: [
+    "function run(input, params, h) {",
+    "  const heard = input.memory || [];",
+    "  let output = { pass: true, say: input.text };",
+    "  for (const old of heard) {",
+    "    h.tick();",
+    "    if (h.sharedWordFraction(input.text, old.text) > params.half) {",
+    "      output = { pass: false, round: old.round, say: \"That's the same as round \" + old.round + \": “\" + old.text + \"” Try something new.\" };",
+    "      break;",
+    "    }",
+    "  }",
+    "  output.memory = heard.concat([{ round: input.round, text: input.text }]);",
+    "  return output;",
+    "}"
+  ],
+  lineMap: [{ pseudo: [1, 1], js: [2, 2] }, { pseudo: [1, 1], js: [11, 11] }, { pseudo: [2, 2], js: [4, 6] }, { pseudo: [3, 3], js: [7, 8] }, { pseudo: [4, 5], js: [3, 3] }],
+  params: { half: 0.5 },
+  slots: [{ line: 2, text: "half", param: "half" }],
+  scenarios: [
+    { id: "s1", name: "the first joke goes on, word for word", input: { text: "Why did the cat sit on the computer? To keep an eye on the mouse!", round: 1 }, expect: { pass: true, say: "Why did the cat sit on the computer? To keep an eye on the mouse!" } },
+    { id: "s2", name: "the same joke again is stopped", input: { text: "Why did the cat sit on the computer? To keep an eye on the mouse!", round: 2, memory: [{ round: 1, text: "Why did the cat sit on the computer? To keep an eye on the mouse!" }] }, expect: { pass: false, round: 1 } },
+    { id: "s3", name: "the same joke in a few new words is stopped too", input: { text: "Why did the cat sit on the computer? To watch the mouse!", round: 3, memory: [{ round: 1, text: "Why did the cat sit on the computer? To keep an eye on the mouse!" }] }, expect: { pass: false, round: 1 } },
+    { id: "s4", name: "a new joke goes on", input: { text: "What do cats eat for breakfast? Mice Krispies!", round: 2, memory: [{ round: 1, text: "Why did the cat sit on the computer? To keep an eye on the mouse!" }] }, expect: { pass: true } }
   ]
 });
 libAgent({
@@ -6222,6 +6262,7 @@ function makeArtCritic() {
     questions: [
       "Does it get better? Look at the pictures round by round, then at the Scorekeeper's stars. Do you agree with the Critic?",
       "Is the Critic a fair judge of pictures drawn from its own advice?",
+      "Run the same start twice. Do the Critic's scores change? Is that because the pictures changed, or the Critic did? How could you find out?",
       "Did the Artist follow every suggestion? Compare what it was sent with what it drew next.",
       "Switch on: the Critic reads the program instead of seeing the picture. Is its advice better or worse?",
       "Change the Critic's taste in its instructions, say to “you love simple shapes”. Where does the drawing go?",
@@ -7654,6 +7695,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- A collecting program (like Vote or Referee) waits until it has heard several messages (its {wait} number), then runs once on all of them. If an answer never comes, it runs on what it has at the end. An AI agent can collect too (in its editor: “It answers … once it has N messages”); then it sees all their pictures together, numbered in order, like the Critic in the Evolution example.\n" +
   "- ＋ New society also offers examples to start from: Evolution (three Mutators change a drawing, a Critic scores the parent and the variants together, and a Selector keeps the winner; the trace's Family tree tab shows which picture came from which) and Two Answers (the same question to a Plain agent and to a Contemplative one that pauses on four principles first: emptiness, non-duality, mindfulness and boundless care) and Tic-Tac-Toe (you play X against an AI Rival; the Referee, a program, keeps the board, refuses a square that is already taken and decides who won; a variant lets two AIs play) and Trail Mix Barter (three AI traders barter raisins, cashews and pretzels; the Ledger, a program, keeps track of who has what and refuses offers that don't add up) and Artist and Critic (Ken Kahn's society: an Artist draws in Logo, a Critic who knows what was asked for scores each picture and suggests one change, and a Scorekeeper keeps the scores) and Mini-Ani (Ken Kahn's 1978 program Ani in miniature, with programs only, so it needs no model: a Cast reads a story; Personality, Looks, Relationships and Taste suggest how each character moves and looks; the Choice Points settle their arguments in the open and say why; a Method Chooser plans each scene, and a Director writes it as a Logo film that the Renderer plays) and Mini-Ani with AI voices (the same programs, with AI agents where words are needed: an AI Animator suggests in Ani's words, and the Choice Points weigh its lines like an expert's, 2 to an expert's own word's 3; a Reader turns a story told in your own words into the Cast's sentences, and gets the Cast's complaint back if it can't read them; a Narrator collects the Method Chooser's plans and tells the film at the end; a switch lets You suggest too, at 3).\n" +
   "- An agent called You is the learner: the run waits for their answer.\n" +
+  "- The library (+ Add an agent, in Look inside) has these ready-made programs: " + Object.keys(LIB).filter(t => !LIB[t].group).map(t => LIB[t].name + " (" + LIB[t].about + ")").join("; ") + "\n" +
   "- A rule can come from You (“when You start the run, send your words to …”), so the start reaches more than one agent. A rule can also say “when the run ends”: then the agent's last message is sent on, once, at the very end (Story Chain's Book sends the whole story to the Editor that way).\n" +
   "- Everything is saved in this browser as you go (refreshing keeps it); ⚙️ Settings can switch saving off, and then the work is gone when the tab closes. “Delete this society”, in Look inside, deletes one of your own societies from this browser for good; microworlds have “Reset” instead.\n" +
   "- The top row has the nine microworlds, then YOURS: the four of your own societies used most recently (made from scratch, an example, a copy or an import). ☰ All yours lists every one, to open, or to tick several and delete them. Importing a file with the same name as one of yours asks whether to replace it or keep both (the new one gets “(2)”); choosing an example you have already made starts it afresh, or, if you changed yours, asks whether to start a fresh one or go back to the changed one.\n" +
@@ -7661,6 +7703,8 @@ const HELPER_SYSTEM = PREAMBLE +
   "- ⬇ Export and ⬆ Import, at the top of the page, save the society you are in as a file and open one from a file. An agent's emoji is changed by clicking it at the top of its editor.\n" +
   "- ＋ New society, after the microworld buttons, starts a society from scratch or copies the current one. In your own society, Look inside lets you change its name, question, introduction, questions and start. “+ Add an agent” adds a new AI agent, a Renderer, or a ready-made program from the library.\n" +
   "- After a run, each AI agent's button on the stage shows how many model calls it made and how long they took.\n" +
+  "- Memory and repeats: an AI agent's editor has “It remembers”: “nothing: each message is new” (so it can say the same thing again, like a Joker telling the same joke) or “the whole conversation in this run”. Nothing remembers from one run to the next. The Repeat Catcher, in the library (Look inside, then + Add an agent), is a memory agent for repeats: a gate that remembers everything it is sent in a run, passes on anything new word for word, and stops anything it has heard before (more than half the same words; its {half} can be changed), saying when it heard it. To make it reject a Joker's repeated jokes: a rule from the Joker to the Repeat Catcher; a rule from the Repeat Catcher to the Rater, which sends only new jokes (when pass is false its other rules wait); and a rule from the Repeat Catcher back to the Joker if its data says pass is false, so the Joker hears it was a repeat and tries again. For more than one joke in a run, a rule from the Rater back to the Joker asks for another.\n" +
+  "- Same start, different answers: a model picks its words with some chance, so the same message can get a different answer, and a Rater can give the same joke 9 one time and 8 the next. To see it, run the same start twice and compare (the stage keeps “The run before” under the round cards). A learner might make a Rater steadier with a scoring rule in its instructions (what earns a 10, a 5, a 1), by asking it to say why before it scores, or with several Raters whose scores a Collector puts together; and then test it the same way.\n" +
   "- After a run, “🔎 What the kit noticed”, under the stage's buttons, lists plain checks: an agent nothing was sent to, a rule that's off, a start that goes to the wrong agent, an agent with no instructions of its own. A new society starts with one agent called Agent; agents only talk when a rule tells them to; in your own society, the start's agent is chosen beside the start on the stage.\n" +
   "- 🧱 Build with me, in the Helper (in your own societies), makes the Helper a guide while the learner builds, one question at a time, with four goals shown at the top: two helpers each with a job, a rule so one hears another, the start going to the one who begins, and a run where they all answer.\n" +
   "- Why: in a picture or film whose agents explain themselves (the Mini-Ani), a click on a character shows why it looks and moves like that: its looks (the Director), what it does (the Method Chooser) and the reasons (the Choice Points), with a button to the whole answer in the Trace. A program can end a story with end: true in its data: its other rules wait, as with pass: false, but it isn't a failure, so nothing gets a ✗.\n" +
@@ -7803,7 +7847,7 @@ function helperRequest(soc, trace, question, chat, models) {
 const BUILD_BEGIN = "(I pressed “Build with me”.)", BUILD_RAN = "▶ I ran it.";
 const BUILD_GUIDE = "\nBUILD WITH ME. The learner pressed “Build with me”: you are guiding them while they make a society of their own. It is theirs. Start from their idea: ask what they would like a team of helpers to do. Offer an example (a Joke Team: a Joker tells a joke about a word, and a Rater scores it from 1 to 10) only if they are stuck or ask for one.\n" +
   "Never make a change yourself (you can't) and never give a list of steps. Give one short question, or one small next step, at a time, in one to three short sentences, and say where it is in the kit. Use short, plain words: the learner may be seven.\n" +
-  "The GOALS below are what a first society needs. The learner can reach them in any order; go with the order they choose. First react to what they just did (WHAT THE LEARNER CHANGED, and the latest run): name one thing they did well. When WHAT THE KIT NOTICED lists something, ask a question that helps them see it, rather than telling them the fix, unless they have already tried twice. When every goal is met, ask what they thought would happen, and what they would make better.\n" +
+  "The GOALS below are what a first society needs. The learner can reach them in any order; go with the order they choose. First react to what they just did (WHAT THE LEARNER CHANGED, and the latest run): name one thing they did well. When WHAT THE KIT NOTICED lists something, ask a question that helps them see it, rather than telling them the fix, unless they have already tried twice. When every goal is met, ask what they thought would happen, and what they would make better, and offer an experiment for them to try: run the same start twice and compare (does a Rater give the same score? why not?), or does any agent ever say the same thing twice, and what could remember for it?\n" +
   "To point at part of the kit, end your reply with one of these on a line of its own, and the kit makes it glow: [[show: add-agent]], [[show: add-rule]], [[show: start]], [[show: run]], [[show: look]], or [[show: agent NAME]] with an agent's name. At most one.\n";
 const BUILD_LABELS = { two: "Two helpers, each with a job", rule: "A rule, so one hears another", start: "The start goes to the one who begins", run: "A run where they all answer" };
 function buildProgress(soc, trace, fresh) {
@@ -7823,7 +7867,10 @@ function buildProgress(soc, trace, fresh) {
   return { steps, next: (steps.find(x => !x.done) || {}).id || "", notes };
 }
 // The scripted guide: one question about the first goal not yet met.
-function builderScript(soc, p, said) {
+const BUILD_AFTER = ["Every helper answered! Was it what you thought would happen? What would make it better?",
+  "Here's an experiment: run the same start again, and compare it with the run before. Does every agent say the same thing? Does a score stay the same? Why not?",
+  "Another experiment: does any agent ever say the same thing twice? What could remember what it said, and stop a repeat? (Look for the Repeat Catcher under + Add an agent.)"];
+function builderScript(soc, p, said, turn) {
   const model = a => a.kind === "model" && !a.human, ins = a => String(a.instructions || "").trim();
   const leftover = soc.agents.find(a => model(a) && a.id === "agent" && a.name === "Agent" && ins(a) === FIRST_INSTRUCTIONS);
   const own = soc.agents.filter(a => !model(a) || (!!ins(a) && ins(a) !== FIRST_INSTRUCTIONS)), blank = soc.agents.find(a => model(a) && a !== leftover && (!ins(a) || ins(a) === FIRST_INSTRUCTIONS));
@@ -7837,7 +7884,7 @@ function builderScript(soc, p, said) {
   if (p.next === "rule") return "Your helpers can't hear each other yet: agents only talk when a rule tells them to. Who should hear what " + own[0].name + " says? Press + Add a rule in Look inside.\n[[show: add-rule]]";
   if (p.next === "start") return "The start goes to " + (to ? to.name : "nobody") + " now. Which helper should hear it first? You can choose beside the start.\n[[show: start]]";
   if (p.next === "run") return p.notes.length ? "Look at what the kit noticed after your run: " + p.notes[0].text + " What could you change?" : "What do you think will happen when you press ▶ Run? Say it out loud, then try it.\n[[show: run]]";
-  return "Every helper answered! Was it what you thought would happen? What would make it better?";
+  return BUILD_AFTER[(turn || 0) % BUILD_AFTER.length];
 }
 // What the learner changed since the guide last spoke, in plain words.
 function describeChanges(before, after) {
@@ -7872,7 +7919,7 @@ function buildRequest(soc, trace, question, chat, models, opts) {
   const goals = "GOALS FOR A FIRST SOCIETY (in any order):\n" + p.steps.map(x => "- [" + (x.done ? "done" : "not yet") + "] " + x.label).join("\n") + (o.fresh ? "" : "\n(The latest run, if there is one, was before the society last changed.)");
   const changed = "WHAT THE LEARNER CHANGED SINCE YOUR LAST REPLY:\n" + ((o.changes || []).length ? o.changes.map(c => "- " + c).join("\n") : "(nothing)");
   req.messages[0].content = req.messages[0].content.replace("\n\nThe learner says: ", () => "\n\n" + goals + "\n\n" + changed + "\n\nThe learner says: ");
-  req.meta = { persona: "builder", helperState: { scripted: builderScript(soc, p, question) } };
+  req.meta = { persona: "builder", helperState: { scripted: builderScript(soc, p, question, (chat || []).filter(m => m.who === "ai" && BUILD_AFTER.indexOf(m.text) >= 0).length) } };
   return req;
 }
 // A reply's [[show: …]], taken out of its words.

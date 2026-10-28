@@ -156,4 +156,34 @@ export default function (T, { modelWindow, pageWindow }) {
       after.some(t => /▶ I ran it\./.test(t)) && /Every helper answered/.test(after[after.length - 1]) && all === 4 && !$(".build-hint") && !errors.length;
   });
 
+
+  // 1.21.1: the tester's sister's Joker told the same joke twice; Ken suggested a memory agent that rejects repeats.
+  T.test("Repeat Catcher: a Joker that always tells the same joke is sent back, and the Rater hears the joke only once", ["Library", "Engine"], async () => {
+    const JOKE = "Why did the cat sit on the computer? To keep an eye on the mouse!";
+    const same = { id: "same", label: "same joke", async call(req) { const t = req.meta && req.meta.persona === "rater" ? "8/10" : JOKE; return { text: t, raw: t, data: {}, model: "fake", ms: 0, request: {}, system: req.system, stopReason: "end_turn", warning: "" }; } };
+    const s = jokeTeam();
+    s.agents.shift(); s.starts[0].to = s.roundAgent = "joker"; s.roundLimit = 3;
+    s.agents[1].pretend = "rater";
+    const r1 = Society.addLibraryAgent(s, "repeat-catcher"), id = r1.agent.id;
+    s.rules.push(rule("joker", id), rule(id, "rater"), rule(id, "joker", { when: "data", field: "pass", op: "=", value: "false" }), rule("rater", "joker", { prefix: "Tell another joke." }));
+    const r = Engine.createRun(s, { adapter: same, runtime: Runtime }); r.start({ to: "joker", text: "cats" }); await r.play();
+    const acts = r.run.trace.filter(e => e.kind === "activation" && e.response);
+    const toRater = acts.filter(e => e.agentId === "rater"), stopped = acts.filter(e => e.agentId === id && e.response.data.pass === false);
+    const back = acts.filter(e => e.agentId === "joker" && /That's the same as round 1/.test(e.message.text || ""));
+    return r1.agent.gate === true && toRater.length === 1 && toRater[0].message.text === JOKE && stopped.length >= 1 && back.length >= 1;
+  });
+
+  T.test("Helper: told about memory, the Repeat Catcher, scores that change, and the library; the pretend Helper and Build with me ask about them", ["Helper"], async () => {
+    const H = Helper, sys = H.HELPER_SYSTEM;
+    const ask = async q => (await pretend.call(H.helperRequest(jokeTeam(), [], q, [], null))).text;
+    const repeat = await ask("my joker keeps telling the same joke"), score = await ask("why did the rater give a different score?");
+    const s = jokeTeam(); s.agents.shift(); s.starts[0].to = "joker"; s.rules.push(rule("joker", "rater"));
+    const r = Engine.createRun(s, { adapter: pretend, runtime: Runtime }); r.start({ to: "joker", text: "cats" }); await r.play();
+    const p = H.buildProgress(s, r.run.trace, true), after = [0, 1, 2].map(n => H.builderScript(s, p, "x", n));
+    return /“It remembers”/.test(sys) && /Repeat Catcher/.test(sys) && /rule from the Repeat Catcher back to the Joker if its data says pass is false/.test(sys) && /Rater can give the same joke 9 one time and 8 the next/.test(sys) &&
+      /The library .* Loop Spotter \(/.test(sys) && !/Method Chooser \(/.test(sys) &&
+      /It remembers/.test(repeat) && /Repeat Catcher/.test(score + repeat) && /Run the same start twice/.test(score) &&
+      /^Every helper answered/.test(after[0]) && /run the same start again/.test(after[1]) && /Repeat Catcher/.test(after[2]);
+  });
+
 }

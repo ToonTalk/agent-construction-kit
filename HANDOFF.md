@@ -4,7 +4,7 @@
 
 ## State (2026-10-10)
 
-Agent Kit **1.21.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.21.0 follow reviews
+Agent Kit **1.21.1**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.21.1 follow reviews
 and the first real-model runs (see `SPEC.md` §14). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -91,7 +91,8 @@ folder is a copy without the §14 log.)
   (`app.ui.build`, `askBuilder`): the Helper as a guide, with `BUILD_GUIDE`, four goals (`buildProgress`), what changed
   since its last reply (`describeChanges`), a reply after each run, and `[[show: …]]` (`splitShow`, `showTarget`) that
   makes a button glow. With no model, or when a call fails, `builderScript` asks about the first goal not met. Your own
-  society's start chooses its agent on the stage.
+  society's start chooses its agent on the stage. 1.21.1: the **Repeat Catcher** (a memory gate for repeats), and the
+  Helper's prompt knows the library, “It remembers”, and why scores change between runs.
 - **Speech** (1.9.0, `SpeechUI`): 🔊 Read aloud, a 🎤 by the focused text box, the Helper by voice; when listening
   can't work, the 🎤 explains the OS's own dictation (Windows + H …). Number words aren't moves yet.
 - **Yours** (1.8.0): the top row is the microworlds, then your four most recent societies (`app.used`), then
@@ -133,7 +134,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**675 PASS, 0 FAIL · fingerprint `189c55422337`** · model modules covered 20/20.
+**683 PASS, 0 FAIL · fingerprint `e4eb609d5646`** · model modules covered 20/20.
 Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; `library.test` 189/198 (the 9 look for
 English words, two of them the Mini-Ani's “no …” scenario names; the same 9 as 1.14.0); `node tests/leftovers.mjs
 sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which stay English in the copy.
@@ -144,7 +145,7 @@ sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which s
 |---|---|
 | 1 | Scripted stand-ins (tests only since 1.0.3): both microworlds end to end, deterministic (tested). OpenAI gpt-5.6-terra has been run live by the user and by Claude in Chrome (1.0.2). OpenAI with a key has been run live by the user (v1, before Logo). Keyless and Anthropic-key paths are tested against a fake fetch only. |
 | 2 | Every model call keeps its system prompt, messages, exact request body and raw reply, behind "Show full technical details" (tested). |
-| 3 | All 32 library programs pass all their scenarios; line maps are complete; highlighting works both ways (tested, including in the page). |
+| 3 | All 36 library programs pass all their scenarios; line maps are complete; highlighting works both ways (tested, including in the page). |
 | 4 | Dot Counter isn't fooled by labels, and is fooled by pebbles drawn with CIRCLE (both tested). |
 | 5 | Look inside shows only ordinary agents and rules (schema-validated in tests). |
 | 6 | Editing a shipped agent's pseudocode translates it (a pretend canned variant) and reruns the scenarios (tested). |
@@ -152,7 +153,7 @@ sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which s
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 985 KB, under 1.5 MB (tested); the English artifact builds minified at 750 KB, under 950 KB. |
+| 11 | 985 KB, under 1.5 MB (tested); the English artifact builds minified at 755 KB, under 950 KB. |
 
 ## Open issues
 

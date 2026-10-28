@@ -1,8 +1,8 @@
 {
   "kind": "agent-kit-export",
   "schema": 1,
-  "app": "Agent Kit 1.21.0",
-  "exportedAt": "2026-10-27T09:23:53.653Z",
+  "app": "Agent Kit 1.21.1",
+  "exportedAt": "2026-10-28T13:35:43.427Z",
   "society": {
     "kind": "agent-kit-society",
     "schema": 1,

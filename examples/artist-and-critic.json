@@ -1,8 +1,8 @@
 {
   "kind": "agent-kit-export",
   "schema": 1,
-  "app": "Agent Kit 1.21.0",
-  "exportedAt": "2026-10-27T09:23:53.657Z",
+  "app": "Agent Kit 1.21.1",
+  "exportedAt": "2026-10-28T13:35:43.431Z",
   "society": {
     "kind": "agent-kit-society",
     "schema": 1,
@@ -13,6 +13,7 @@
     "questions": [
       "Does it get better? Look at the pictures round by round, then at the Scorekeeper's stars. Do you agree with the Critic?",
       "Is the Critic a fair judge of pictures drawn from its own advice?",
+      "Run the same start twice. Do the Critic's scores change? Is that because the pictures changed, or the Critic did? How could you find out?",
       "Did the Artist follow every suggestion? Compare what it was sent with what it drew next.",
       "Switch on: the Critic reads the program instead of seeing the picture. Is its advice better or worse?",
       "Change the Critic's taste in its instructions, say to “you love simple shapes”. Where does the drawing go?",
