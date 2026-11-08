@@ -4,7 +4,7 @@
 
 ## State (2026-10-10)
 
-Agent Kit **1.22.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.22.0 follow reviews
+Agent Kit **1.22.1**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.22.1 follow reviews
 and the first real-model runs (see `SPEC.md` §14). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -95,6 +95,8 @@ folder is a copy without the §14 log.)
   Helper's prompt knows the library, “It remembers”, and why scores change between runs.
 - **🗺️ Map** (1.22.0, `societyMap`/`societyMapSVG`/`openSocietyMap`): columns by distance from the start (off rules
   count, so switching one off moves nobody), agencies as one box via `topAgencyOf`, counts from the trace's `fired`.
+  1.22.1: `app.ui.mapPinned` puts a compact copy on the stage (`stageMapHTML`), lit by `rec.working` or the last answer.
+- **`rule.sayWho`** (1.22.1): `buildMessage` marks the message; `composeUserText` puts `sayWhoText` first, for AI agents only.
 - **Speech** (1.9.0, `SpeechUI`): 🔊 Read aloud, a 🎤 by the focused text box, the Helper by voice; when listening
   can't work, the 🎤 explains the OS's own dictation (Windows + H …). Number words aren't moves yet.
 - **Yours** (1.8.0): the top row is the microworlds, then your four most recent societies (`app.used`), then
@@ -136,7 +138,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**687 PASS, 0 FAIL · fingerprint `92f8aff6f462`** · model modules covered 20/20.
+**691 PASS, 0 FAIL · fingerprint `538c32a2c514`** · model modules covered 20/20.
 Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; `library.test` 189/198 (the 9 look for
 English words, two of them the Mini-Ani's “no …” scenario names; the same 9 as 1.14.0); `node tests/leftovers.mjs
 sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which stay English in the copy.
@@ -155,7 +157,7 @@ sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which s
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 1,004 KB, under 1.5 MB (tested); the English artifact builds minified at 764 KB, under 950 KB. |
+| 11 | 1,010 KB, under 1.5 MB (tested); the English artifact builds minified at 768 KB, under 950 KB. |
 
 ## Open issues
 

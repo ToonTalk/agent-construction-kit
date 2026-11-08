@@ -36,4 +36,30 @@ export default function (T, { pageWindow }) {
     const m = openMap(pw), names = Array.from(m.querySelectorAll(".m-node text")).map(t => t.textContent);
     return names.some(n => /Choosers \(13\)/.test(n)) && names.some(n => /Experts \(4\)/.test(n)) && m.querySelectorAll(".m-node.k-agency").length === 2 && !errors.length;
   });
+
+  // 1.22.1, after Ken's look at Secret Number's map: the picture scales to fit (its frame cut the arcs off), and it can
+  // stay on the stage, under ▶ Run, lit as the run goes.
+  T.test("page: 📌 the map kept on the stage scales to fit, lights the working agent and the arrows its answer went along, and hides again", ["Society", "Engine"], async () => {
+    const { w: pw, errors } = await boot();
+    const ak = pw.__ak, $ = q => pw.document.querySelector(q);
+    pw.document.querySelector('[data-act="world"][data-id="secret"]').click();
+    const m = openMap(pw), svg = m.querySelector("svg"), fits = !svg.getAttribute("width") && /max-width:\d+px/.test(svg.getAttribute("style"));
+    m.querySelector('[data-act="map-pin"]').click();
+    const pinned = !!$("#colCenter .stage-map svg") && !pw.document.querySelector(".modal-back .society-map");
+    await ak.stepNow(); await ak.stepNow();
+    const lit = !!$("#colCenter .stage-map .m-node.now") && pw.document.querySelectorAll("#colCenter .stage-map .m-edge.just").length >= 1;
+    $('#colCenter [data-act="map-unpin"]').click();
+    return fits && pinned && lit && !$("#colCenter .stage-map") && !errors.length;
+  });
+
+  T.test("page: ▶ Run with the map closes the picture, keeps it on the stage and runs; afterwards its arrows count the messages", ["Society", "Engine"], async () => {
+    const { w: pw, errors } = await boot();
+    pw.document.querySelector('[data-act="world"][data-id="story"]').click();
+    const m = openMap(pw);
+    m.querySelector('[data-act="map-run"]').click();
+    await sleep(300);
+    const labels = Array.from(pw.document.querySelectorAll("#colCenter .stage-map .m-label")).map(t => t.textContent);
+    return !pw.document.querySelector(".modal-back .society-map") && labels.filter(t => /×\d+/.test(t)).length >= 8 && !errors.length;
+  });
+
 }

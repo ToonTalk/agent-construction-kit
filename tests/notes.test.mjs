@@ -186,4 +186,34 @@ export default function (T, { modelWindow, pageWindow }) {
       /^Every helper answered/.test(after[0]) && /run the same start again/.test(after[1]) && /Repeat Catcher/.test(after[2]);
   });
 
+
+  // 1.22.1: Ken's “Bad jokes” society drifted into two agents thanking each other: each took the other for a person.
+  T.test("a rule can say it's from another agent: the AI agent is told who sent it; programs and other rules are unchanged; it survives export", ["Engine", "Society"], async () => {
+    const seen = [];
+    const spy = { id: "spy", label: "spy", async call(req) { seen.push(req); return pretend.call(req); } };
+    const s = jokeTeam(); s.agents.shift(); s.starts[0].to = s.roundAgent = "joker"; s.roundLimit = 1;
+    s.rules.push(rule("joker", "rater", { sayWho: true }));
+    const r = Engine.createRun(s, { adapter: spy, runtime: Runtime }); r.start({ to: "joker", text: "cats" }); await r.play();
+    const toRater = seen.find(q => JSON.stringify(q.messages).indexOf("another agent in your team") >= 0), toJoker = seen[0];
+    const said = JSON.stringify(toRater ? toRater.messages : "");
+    const back = Society.importSociety(Society.exportSociety(s, null)).society, plain = Society.importSociety(Society.exportSociety(jokeTeam(), null)).society;
+    s.rules[0].sayWho = false;
+    const r2 = Engine.createRun(s, { adapter: spy, runtime: Runtime }); seen.length = 0; r2.start({ to: "joker", text: "cats" }); await r2.play();
+    return !!toRater && /This message is from Joker, another agent in your team \(not a person\)\./.test(said) && !/another agent/.test(JSON.stringify(toJoker.messages)) &&
+      back.rules[0].sayWho === true && plain.rules.every(x => !("sayWho" in x)) && !seen.some(q => /another agent in your team/.test(JSON.stringify(q.messages))) &&
+      /saying it comes from another agent/.test(w.AK.Helper.describeSociety(back)) && /say it's from another agent/.test(Helper.HELPER_SYSTEM);
+  });
+
+
+  T.test("page: a rule's ✎ Edit has “say it's from another agent”, and its sentence says so", ["Society"], async () => {
+    const { w: pw, errors } = await pageWindow();
+    const ak = pw.__ak, s = jokeTeam(); s.id = "jt-say"; s.agents.shift(); s.starts[0].to = s.roundAgent = "joker"; s.rules.push(rule("joker", "rater"));
+    ak.app.societies[s.id] = s; ak.app.order.push(s.id); ak.app.activeId = s.id; ak.app.ui.lookInside = true; ak.app.ui.editingRules.add(s.rules[0].id); ak.renderAll();
+    const box = pw.document.querySelector('#colLeft input[data-field="sayWho"]');
+    box.checked = true; box.dispatchEvent(new pw.Event("change", { bubbles: true }));
+    ak.app.ui.editingRules.clear(); ak.renderAll();
+    const sentence = pw.document.querySelector("#colLeft .rule-read .sentence").textContent;
+    return s.rules[0].sayWho === true && /send its words to .*Rater, saying it comes from another agent\./.test(sentence) && !errors.length;
+  });
+
 }
