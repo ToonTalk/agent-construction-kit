@@ -182,3 +182,41 @@ use `plural(n, "samhälle|samhällen")` instead.)
 - The safety PREAMBLE (Part 1) gets one more sentence: "Skriv alltid på svenska." The Helper's and the Translator's
   system prompts (Part 5) say to write to the learner in Swedish.
 - AK.VERSION stays as it is.
+
+## Added for 1.18.0–1.22.1 (ported 2026-11-08)
+- The knowledge-writer: “✨ Teach” → “✨ Lär ut”; a line a model suggested remembers it (“suggested by …” → “föreslagen av …”).
+- AI Way Finder → AI-Vägvisaren (🗺️ stays its emoji); “No AI Way Finder” → “Ingen AI-Vägvisare”. Its lines are
+  “verb: way, way” with the Swedish ways above (“älskar: möts”).
+- Agencies (Minsky's Society of Mind): agency → agentur, agencies → agenturer; “Its agency” → “Dess agentur”;
+  “+ Add an agency” → “+ Lägg till en agentur”. Mini-Ani as a society of mind → Mini-Ani som ett tankesamhälle.
+  The Chooser program (`ani-quality`) → Delväljare (each named after what it chooses, with the Choice Points' Swedish
+  element words: Fart, Livlighet …); the agency of them, Choosers → Delväljarna; Experts → Experterna;
+  Gatherer (`ani-gather`) → Insamlaren (Collector is already Samlaren; Selector is Väljaren).
+- 🔎 What the kit noticed → 🔎 Det här märkte kitet. FIRST_INSTRUCTIONS must be exactly the blank agent's Swedish
+  instructions: “Du är en vänlig agent. Svara med en eller två korta meningar.” The blank society's agent stays “Agent”;
+  a new one is “Ny agent”.
+- 🧱 Build with me → 🧱 Bygg med mig · “Building with you” → “Vi bygger tillsammans” · “Stop building together” →
+  “Sluta bygga tillsammans” · “👉 Show me” → “👉 Visa mig” · “Build it with the Helper” → “Bygg det med Hjälparen”.
+  The four goals: “Two helpers, each with a job” → “Två hjälpare, med var sitt jobb” · “A rule, so one hears another” →
+  “En regel, så att en hör en annan” · “The start goes to the one who begins” → “Starten går till den som börjar” ·
+  “A run where they all answer” → “En körning där alla svarar”. “▶ I ran it.” → “▶ Jag körde det.”;
+  “(I pressed “Build with me”.)” → “(Jag tryckte på ”Bygg med mig”.)”. The Joke Team → Skämtlaget (a Joker → Skämtaren,
+  a Rater → Betygsättaren).
+- Repeat Catcher (`repeat-catcher`) → Upprepningsvakten (🔂), like Namnvakten. “That's the same as round 1: “…” Try
+  something new.” → “Det är samma som i omgång 1: ”…” Hitta på något nytt.”
+- 🗺️ Map → 🗺️ Karta · “… as a picture” → “… som en bild” · “You (the start)” → “Du (starten)” · “📌 Keep it on the
+  stage” → “📌 Behåll den på scenen” · “▶ Run with the map” → “▶ Kör med kartan” · “⤢ Bigger” → “⤢ Större” ·
+  “✕ Hide” → “✕ Göm” · “the start” (an arrow's label) → “starten” · “when the run ends” → “när körningen slutar” ·
+  “off” → “av”.
+- A rule's “say it's from another agent” → “säg att det kommer från en annan agent”; its sentence ends “…, och säger att
+  det kommer från en annan agent.”; the AI agent is told “Det här meddelandet kommer från NAMN, en annan agent i ditt
+  lag (inte en människa).”
+- Model choices keep their product names; “cheapest” → “billigast”, “strongest” → “starkast”, “flagship, costs more” →
+  “flaggskepp, kostar mer”, “newest Flash, good with pictures” → “nyaste Flash, bra på bilder”, “quickest” → “snabbast”,
+  “(proven through the chat proxy)” → “(beprövad genom chattens proxy)”. “type any model name” → “skriv vilket
+  modellnamn som helst”.
+- Chosen while porting (keep them): the society of mind's agencies “Hur de rör sig”, “Hur de kommer överens”, “Hur de
+  ser ut”; the Helper's prompt headings “DET HÄR MÄRKTE KITET EFTER DEN SENASTE KÖRNINGEN”, “DET HÄR ÄNDRADE ELEVEN
+  SEDAN DITT SENASTE SVAR”, “MÅL FÖR ETT FÖRSTA SAMHÄLLE” with “[klart]” / “[inte än]”; the Teach section's “✓ Lägg in
+  den” / “✕ Nej tack”; the Repeat Catcher's slot {hälften}; ani-methods-ai's “no” slot {nej}. The Delväljare keep the
+  English key in `thing` for the Director and put the Swedish word in `name`.

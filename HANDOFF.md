@@ -78,8 +78,10 @@ folder is a copy without the §14 log.)
 - **Translated copies** (1.10.1): `sv/index.html` is a Swedish snapshot made by coding agents from `sv/GLOSSARY.md`
   (see TRANSLATING.md). It does not follow later changes: remake it, or patch both files with one script and two
   phrase tables (as 1.11.0 did). Check copies with `AK_HTML=sv/index.html node tests/run.mjs "any language"`.
-  **Paused (Ken, 2026-10-23):** the Swedish copy is in step with 1.17.0 and is not patched after it, until Ken is
-  ready to release. Then bring it up to date from `git diff c38eae4 -- index.html`, with `sv/GLOSSARY.md`.
+  **In step with 1.22.1 (2026-11-08).** It was ported from 1.17.0 by aligning the English 1.17.0 and 1.22.1 lines:
+  unchanged lines keep their Swedish, and the 1,400 new or changed lines were translated in four chunks (library,
+  Helper and Teach, seeds and engine, the interface) with the glossary's new section “Added for 1.18.0–1.22.1”. Do
+  the same next time: `git diff` from the last ported commit, and keep the Swedish copy line-aligned with the English.
 - **Artifact size:** keep the English artifact under 950 KB (the build refuses more). Ken wants the chat-copy route,
   because its artifact can still send pictures to Claude; a published artifact's `sample` can't. The build minifies
   its scripts (terser: `npm install -g terser`): 1.21.0 is 750 KB.
@@ -139,9 +141,10 @@ folder is a copy without the §14 log.)
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
 **691 PASS, 0 FAIL · fingerprint `538c32a2c514`** · model modules covered 20/20.
-Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; `library.test` 189/198 (the 9 look for
-English words, two of them the Mini-Ani's “no …” scenario names; the same 9 as 1.14.0); `node tests/leftovers.mjs
-sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which stay English in the copy.
+Swedish copy (1.22.1): `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; every library program passes its
+scenarios; the whole suite on the copy has no test that passed on the 1.17.0 copy and fails now, and 34 of the 66 newer
+tests pass (the rest compare English words); `node tests/leftovers.mjs sv/index.html` 43 sentences (of 1,337), all from
+the scripted stand-ins, which stay English in the copy.
 
 ## Acceptance criteria (§11)
 
