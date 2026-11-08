@@ -71,6 +71,10 @@ one to a claude.ai chat and ask Claude to copy it, exactly as it is, into an HTM
 **Other languages:** there is a Swedish copy at [sv/](https://toontalk.github.io/agent-construction-kit/sv/)
 (*på svenska*). Anyone with a coding agent can make a copy in another language: see [TRANSLATING.md](TRANSLATING.md).
 
+**🗺️ Map:** beside 🔍 Look inside, a picture of the whole society: each agent a box (an agency is one box), each
+rule an arrow saying when it sends, in columns that follow the messages from the start. A switched-off rule is dashed;
+after a run, each arrow says how many messages went along it. Click an agent to open it.
+
 **Building your first society:** after a run, **🔎 What the kit noticed** says, without any AI, what most often
 goes wrong in a first society: an agent no rule sends anything to, a start that goes to the wrong agent, a rule that's
 off, the agent every new society starts with left as it was. In a society of your own, the Helper's **🧱 Build with me**

@@ -162,6 +162,13 @@ img.zoomable{cursor:zoom-in}img.zoomable:hover,img.zoomable:focus{outline:2px so
 .world.needs{opacity:.5;border-style:dashed}.world.needs.on{opacity:.75}
 .build-goals{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;padding:6px 12px;border-bottom:1px solid var(--line);font-size:12px}.build-goals .goal{border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--ink-soft)}.build-goals .goal.done{background:var(--accent-bg);border-color:var(--accent);color:var(--ink)}.build-offer{margin:0 0 8px}.hmsg.you.auto{opacity:.7;font-style:italic}
 .glow{outline:3px solid #f59e0b!important;outline-offset:2px;animation:glowpulse 1s ease-in-out 4}@keyframes glowpulse{50%{box-shadow:0 0 0 8px rgba(245,158,11,.3)}}
+.map-wrap{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:12px;background:var(--card)}.society-map{display:block;max-width:none;font-family:var(--body)}
+.society-map .m-node rect{fill:var(--card);stroke:var(--line-strong);stroke-width:1.5}.society-map .m-node text{font-size:13px;fill:var(--ink);font-weight:600}
+.society-map .k-model rect{fill:var(--model-bg);stroke:var(--model)}.society-map .k-program rect{fill:var(--program-bg);stroke:var(--program)}.society-map .k-renderer rect{fill:var(--renderer-bg);stroke:var(--renderer)}.society-map .k-agency rect{fill:var(--accent-bg);stroke:var(--accent);stroke-dasharray:5 3}.society-map .k-start rect,.society-map .k-anyone rect{fill:var(--paper);stroke:var(--ink-soft)}
+.society-map [data-act]{cursor:pointer}.society-map [data-act]:hover rect,.society-map [data-act]:focus rect{stroke-width:3}
+.society-map .m-edge{fill:none;stroke:var(--ink-soft);stroke-width:1.8}.society-map .m-edge.start{stroke:var(--accent);stroke-width:2.4}.society-map .m-edge.off{stroke-dasharray:6 5;opacity:.55}.society-map .m-edge.idle{opacity:.3}.society-map .m-head{fill:var(--ink-soft)}.society-map .m-head.off{opacity:.55}
+.society-map .m-label{font-size:11px;fill:var(--ink);paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round}.society-map .m-label.idle{opacity:.45}
+.map-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.map-legend .lg{border:1.5px solid var(--line-strong);border-radius:8px;padding:1px 8px}.map-legend .k-model{background:var(--model-bg);border-color:var(--model)}.map-legend .k-program{background:var(--program-bg);border-color:var(--program)}.map-legend .k-renderer{background:var(--renderer-bg);border-color:var(--renderer)}.map-legend .k-agency{background:var(--accent-bg);border-color:var(--accent);border-style:dashed}
 .run-notes{border:1px solid var(--line);border-left:4px solid var(--focus);border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px}.run-notes .rn-head{font-weight:700;margin-bottom:2px}.run-notes ul{margin:0;padding-left:18px}.run-notes li{margin:3px 0}
 .needs-note{background:var(--warn-bg);color:#6B4A0A;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px}
 .guide .steps li{margin:6px 0}.guide details.ref{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}.guide details.ref summary{cursor:pointer}.guide h4{margin:12px 0 4px}
@@ -438,7 +445,7 @@ textarea.logo-ta{background:#FCFBF5;border-color:#EDE6CC;font-size:12.5px;line-h
 (function (G) {
 "use strict";
 const AK = (G.AK = {});
-AK.VERSION = "1.21.1";
+AK.VERSION = "1.22.0";
 
 /* ===== SECTION: UTIL ===== */
 function fnv(str, seed) {
@@ -7708,6 +7715,7 @@ const HELPER_SYSTEM = PREAMBLE +
   "- Memory and repeats: an AI agent's editor has “It remembers”: “nothing: each message is new” (so it can say the same thing again, like a Joker telling the same joke) or “the whole conversation in this run”. Nothing remembers from one run to the next. The Repeat Catcher, in the library (Look inside, then + Add an agent), is a memory agent for repeats: a gate that remembers everything it is sent in a run, passes on anything new word for word, and stops anything it has heard before (more than half the same words; its {half} can be changed), saying when it heard it. To make it reject a Joker's repeated jokes: a rule from the Joker to the Repeat Catcher; a rule from the Repeat Catcher to the Rater, which sends only new jokes (when pass is false its other rules wait); and a rule from the Repeat Catcher back to the Joker if its data says pass is false, so the Joker hears it was a repeat and tries again. For more than one joke in a run, a rule from the Rater back to the Joker asks for another.\n" +
   "- Same start, different answers: a model picks its words with some chance, so the same message can get a different answer, and a Rater can give the same joke 9 one time and 8 the next. To see it, run the same start twice and compare (the stage keeps “The run before” under the round cards). A learner might make a Rater steadier with a scoring rule in its instructions (what earns a 10, a 5, a 1), by asking it to say why before it scores, or with several Raters whose scores a Collector puts together; and then test it the same way.\n" +
   "- After a run, “🔎 What the kit noticed”, under the stage's buttons, lists plain checks: an agent nothing was sent to, a rule that's off, a start that goes to the wrong agent, an agent with no instructions of its own. A new society starts with one agent called Agent; agents only talk when a rule tells them to; in your own society, the start's agent is chosen beside the start on the stage.\n" +
+  "- 🗺️ Map, beside 🔍 Look inside, shows the society as a picture: each agent a box, each rule an arrow saying when it sends (dashed when switched off), from You on the left; after a run each arrow says how many messages went along it. Clicking an agent there opens it.\n" +
   "- 🧱 Build with me, in the Helper (in your own societies), makes the Helper a guide while the learner builds, one question at a time, with four goals shown at the top: two helpers each with a job, a rule so one hears another, the start going to the one who begins, and a run where they all answer.\n" +
   "- Why: in a picture or film whose agents explain themselves (the Mini-Ani), a click on a character shows why it looks and moves like that: its looks (the Director), what it does (the Method Chooser) and the reasons (the Choice Points), with a button to the whole answer in the Trace. A program can end a story with end: true in its data: its other rules wait, as with pass: false, but it isn't a failure, so nothing gets a ✗.\n" +
   "- Agencies (as in Minsky's Society of Mind): a named group of agents, or of other agencies. A rule from an agency fires when any agent in it responds; a rule to an agency sends to every agent in it but the sender. Look inside, the stage and the trace show an agency folded into one line until it is opened. “+ Add an agency” in Look inside makes one; an agent's editor has “Its agency”. Mini-Ani as a society of mind uses them: thirteen choosers, each choosing one thing about everyone, and a Gatherer that chooses nothing; it makes the same film as the Mini-Ani.\n" +
@@ -8849,6 +8857,91 @@ function renderAll() {
   if (app.ui.settingsModal) renderSettings();
 }
 
+/* ===== SECTION: MAP (the society as a picture: agents as boxes, rules as arrows) ===== */
+// Columns follow the messages: You (the start) on the left, then whoever the start reaches, then whoever they send to,
+// and so on; an agent nothing reaches goes in a last column. An agency is one box, as on the stage. An arrow that goes
+// back, or along its own column, curves. A rule that's off is dashed; after a run, each arrow says how many messages
+// went along it, and the ones that carried none are faint. Clicking an agent opens it.
+function societyMap(s, trace) {
+  const top = id => { const g = Society.topAgencyOf(s, id); return g ? g.id : id; };
+  const nodes = [{ id: "you", name: "You (the start)", emoji: "🙋", kind: "start" }], seen = new Set(["you"]);
+  for (const a of s.agents) { const t = top(a.id); if (seen.has(t)) continue; seen.add(t); const g = Society.agencyById(s, t); nodes.push(g ? { id: g.id, name: g.name, emoji: g.emoji, kind: "agency", n: Society.agencyMembers(s, g.id).length } : { id: a.id, name: a.name, emoji: a.emoji, kind: a.kind, human: !!a.human }); }
+  if (s.rules.some(r => r.from === "*")) nodes.push({ id: "*", name: "anyone", emoji: "✳️", kind: "anyone" });
+  const byId = new Map(nodes.map(n => [n.id, n]));
+  const fired = {};
+  for (const e of trace || []) for (const f of e.fired || []) fired[f.ruleId] = (fired[f.ruleId] || 0) + 1;
+  const ran = (trace || []).some(e => e.kind === "run-end");
+  const edges = [];
+  for (const st of (s.starts || []).slice(0, 1)) if (byId.has(top(st.to))) edges.push({ from: "you", to: top(st.to), label: "the start", on: true, start: true, n: ran ? 1 : null });
+  for (const r of s.rules) {
+    const from = r.from === "you" ? "you" : r.from === "*" ? "*" : top(r.from), to = top(r.to);
+    if (!byId.has(from) || !byId.has(to) || (from === to && Society.agencyById(s, from))) continue;
+    const cond = r.when === "end" ? "when the run ends" : r.when === "text" ? "if its words have “" + String(r.word || "").slice(0, 18) + "”" : r.when === "data" ? "if " + (r.field || "") + " " + (r.op || "=") + " " + (r.value || "") : "";
+    const what = r.send && r.send !== "text" ? Society.sendWords(r.send) : "";
+    edges.push({ from, to, rule: r.id, on: r.enabled !== false, label: [cond, what].filter(Boolean).join(", "), n: ran ? (fired[r.id] || 0) : null });
+  }
+  // Columns: how many arrows from the start (rules that are off count too, so switching one off doesn't move anyone).
+  const col = new Map([["you", 0]]), queue = ["you"];
+  while (queue.length) { const id = queue.shift(); for (const e of edges) if (e.from === id && !col.has(e.to)) { col.set(e.to, col.get(id) + 1); queue.push(e.to); } }
+  const last = Math.max.apply(null, Array.from(col.values())) + 1;
+  for (const n of nodes) n.col = n.id === "*" ? 0 : col.has(n.id) ? col.get(n.id) : last;
+  const cols = [];
+  for (const n of nodes) { (cols[n.col] = cols[n.col] || []).push(n); }
+  const W = 150, H = 44, GX = 120, GY = 34, PAD = 30;
+  const height = Math.max.apply(null, cols.filter(Boolean).map(c => c.length)) * (H + GY) - GY;
+  cols.forEach((c, i) => { if (!c) return; const off = (height - (c.length * (H + GY) - GY)) / 2; c.forEach((n, j) => { n.x = PAD + i * (W + GX); n.y = PAD + 26 + off + j * (H + GY); }); });
+  return { nodes, edges, width: PAD * 2 + cols.length * (W + GX) - GX, height: height + PAD * 2 + 40, W, H, ran };
+}
+function societyMapSVG(s, trace) {
+  const m = societyMap(s, trace), W = m.W, H = m.H, byId = new Map(m.nodes.map(n => [n.id, n]));
+  const pairs = {};
+  let lines = "", labels = "", top = 0, bottom = m.height;
+  for (const e of m.edges) {
+    const a = byId.get(e.from), b = byId.get(e.to), k = [e.from, e.to].sort().join("|"), i = pairs[k] = (pairs[k] || 0) + 1;
+    const bend = (i - 1) * 22 * (i % 2 ? 1 : -1);
+    let d, lx, ly;
+    if (a === b) { const x = a.x + W - 30, y = a.y; d = "M" + x + " " + y + " C" + (x + 10) + " " + (y - 44 - bend) + " " + (x + 50) + " " + (y - 30 - bend) + " " + (a.x + W) + " " + (y + 12); lx = x + 30; ly = y - 36 - bend; }
+    else if (b.col > a.col) { const x1 = a.x + W, y1 = a.y + H / 2, x2 = b.x, y2 = b.y + H / 2, cx = (x1 + x2) / 2, cy = (y1 + y2) / 2 + bend, t = 0.62; d = "M" + x1 + " " + y1 + " Q" + cx + " " + cy + " " + x2 + " " + y2; lx = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * cx + t * t * x2; ly = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * cy + t * t * y2 - 5; }   // the label nearer the arrow's end, so arrows fanning out don't share a spot
+    else if (b.col === a.col) {   // within a column: a bulge out to the right (or the left, for every other one)
+      const left = (i % 2 === 0), x = left ? a.x : a.x + W, y1 = a.y + H / 2 + (b.y > a.y ? 8 : -8), y2 = b.y + H / 2 + (b.y > a.y ? -8 : 8), out = (left ? -1 : 1) * (38 + (i - 1) * 12);
+      d = "M" + x + " " + y1 + " C" + (x + out) + " " + y1 + " " + (x + out) + " " + y2 + " " + x + " " + y2; lx = x + out * 0.75; ly = (y1 + y2) / 2 + 4;
+    }
+    else {   // back: an arc over the top (or under, for every other one)
+      const under = (i % 2 === 0), x1 = a.x + W / 2 + (under ? 12 : -12), x2 = b.x + W / 2 + (under ? -12 : 12), y1 = under ? a.y + H : a.y, y2 = under ? b.y + H : b.y;
+      const lift = 50 + Math.min(Math.abs(x1 - x2) / 12, 50) + (i - 1) * 16, cy = under ? Math.max(y1, y2) + lift : Math.min(y1, y2) - lift;
+      d = "M" + x1 + " " + y1 + " C" + x1 + " " + cy + " " + x2 + " " + cy + " " + x2 + " " + y2;
+      const peak = 0.125 * (y1 + y2) + 0.75 * cy;   // the curve's highest (or lowest) point
+      lx = (x1 + x2) / 2; ly = under ? peak + 14 : peak - 6;
+      top = Math.min(top, peak - 12); bottom = Math.max(bottom, peak + 12);
+    }
+    top = Math.min(top, ly - 14); bottom = Math.max(bottom, ly + 6);
+    const used = e.n == null || e.n > 0, cls = "m-edge" + (e.on ? "" : " off") + (e.start ? " start" : "") + (used ? "" : " idle");
+    lines += '<path class="' + cls + '" d="' + d + '" marker-end="url(#mArrow' + (e.on ? "" : "Off") + ')"><title>' + esc((e.on ? "" : "(switched off) ") + a.name + " → " + b.name + (e.label ? ", " + e.label : "") + (e.n != null ? ": " + plural(e.n, "message") + " last run" : "")) + '</title></path>';
+    const text = [e.on ? "" : "off", e.label || "", e.n != null && !e.start ? "×" + e.n : ""].filter(Boolean).join(" · ");
+    if (text) labels += '<text class="m-label' + (used ? "" : " idle") + '" x="' + Math.round(lx) + '" y="' + Math.round(ly) + '" text-anchor="middle">' + esc(text) + '</text>';
+  }
+  const boxes = m.nodes.map(n => {
+    const name = n.name.length > 17 ? n.name.slice(0, 16) + "…" : n.name, open = n.kind !== "start" && n.kind !== "anyone";
+    return '<g class="m-node k-' + n.kind + (n.human ? " human" : "") + '"' + (open ? ' data-act="' + (n.kind === "agency" ? "map-agency" : "map-agent") + '" data-id="' + esc(n.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(n.name) + '"' : "") + '><rect x="' + n.x + '" y="' + n.y + '" width="' + W + '" height="' + H + '" rx="12"/><text x="' + (n.x + 12) + '" y="' + (n.y + H / 2 + 5) + '">' + esc(n.emoji + " " + name) + (n.kind === "agency" ? " (" + n.n + ")" : "") + '</text><title>' + esc(n.name + (n.kind === "agency" ? ": an agency of " + plural(n.n, "agent") : n.kind === "program" ? ": a programmed agent" : n.kind === "renderer" ? ": draws Logo" : n.kind === "model" ? (n.human ? ": you answer here" : ": an AI agent") : "")) + '</title></g>';
+  }).join("");
+  return '<svg class="society-map" viewBox="0 ' + Math.floor(top) + ' ' + Math.round(m.width) + ' ' + Math.ceil(bottom - top) + '" width="' + Math.round(m.width) + '" role="img" aria-label="' + esc(s.title) + ' as a picture: its agents and the rules between them"><defs><marker id="mArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-head"/></marker><marker id="mArrowOff" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-head off"/></marker></defs>' + lines + boxes + labels + '</svg>';
+}
+function openSocietyMap() {
+  const s = soc(), trace = runOrLastTrace(s.id), ran = trace.some(e => e.kind === "run-end");
+  const body = '<p class="hint">Each box is an agent; each arrow is a rule, and says when it sends. ' + (ran ? "The numbers say how many messages went along each arrow in the last run; faint arrows carried none. " : "Run it, and the arrows will say how many messages went along them. ") + 'A dashed arrow is a rule that is switched off. Click an agent to open it.</p><div class="map-wrap">' + societyMapSVG(s, trace) + '</div>' +
+    '<div class="map-legend small muted"><span class="lg k-model">AI agent</span><span class="lg k-program">programmed agent</span>' + (s.agents.some(a => a.kind === "renderer") ? '<span class="lg k-renderer">Renderer</span>' : "") + ((s.agencies || []).length ? '<span class="lg k-agency">agency</span>' : "") + '</div>';
+  const m = openModal({ title: "🗺️ " + s.title + " as a picture", body, wide: true });
+  m.body.addEventListener("click", ev => {
+    const g = ev.target.closest("[data-act='map-agent'],[data-act='map-agency']");
+    if (!g) return;
+    m.close();
+    if (g.dataset.act === "map-agent") openAgent(g.dataset.id);
+    else { app.ui.lookInside = true; app.ui.agencyOpen.add(s.id + ":" + g.dataset.id); renderAll(); }
+  });
+  m.body.addEventListener("keydown", ev => { if ((ev.key === "Enter" || ev.key === " ") && ev.target.closest("[data-act^='map-']")) { ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent("click", { bubbles: true })); } });
+  return m;
+}
+
 /* ===== SECTION: LEFT COLUMN (question card + look inside) ===== */
 function renderLeft() {
   const s = soc();
@@ -8857,7 +8950,7 @@ function renderLeft() {
   const showInside = app.ui.lookInside || app.ui.mobileTab === "inside";
   let h = '<div class="card qcard"><div class="kicker">' + esc(s.title) + '</div>' + (s.intro ? '<p class="intro">' + esc(s.intro) + '</p>' : "") + linkHTML(s) + '<div class="big-q">' + esc(s.question || s.title) + '</div>' +
     (questionsFor(s).length ? '<ul>' + questionsFor(s).map(q => "<li>" + esc(q) + "</li>").join("") + '</ul>' : "") + modelAdviceHTML(s) +
-    '<div class="row" style="margin-top:10px"><button class="btn ' + (showInside ? "" : "primary") + '" data-act="look">' + (showInside ? "Hide the inside" : "🔍 Look inside") + '</button></div></div>';
+    '<div class="row" style="margin-top:10px"><button class="btn ' + (showInside ? "" : "primary") + '" data-act="look">' + (showInside ? "Hide the inside" : "🔍 Look inside") + '</button><button class="btn" data-act="society-map" title="See the agents and the rules between them as a picture">🗺️ Map</button></div></div>';
   if (showInside) h += insideHTML(s);
   host.innerHTML = h;
   const layout = $(".layout");
@@ -10339,6 +10432,7 @@ const GUIDES = {
     "<p>Stuck? Ask the <b>🤔 Helper</b> (bottom right). It knows where everything is, and it will ask you questions back. In a society of your own, <b>🧱 Build with me</b> makes it a guide: you decide what to make, and it asks one question at a time while you build. Working with a friend? One of you drives and the other predicts; swap every run.</p>" +
     "<details class='ref'><summary><b>Everything else, when you need it</b></summary>" +
     "<h4>The stage</h4><p><b>▶ Run</b> goes until the round limit. <b>⏭ Step</b> delivers one message at a time, and Run carries on from there. <b>↺ Reset</b> starts over. <b>🙋 You be the …</b> lets you take an agent's place: the run waits for your answer. One-click switches under the start change several rules at once. If a grown-up has set up more than one model, the <b>Models</b> row lets you choose which model each AI agent uses. After a run, each AI agent's button says how many model calls it made.</p>" +
+    "<h4>The map</h4><p><b>🗺️ Map</b>, beside 🔍 Look inside, shows the whole society as a picture: each agent is a box, and each rule is an arrow that says when it sends. It starts from You, on the left. A dashed arrow is a rule that is switched off. After a run, each arrow says how many messages went along it (×4), so you can see which ones were used. Click an agent in the picture to open it.</p>" +
     "<h4>Rules</h4><p>In Look inside, every rule reads as a sentence: <i>When the Artist responds, send its words to the Renderer.</i> The tick in front switches a rule on or off. <b>✎ Edit</b> shows its parts: who it's from, a condition (like <i>if its data says pass is false</i>), what to send (words, data, picture) and who to. A rule can come from <b>You</b>, so the start reaches more than one agent, and a rule can wait for <b>the end of the run</b>, like the one that sends Story Chain's Book to the Editor.</p>" +
     "<h4>Agents</h4><p><b>AI agents</b> follow instructions you can change in their editor. <b>Programmed agents</b> are pseudocode: numbers in green { } are settings you can change; edit a line and the translator turns it into JavaScript (<b>Peek under the hood</b> shows both). <b>Scenarios</b> are tests for a program: an input and what it should answer; a red one shows what went wrong, and you can save any turn from the trace as a new one. Some agents <b>collect</b>: they wait for several messages, then answer them all at once; an AI agent that collects sees all their pictures side by side. An agent called <b>You</b> is you. Each agent's editor shows its <b>Connections</b>: who can send it messages, and its own rules. Click an agent's emoji, at the top of its editor, to choose another.</p>" +
     "<h4>Saving and sharing</h4><p>Everything is saved in this browser as you go, so refreshing the tab keeps it all. It stays in this browser on this computer. <b>⬇ Export</b> at the top saves the society you are in as a file, to keep, move or give a friend; <b>⬆ Import</b> opens one. A grown-up can switch saving off in ⚙️ Settings; then the work is gone when the tab closes. <b>Delete this society</b>, in Look inside, deletes one of your own societies from this browser for good. Your own societies come after the microworlds, under <b>Yours</b>: the four you used last, and <b>☰ All yours</b> for the rest, where you can also tick several and delete them at once.</p>" +
@@ -10796,6 +10890,7 @@ const ACTIONS = {
   "speech-help"() { SpeechUI.help(SpeechUI.canListen() ? "error" : "none"); },
   "speech-test"() { SpeechUI.speak("Hello! This is how I sound."); },
   "helper-send"() { const i = $("#helperInput"); if (i) { const q = i.value; i.value = ""; askHelper(q); } },
+  "society-map"() { openSocietyMap(); },
   "helper-clear"() { app.helperChat[app.activeId] = []; save(); renderHelper(); },
   "helper-build"() { app.ui.build[app.activeId] = { snap: null }; app.ui.helperOpen = true; renderStage(); askBuilder(Helper.BUILD_BEGIN); },
   "helper-build-off"() { delete app.ui.build[app.activeId]; renderHelper(); renderStage(); },

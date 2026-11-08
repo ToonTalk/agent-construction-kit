@@ -4,7 +4,7 @@
 
 ## State (2026-10-10)
 
-Agent Kit **1.21.1**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.21.1 follow reviews
+Agent Kit **1.22.0**. v1 was built on 2026-09-30 from `SPEC.md`; 1.0.1 to 1.22.0 follow reviews
 and the first real-model runs (see `SPEC.md` §14). `SPEC.md` holds the spec with its change
 log. (`C:\Users\toont\dev\agent-kit` no longer exists; the untracked `agent-kit-SPEC.md` in this
 folder is a copy without the §14 log.)
@@ -93,6 +93,8 @@ folder is a copy without the §14 log.)
   makes a button glow. With no model, or when a call fails, `builderScript` asks about the first goal not met. Your own
   society's start chooses its agent on the stage. 1.21.1: the **Repeat Catcher** (a memory gate for repeats), and the
   Helper's prompt knows the library, “It remembers”, and why scores change between runs.
+- **🗺️ Map** (1.22.0, `societyMap`/`societyMapSVG`/`openSocietyMap`): columns by distance from the start (off rules
+  count, so switching one off moves nobody), agencies as one box via `topAgencyOf`, counts from the trace's `fired`.
 - **Speech** (1.9.0, `SpeechUI`): 🔊 Read aloud, a 🎤 by the focused text box, the Helper by voice; when listening
   can't work, the 🎤 explains the OS's own dictation (Windows + H …). Number words aren't moves yet.
 - **Yours** (1.8.0): the top row is the microworlds, then your four most recent societies (`app.used`), then
@@ -124,8 +126,8 @@ folder is a copy without the §14 log.)
   before. Settings is for grown-ups; learners choose among the models without it. Each microworld's
   card says which model suits it (`Seeds.MODEL_ADVICE`).
 - **Models:** with a key, each provider starts on its cheapest model that sees pictures
-  (Claude Haiku 4.5, Gemini 3.5 Flash-Lite, GPT-6 Luna; checked October 2026). Haiku 4.5 may
-  retire after 15 October 2026; the Anthropic adapter then falls back to Sonnet 5.5.
+  (Claude Haiku 5.5, Gemini 3.5 Flash-Lite, GPT-6 Luna; checked November 2026; keyless Sonnet 5.5, falling back to Sonnet 4.6). A retired or
+  mistyped Claude model falls back to Sonnet 5.5, and says so. Any model name can be typed.
 - The trace shows the response (Markdown rendered, Logo highlighted, judges' pseudocode,
   data in plain words) and the rules by default; everything else is behind
   "Show full technical details".
@@ -134,7 +136,7 @@ folder is a copy without the §14 log.)
   drawings and v1 instructions converted to Logo where that can be done safely.
 
 **Tests:** `npm test` (or `node tests/run.mjs [filter]`). Latest:
-**683 PASS, 0 FAIL · fingerprint `e4eb609d5646`** · model modules covered 20/20.
+**687 PASS, 0 FAIL · fingerprint `92f8aff6f462`** · model modules covered 20/20.
 Swedish copy: `AK_HTML=sv/index.html node tests/run.mjs "any language"` 5/5; `library.test` 189/198 (the 9 look for
 English words, two of them the Mini-Ani's “no …” scenario names; the same 9 as 1.14.0); `node tests/leftovers.mjs
 sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which stay English in the copy.
@@ -153,7 +155,7 @@ sv/index.html` 25 sentences (of 1,244), all from the scripted stand-ins, which s
 | 8 | Tampered JavaScript, hostile names, `__proto__` keys and trace secrets in imports are neutralized (tested). |
 | 9 | Pretend mode refuses "looks happy"-style lines with a question (tested). **The live-model check is still manual.** |
 | 10 | The jsdom suite reports a fingerprinted PASS count; this file is updated. |
-| 11 | 985 KB, under 1.5 MB (tested); the English artifact builds minified at 755 KB, under 950 KB. |
+| 11 | 1,004 KB, under 1.5 MB (tested); the English artifact builds minified at 764 KB, under 950 KB. |
 
 ## Open issues
 
