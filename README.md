@@ -97,7 +97,7 @@ seeing pictures.
   Chrome (138 or later), **Gemini Nano** is built in: free, and nothing leaves the computer.
 - **GitHub Pages:** https://toontalk.github.io/agent-construction-kit/ — connect Claude,
   Gemini or OpenAI with your own key in ⚙️ Settings. Each starts on its provider's cheapest
-  model that can see pictures (Claude Haiku 4.5, Gemini 3.5 Flash-Lite, GPT-6 Luna).
+  model that can see pictures (Claude Haiku 5.5, Gemini 3.5 Flash-Lite, GPT-6 Luna; checked November 2026). Any other model name can be typed in Settings.
 - **Inside a claude.ai chat:** paste the file into a chat and ask Claude to show it as an
   artifact. There the kit uses Claude **without a key**, through your claude.ai sign-in.
 

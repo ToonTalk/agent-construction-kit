@@ -2519,19 +2519,21 @@ AK.Pretend = Pretend;
 
 /* ===== SECTION: ADAPTERS (pretend, keyless chat artifact, user key: Anthropic / Gemini / OpenAI) ===== */
 const FIELD_TYPES = ["number", "text", "list", "object", "yes/no"];
-const KEYLESS_MODEL = "claude-sonnet-4-6";           // proven through the chat-artifact proxy (Logo Evolution Lab, Sep 2026)
-// Each key-based default is its provider's cheapest current model that can see pictures (checked October 2026).
-// Keyless calls cost no money, so they keep the model proven through the chat proxy.
-const DEFAULT_MODELS = { keyless: "claude-sonnet-4-6", anthropic: "claude-haiku-4-5", gemini: "gemini-3.5-flash-lite", openai: "gpt-6-luna" };
-const OLD_DEFAULT_MODELS = { anthropic: ["claude-opus-5-5"], gemini: ["gemini-3-flash-preview"], openai: ["gpt-5.4-mini"] };   // 1.0's defaults, swapped for the cheap ones
-const ANTHROPIC_FALLBACK_MODEL = "claude-sonnet-5-5";   // if Haiku 4.5 is retired (not before 15 October 2026)
-const MODEL_CHOICES = {
-  keyless: [["claude-sonnet-4-6", "Claude Sonnet 4.6 (proven through the chat proxy)"], ["claude-haiku-4-5", "Claude Haiku 4.5"], ["claude-sonnet-5-5", "Claude Sonnet 5.5"], ["claude-opus-5-5", "Claude Opus 5.5"]],
-  anthropic: [["claude-haiku-4-5", "Claude Haiku 4.5 · cheapest"], ["claude-sonnet-5-5", "Claude Sonnet 5.5"], ["claude-opus-5-5", "Claude Opus 5.5"], ["claude-fable-5-1", "Claude Fable 5.1 · strongest"]],
-  gemini: [["gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite · cheapest"], ["gemini-3.8-flash", "Gemini 3.8 Flash · newest, good with pictures"], ["gemini-3.1-pro-preview", "Gemini 3.1 Pro (preview) · costs more"]],
-  openai: [["gpt-6-luna", "GPT-6 Luna · cheapest"], ["gpt-5.6-terra", "GPT-5.6 Terra"], ["gpt-6.1-sol", "GPT-6.1 Sol"], ["gpt-6-astra", "GPT-6 Astra · strongest"]]
+const KEYLESS_MODEL = "claude-sonnet-4-6";           // proven through the chat-artifact proxy (Logo Evolution Lab, Sep 2026): the fallback there
+// Each key-based default is its provider's cheapest current model that can see pictures (checked November 2026, on the
+// providers' own model pages). Keyless calls cost no money, so they use Sonnet 5.5; if the chat proxy doesn't allow it
+// yet, the keyless adapter falls back to the proven Sonnet 4.6, once, and says so. Any other model name can be typed.
+const DEFAULT_MODELS = { keyless: "claude-sonnet-5-5", anthropic: "claude-haiku-5-5", gemini: "gemini-3.5-flash-lite", openai: "gpt-6-luna" };
+// Earlier defaults, swapped for the current ones in saved settings (a model typed by hand stays as it is).
+const OLD_DEFAULT_MODELS = { keyless: ["claude-sonnet-4-6"], anthropic: ["claude-opus-5-5", "claude-haiku-4-5"], gemini: ["gemini-3-flash-preview"], openai: ["gpt-5.4-mini"] };
+const ANTHROPIC_FALLBACK_MODEL = "claude-sonnet-5-5";   // if the chosen Claude model is retired or mistyped
+const MODEL_CHOICES = {   // suggestions only: the box above them takes any model name
+  keyless: [["claude-sonnet-5-5", "Claude Sonnet 5.5"], ["claude-haiku-5-5", "Claude Haiku 5.5 · quickest"], ["claude-opus-5-5", "Claude Opus 5.5"], ["claude-sonnet-4-6", "Claude Sonnet 4.6 (proven through the chat proxy)"]],
+  anthropic: [["claude-haiku-5-5", "Claude Haiku 5.5 · cheapest"], ["claude-sonnet-5-5", "Claude Sonnet 5.5"], ["claude-opus-5-5", "Claude Opus 5.5"], ["claude-fable-5-1", "Claude Fable 5.1 · strongest"]],
+  gemini: [["gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite · cheapest"], ["gemini-3.8-flash", "Gemini 3.8 Flash · newest Flash, good with pictures"], ["gemini-4-argon", "Gemini 4 Argon · flagship, costs more"]],
+  openai: [["gpt-6-luna", "GPT-6 Luna · cheapest"], ["gpt-6.1-terra", "GPT-6.1 Terra"], ["gpt-6.1-sol", "GPT-6.1 Sol"], ["gpt-6-astra", "GPT-6 Astra · strongest"]]
 };
-const EFFORT_RE = /^claude-(opus-5|sonnet-5|fable|opus-4-[678]|sonnet-4-6)/;
+const EFFORT_RE = /^claude-(opus-5|sonnet-5|haiku-5|fable|opus-4-[678]|sonnet-4-6)/;
 const FALLBACK_RE = /^claude-(fable-5-1|opus-5-5|opus-5$|sonnet-5-5)/;
 function typeLabel(t) { return t === "number" ? "a number" : t === "list" ? "a list" : t === "object" ? "an object" : t === "yes/no" ? "true or false" : "a short text"; }
 function typeExample(t) { return t === "number" ? 0 : t === "list" ? [] : t === "object" ? {} : t === "yes/no" ? true : "…"; }
@@ -2809,7 +2811,7 @@ async function probeAdapter(adapter, signal) {
   } catch (e) { return { ok: false, kind: e.kind || "error", error: e.message }; }
 }
 // Saved settings that still name 1.0's (expensive or retired) defaults get the new cheap ones; a model you typed yourself stays.
-// A short name for a connection and model, like "Gemini 3.8 Flash" or "Claude Haiku 4.5 (keyless)".
+// A short name for a connection and model, like "Gemini 3.8 Flash" or "Claude Sonnet 5.5 (keyless)".
 const CONN_NAMES = { keyless: "Claude", anthropic: "Claude", gemini: "Gemini", openai: "OpenAI", nano: "Gemini Nano", pretend: "Scripted stand-ins", none: "no model" };
 function modelLabel(conn, model) {
   if (conn === "nano" || conn === "pretend" || conn === "none") return CONN_NAMES[conn];
@@ -10109,8 +10111,8 @@ function renderSettings() {
     const choices = Adapters.MODEL_CHOICES[p] || [];
     h += '<div class="form-grid" style="margin-top:12px">';
     if (p !== "keyless") h += '<label for="keyIn">' + (p === "anthropic" ? "Anthropic" : p === "gemini" ? "Google" : "OpenAI") + ' key</label><input class="field" id="keyIn" type="password" autocomplete="off" data-bind="key" data-id="' + p + '" value="' + esc(st.keys[p] || "") + '" placeholder="paste your key">';
-    h += '<label for="modelIn">Model</label><div><input class="field" id="modelIn" data-bind="model" data-id="' + p + '" value="' + esc(st.models[p] || "") + '" spellcheck="false" autocomplete="off" placeholder="type a model name">' +
-      '<div class="picks"><span class="small muted">Or pick one:</span>' + choices.map(c => '<button class="pick' + (st.models[p] === c[0] ? " on" : "") + '" data-act="pick-model" data-id="' + p + '" data-model="' + esc(c[0]) + '" title="' + esc(c[0]) + '">' + esc(c[1]) + '</button>').join("") + '</div></div></div>';
+    h += '<label for="modelIn">Model</label><div><input class="field" id="modelIn" data-bind="model" data-id="' + p + '" value="' + esc(st.models[p] || "") + '" spellcheck="false" autocomplete="off" placeholder="type any model name">' +
+      '<div class="hint">Type the name of any model ' + (p === "keyless" ? "claude.ai allows here" : "your key can use") + ', including newer ones than these. Or pick one:</div><div class="picks">' + choices.map(c => '<button class="pick' + (st.models[p] === c[0] ? " on" : "") + '" data-act="pick-model" data-id="' + p + '" data-model="' + esc(c[0]) + '" title="' + esc(c[0]) + '">' + esc(c[1]) + '</button>').join("") + '</div></div></div>';
     if (p !== "keyless") h += '<label class="row small" style="margin-top:8px"><input type="checkbox" data-bind="remember"' + (st.rememberKeys ? " checked" : "") + '> Remember my keys in this browser. Keys are never put in exported files.</label>';
     h += '<div class="row" style="margin-top:10px"><button class="btn" data-act="test-conn">Test the connection</button><span class="small" id="connResult"></span></div>';
   }
@@ -10149,12 +10151,12 @@ function moreModelsHTML(st) {
     extra.map((x, i) => '<div class="extra"><b>' + esc(Adapters.modelLabel(x.connection, x.model)) + '</b>' + (needsKey(x.connection) && !st.keys[x.connection] ? '<span class="badge warn">needs a key</span>' : "") + '<span class="grow"></span><span class="small" id="extraResult' + i + '"></span><button class="btn tiny" data-act="test-extra" data-i="' + i + '">Test</button><button class="btn tiny danger" data-act="del-extra" data-i="' + i + '">Remove</button></div>').join("") + '</div>';
   h += '<div class="add-model row"><select class="field" data-bind="add-conn" aria-label="Add a model"><option value="">＋ Add a model…</option>' + connList(st).filter(c => c[3] && c[0] !== "pretend").map(c => '<option value="' + c[0] + '"' + sel(add.connection === c[0]) + '>' + esc(c[1]) + '</option>').join("") + '</select>';
   if (add.connection) {
-    if (add.connection !== "nano") h += '<input class="field" id="addModelIn" data-bind="add-model" value="' + esc(add.model || Adapters.DEFAULT_MODELS[add.connection] || "") + '" spellcheck="false" autocomplete="off" placeholder="model name" aria-label="Model name">';
+    if (add.connection !== "nano") h += '<input class="field" id="addModelIn" data-bind="add-model" value="' + esc(add.model || Adapters.DEFAULT_MODELS[add.connection] || "") + '" spellcheck="false" autocomplete="off" placeholder="type any model name" aria-label="Model name (any)">';
     if (needsKey(add.connection) && !st.keys[add.connection]) h += '<input class="field" type="password" autocomplete="off" data-bind="key" data-id="' + add.connection + '" placeholder="paste your key" aria-label="Key">';
     h += '<button class="btn primary" data-act="add-extra">Add</button>';
   }
   h += '</div>';
-  if (add.connection && add.connection !== "nano") h += '<div class="picks"><span class="small muted">Or pick one:</span>' + (Adapters.MODEL_CHOICES[add.connection] || []).map(c => '<button class="pick' + ((add.model || Adapters.DEFAULT_MODELS[add.connection]) === c[0] ? " on" : "") + '" data-act="pick-add-model" data-model="' + esc(c[0]) + '" title="' + esc(c[0]) + '">' + esc(c[1]) + '</button>').join("") + '</div>';
+  if (add.connection && add.connection !== "nano") h += '<div class="picks"><span class="small muted">Type any model name, or pick one:</span>' + (Adapters.MODEL_CHOICES[add.connection] || []).map(c => '<button class="pick' + ((add.model || Adapters.DEFAULT_MODELS[add.connection]) === c[0] ? " on" : "") + '" data-act="pick-add-model" data-model="' + esc(c[0]) + '" title="' + esc(c[0]) + '">' + esc(c[1]) + '</button>').join("") + '</div>';
   if (!needsKey(st.connection) && (needsKey(add.connection) || extra.some(x => needsKey(x.connection)))) h += '<label class="row small" style="margin-top:8px"><input type="checkbox" data-bind="remember"' + (st.rememberKeys ? " checked" : "") + '> Remember my keys in this browser. Keys are never put in exported files.</label>';
   return h + '</div>';
 }

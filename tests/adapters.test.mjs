@@ -42,12 +42,18 @@ export default function (T, { modelWindow, same }) {
     const calls = fake(() => resp(200, {}));
     try { await Adapters.makeAdapter({ connection: "anthropic", keys: {}, models: {} }).call(req()); return false; } catch (e) { return e.kind === "auth" && calls.length === 0; }
   });
-  T.test("each key starts on its provider's cheapest model, and old saved defaults are swapped for it", ["Adapters"], () => {
-    const d = Adapters.DEFAULT_MODELS, u = Adapters.updateSavedModels({ anthropic: "claude-opus-5-5", gemini: "gemini-3-flash-preview", openai: "gpt-5.6-terra" });
-    return d.anthropic === "claude-haiku-4-5" && d.openai === "gpt-6-luna" && d.gemini === "gemini-3.5-flash-lite" && u.anthropic === "claude-haiku-4-5" && u.gemini === "gemini-3.5-flash-lite" && u.openai === "gpt-5.6-terra";
+  T.test("each key starts on its provider's cheapest current model, old saved defaults are swapped for it, and a typed name stays", ["Adapters"], () => {
+    const d = Adapters.DEFAULT_MODELS, u = Adapters.updateSavedModels({ keyless: "claude-sonnet-4-6", anthropic: "claude-haiku-4-5", gemini: "gemini-3-flash-preview", openai: "my-own-model-2026" });
+    return d.keyless === "claude-sonnet-5-5" && d.anthropic === "claude-haiku-5-5" && d.openai === "gpt-6-luna" && d.gemini === "gemini-3.5-flash-lite" &&
+      u.keyless === "claude-sonnet-5-5" && u.anthropic === "claude-haiku-5-5" && u.gemini === "gemini-3.5-flash-lite" && u.openai === "my-own-model-2026";
+  });
+  T.test("any model name typed in Settings is the one called, even one the kit doesn't list", ["Adapters"], async () => {
+    const calls = fake(() => resp(200, { model: "claude-someday-9", stop_reason: "end_turn", content: [{ type: "text", text: "ok" }] }));
+    await Adapters.makeAdapter({ connection: "anthropic", keys: { anthropic: "k" }, models: { anthropic: "claude-someday-9" } }).call(req({ outputFields: [] }));
+    return calls.length === 1 && calls[0].body.model === "claude-someday-9" && Adapters.modelLabel("anthropic", "claude-someday-9") === "Claude claude-someday-9";
   });
   T.test("your Anthropic key: a retired model falls back to Sonnet 5.5, and says so", ["Adapters"], async () => {
-    const calls = fake((url, opts) => JSON.parse(opts.body).model === "claude-haiku-4-5" ? resp(404, { error: { message: "model: claude-haiku-4-5 not found" } }) : resp(200, { content: [{ type: "text", text: '{"rows":1,"cols":1}' }], stop_reason: "end_turn" }));
+    const calls = fake((url, opts) => JSON.parse(opts.body).model === "claude-haiku-5-5" ? resp(404, { error: { message: "model: claude-haiku-5-5 not found" } }) : resp(200, { content: [{ type: "text", text: '{"rows":1,"cols":1}' }], stop_reason: "end_turn" }));
     const r = await Adapters.makeAdapter({ connection: "anthropic", keys: { anthropic: "k" }, models: {} }).call(req());
     return calls.length === 2 && calls[1].body.model === "claude-sonnet-5-5" && /isn't available/.test(r.warning);
   });
